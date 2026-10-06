@@ -1,0 +1,143 @@
+fileFormatVersion: 2
+guid: 3adaaac074a312b41835d892dbf493bb
+timeCreated: 1515687578
+licenseType: Store
+ModelImporter:
+  serializedVersion: 19
+  fileIDToRecycleName:
+    100000: ACCESS RAMP_2
+    100002: //RootNode
+    100004: City Bus with Interior 3_Exterior
+    100006: City Bus with Interior 3_Interior
+    100008: City Bus with Interior 3_Steering
+    100010: City Bus with Interior 3_Wheel_BL
+    100012: City Bus with Interior 3_Wheel_BR
+    100014: City Bus with Interior 3_Wheel_FL
+    100016: City Bus with Interior 3_Wheel_FR
+    100018: City Bus with interior_Door_A
+    100020: City Bus with interior_Door_B
+    100022: City Bus with interior_Door_C
+    100024: City Bus with interior_Door_D
+    100026: City Bus with interior_Door_E
+    100028: City Bus with interior_Door_F
+    400000: ACCESS RAMP_2
+    400002: //RootNode
+    400004: City Bus with Interior 3_Exterior
+    400006: City Bus with Interior 3_Interior
+    400008: City Bus with Interior 3_Steering
+    400010: City Bus with Interior 3_Wheel_BL
+    400012: City Bus with Interior 3_Wheel_BR
+    400014: City Bus with Interior 3_Wheel_FL
+    400016: City Bus with Interior 3_Wheel_FR
+    400018: City Bus with interior_Door_A
+    400020: City Bus with interior_Door_B
+    400022: City Bus with interior_Door_C
+    400024: City Bus with interior_Door_D
+    400026: City Bus with interior_Door_E
+    400028: City Bus with interior_Door_F
+    2300000: ACCESS RAMP_2
+    2300002: City Bus with Interior 3_Exterior
+    2300004: City Bus with Interior 3_Interior
+    2300006: City Bus with Interior 3_Steering
+    2300008: City Bus with Interior 3_Wheel_BL
+    2300010: City Bus with Interior 3_Wheel_BR
+    2300012: City Bus with Interior 3_Wheel_FL
+    2300014: City Bus with Interior 3_Wheel_FR
+    2300016: City Bus with interior_Door_A
+    2300018: City Bus with interior_Door_B
+    2300020: City Bus with interior_Door_C
+    2300022: City Bus with interior_Door_D
+    2300024: City Bus with interior_Door_E
+    2300026: City Bus with interior_Door_F
+    3300000: ACCESS RAMP_2
+    3300002: City Bus with Interior 3_Exterior
+    3300004: City Bus with Interior 3_Interior
+    3300006: City Bus with Interior 3_Steering
+    3300008: City Bus with Interior 3_Wheel_BL
+    3300010: City Bus with Interior 3_Wheel_BR
+    3300012: City Bus with Interior 3_Wheel_FL
+    3300014: City Bus with Interior 3_Wheel_FR
+    3300016: City Bus with interior_Door_A
+    3300018: City Bus with interior_Door_B
+    3300020: City Bus with interior_Door_C
+    3300022: City Bus with interior_Door_D
+    3300024: City Bus with interior_Door_E
+    3300026: City Bus with interior_Door_F
+    4300000: City Bus with Interior 3_Exterior
+    4300002: City Bus with interior_Door_F
+    4300004: City Bus with interior_Door_A
+    4300006: City Bus with interior_Door_B
+    4300008: City Bus with interior_Door_C
+    4300010: City Bus with interior_Door_D
+    4300012: City Bus with interior_Door_E
+    4300014: ACCESS RAMP_2
+    4300016: City Bus with Interior 3_Steering
+    4300018: City Bus with Interior 3_Wheel_BL
+    4300020: City Bus with Interior 3_Wheel_FR
+    4300022: City Bus with Interior 3_Wheel_FL
+    4300024: City Bus with Interior 3_Wheel_BR
+    4300026: City Bus with Interior 3_Interior
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleRotations: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 0
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
