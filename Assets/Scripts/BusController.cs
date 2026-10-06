@@ -28,6 +28,10 @@ public class BusController : MonoBehaviour
     public float lateralGrip = 14f;
     public float handbrakeGrip = 3f;
 
+    [Header("Reset vehicule")]
+    public Key resetKey = Key.R;
+    public float resetHeight = 2f;
+
     [Header("Debug")]
     [SerializeField] private float currentSpeedKmh;
     [SerializeField] private float signedSpeedKmh;
@@ -56,6 +60,13 @@ public class BusController : MonoBehaviour
             steeringInput,
             steeringResponse * Time.deltaTime
         );
+
+        // RESET DU BUS
+        if (Keyboard.current != null &&
+            Keyboard.current.rKey.wasPressedThisFrame)
+        {
+            ResetVehicle();
+        }
     }
 
     private void FixedUpdate()
@@ -76,7 +87,7 @@ public class BusController : MonoBehaviour
         if (Keyboard.current == null)
             return;
 
-        // ACCELERER
+        // AVANCER
         if (
             Keyboard.current.zKey.isPressed ||
             Keyboard.current.wKey.isPressed ||
@@ -128,10 +139,7 @@ public class BusController : MonoBehaviour
         float maxForwardSpeed = maxSpeedKmh / 3.6f;
         float maxReverseSpeed = maxReverseSpeedKmh / 3.6f;
 
-        // =========================
         // FREIN A MAIN
-        // =========================
-
         if (handbrakeInput)
         {
             forwardSpeed = Mathf.MoveTowards(
@@ -141,13 +149,10 @@ public class BusController : MonoBehaviour
             );
         }
 
-        // =========================
-        // Z / AVANT
-        // =========================
-
+        // AVANCER
         else if (throttleInput > 0f)
         {
-            // Si on recule, Z sert d'abord à freiner.
+            // Si on recule, Z freine d'abord
             if (forwardSpeed < -0.5f)
             {
                 forwardSpeed = Mathf.MoveTowards(
@@ -166,14 +171,10 @@ public class BusController : MonoBehaviour
             }
         }
 
-        // =========================
-        // S / FREIN + ARRIERE
-        // =========================
-
+        // FREIN / MARCHE ARRIERE
         else if (throttleInput < 0f)
         {
-            // Si on roule vers l'avant,
-            // S commence par freiner.
+            // Si on avance, S freine d'abord
             if (forwardSpeed > 0.5f)
             {
                 forwardSpeed = Mathf.MoveTowards(
@@ -184,8 +185,6 @@ public class BusController : MonoBehaviour
             }
             else
             {
-                // Une fois presque arrêté :
-                // marche arrière.
                 forwardSpeed = Mathf.MoveTowards(
                     forwardSpeed,
                     -maxReverseSpeed,
@@ -194,10 +193,7 @@ public class BusController : MonoBehaviour
             }
         }
 
-        // =========================
-        // AUCUNE TOUCHE
-        // =========================
-
+        // ROUE LIBRE
         else
         {
             forwardSpeed = Mathf.MoveTowards(
@@ -212,7 +208,7 @@ public class BusController : MonoBehaviour
         Vector3 worldVelocity =
             transform.TransformDirection(localVelocity);
 
-        // On laisse Unity gérer la gravité.
+        // Laisse Unity gérer la chute / gravité
         worldVelocity.y = rb.linearVelocity.y;
 
         rb.linearVelocity = worldVelocity;
@@ -229,20 +225,19 @@ public class BusController : MonoBehaviour
         float speedKmh =
             Mathf.Abs(forwardSpeed) * 3.6f;
 
-        // Très peu de direction presque à l'arrêt.
+        // Impossible de tourner quasiment sur place
+        if (speedKmh < 2f)
+            return;
+
         float lowSpeedFactor =
             Mathf.Clamp01(speedKmh / 8f);
 
-        // Réduction progressive du braquage
-        // quand le bus va vite.
         float highSpeedFactor = Mathf.Lerp(
             1f,
             highSpeedSteeringMultiplier,
             Mathf.Clamp01(speedKmh / maxSpeedKmh)
         );
 
-        // En marche arrière, la direction
-        // fonctionne naturellement à l'envers.
         float reverseDirection =
             forwardSpeed >= 0f ? 1f : -1f;
 
@@ -274,11 +269,9 @@ public class BusController : MonoBehaviour
 
         float grip =
             handbrakeInput
-            ? handbrakeGrip
-            : lateralGrip;
+                ? handbrakeGrip
+                : lateralGrip;
 
-        // Réduit progressivement la vitesse latérale.
-        // Avec le frein à main, l'arrière glisse davantage.
         localVelocity.x = Mathf.MoveTowards(
             localVelocity.x,
             0f,
@@ -293,6 +286,32 @@ public class BusController : MonoBehaviour
 
         rb.linearVelocity =
             correctedVelocity;
+    }
+
+    private void ResetVehicle()
+    {
+        // Conserve uniquement la direction horizontale actuelle
+        float currentYaw = transform.eulerAngles.y;
+
+        // Stop complet
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+
+        // Remonte légèrement le bus
+        rb.position =
+            transform.position +
+            Vector3.up * resetHeight;
+
+        // Remet X et Z à zéro
+        rb.rotation =
+            Quaternion.Euler(
+                0f,
+                currentYaw,
+                0f
+            );
+
+        // Reset également la direction
+        currentSteering = 0f;
     }
 
     private void UpdateDebug()
