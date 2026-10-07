@@ -240,7 +240,8 @@ MonoBehaviour:
   dropTarget: {fileID: 0}
   marker: {fileID: 0}
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
-  markerHeight: 10
+  beamHeight: 150
+  beamWidth: 2.5
 --- !u!4 &128785291
 Transform:
   m_ObjectHideFlags: 0
@@ -509,6 +510,10 @@ MonoBehaviour:
   counterText: {fileID: 0}
   messageText: {fileID: 0}
   fontSize: 32
+  showWaypoints: 1
+  waypointSize: 44
+  screenEdgeMargin: 60
+  waypointHeightOffset: 4
 --- !u!114 &223114466
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -727,7 +732,8 @@ MonoBehaviour:
   dropTarget: {fileID: 0}
   marker: {fileID: 0}
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
-  markerHeight: 10
+  beamHeight: 150
+  beamWidth: 2.5
 --- !u!4 &361727623
 Transform:
   m_ObjectHideFlags: 0
@@ -903,7 +909,8 @@ MonoBehaviour:
   dropTarget: {fileID: 0}
   marker: {fileID: 0}
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
-  markerHeight: 10
+  beamHeight: 150
+  beamWidth: 2.5
 --- !u!4 &998951632
 Transform:
   m_ObjectHideFlags: 0
@@ -1039,7 +1046,9 @@ MonoBehaviour:
   pickupRadius: 8
   marker: {fileID: 0}
   markerColor: {r: 1, g: 0.85, b: 0.1, a: 1}
-  markerHeight: 12
+  beamHeight: 150
+  beamWidth: 3
+  screenLabel: Crousty
 --- !u!4 &1627197069
 Transform:
   m_ObjectHideFlags: 0
@@ -1088,7 +1097,8 @@ MonoBehaviour:
   dropTarget: {fileID: 0}
   marker: {fileID: 0}
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
-  markerHeight: 10
+  beamHeight: 150
+  beamWidth: 2.5
 --- !u!4 &1672065116
 Transform:
   m_ObjectHideFlags: 0
@@ -1168,7 +1178,8 @@ MonoBehaviour:
   dropTarget: {fileID: 0}
   marker: {fileID: 0}
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
-  markerHeight: 10
+  beamHeight: 150
+  beamWidth: 2.5
 --- !u!4 &1904046440
 Transform:
   m_ObjectHideFlags: 0
@@ -1260,8 +1271,9 @@ MonoBehaviour:
   deliveryRadius: 10
   dropTarget: {fileID: 0}
   marker: {fileID: 0}
-  markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
-  markerHeight: 10
+  markerColor: {r: 0.2725346, g: 1, b: 0.19999999, a: 1}
+  beamHeight: 150
+  beamWidth: 2.5
 --- !u!4 &2047977200
 Transform:
   m_ObjectHideFlags: 0

@@ -86,7 +86,7 @@ public static class JojoVisuals
         return material;
     }
 
-    // Petits sprites générés par code pour le HUD
+    // Petits sprites générés pour le HUD
     private static Sprite circleSprite;
     private static Sprite arrowSprite;
 
