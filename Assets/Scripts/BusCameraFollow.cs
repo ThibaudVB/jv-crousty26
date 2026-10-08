@@ -85,6 +85,9 @@ public float defaultPitch = 12f;
 
     private void Update()
     {
+        if (Time.timeScale <= 0f)
+            return;
+
         HandleCursor();
         HandleMouseOrbit();
         UpdateSpeed();
@@ -96,7 +99,7 @@ public float defaultPitch = 12f;
 
     private void LateUpdate()
 {
-    if (target == null)
+    if (target == null || Time.timeScale <= 0f)
         return;
 
     if (cameraLocked)
