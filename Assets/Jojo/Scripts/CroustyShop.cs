@@ -1,42 +1,22 @@
 using UnityEngine;
 
-// Magasin Crousty : les commandes sont chargées automatiquement
-// quand le bus entre dans le rayon.
-public class CroustyShop : MonoBehaviour
+namespace Jojo
 {
-    public float pickupRadius = 8f;
-
-    [Header("Marqueur")]
-    [Tooltip("Optionnel : objet affiché au-dessus du magasin. Si vide, un faisceau lumineux jaune est créé.")]
-    public GameObject marker;
-    public Color markerColor = new Color(1f, 0.85f, 0.1f);
-    public float beamHeight = 150f;
-    public float beamWidth = 3f;
-
-    [Tooltip("Icône sur l'écran, visible à travers les bâtiments")]
-    public string screenLabel = "Crousty";
-
-    private void Start()
+    // Magasin Crousty : les commandes sont chargées automatiquement
+    // quand le bus entre dans le rayon. Son faisceau reste toujours visible.
+    public class CroustyShop : BeaconZone
     {
-        if (marker == null)
-            marker = JojoVisuals.CreateBeacon(transform, markerColor, beamHeight, beamWidth);
-    }
+        [Tooltip("Texte du repère à l'écran, visible à travers les bâtiments")]
+        [SerializeField] private string screenLabel = "Crousty";
 
-    public bool IsInRange(Vector3 position)
-    {
-        return FlatDistance(position, transform.position) <= pickupRadius;
-    }
+        public string ScreenLabel => screenLabel;
 
-    private static float FlatDistance(Vector3 a, Vector3 b)
-    {
-        a.y = 0f;
-        b.y = 0f;
-        return Vector3.Distance(a, b);
-    }
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, pickupRadius);
+        // Valeurs par défaut quand on ajoute le script dans l'éditeur
+        private void Reset()
+        {
+            radius = 8f;
+            markerColor = new Color(1f, 0.85f, 0.1f);
+            beamWidth = 3f;
+        }
     }
 }

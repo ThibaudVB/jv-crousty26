@@ -1,25 +1,28 @@
 using UnityEngine;
 
-// Fait "respirer" la largeur d'un faisceau lumineux.
-public class BeaconPulse : MonoBehaviour
+namespace Jojo
 {
-    public float speed = 2.5f;
-    public float amount = 0.25f;
-
-    private Vector3 baseScale;
-
-    private void Start()
+    // Fait "respirer" la largeur d'un faisceau lumineux.
+    public class BeaconPulse : MonoBehaviour
     {
-        baseScale = transform.localScale;
-    }
+        public float speed = 2.5f;
+        public float amount = 0.25f;
 
-    private void Update()
-    {
-        float pulse = 1f + Mathf.Sin(Time.time * speed) * amount;
-        transform.localScale = new Vector3(
-            baseScale.x * pulse,
-            baseScale.y,
-            baseScale.z * pulse
-        );
+        private Vector3 baseScale;
+
+        private void Start()
+        {
+            baseScale = transform.localScale;
+        }
+
+        private void Update()
+        {
+            float pulse = 1f + Mathf.Sin(Time.time * speed) * amount;
+            transform.localScale = new Vector3(
+                baseScale.x * pulse,
+                baseScale.y,
+                baseScale.z * pulse
+            );
+        }
     }
 }
