@@ -23,6 +23,7 @@ public class CroustyHUD : MonoBehaviour
 
     private Canvas canvas;
     private Font font;
+    private GerantDialogue gerant;
     private readonly List<Waypoint> waypoints = new List<Waypoint>();
 
     private class Waypoint
@@ -52,26 +53,33 @@ public class CroustyHUD : MonoBehaviour
             ? $"Crousty : {manager.CroustyLeft} / {manager.OrdersTotal}"
             : "Crousty : 0";
 
-        messageText.text = GetMessage();
+        string message = GetMessage();
+        if (gerant != null)
+            gerant.SetMessage(message);
+        else
+            messageText.text = message;
 
         UpdateWaypoints();
     }
 
+    // Répliques du gérant
     private string GetMessage()
     {
         string key = manager.deliverKey.ToString().ToUpper();
 
         if (!manager.HasStarted)
-            return "Va au magasin Crousty pour prendre les commandes";
+            return "Hop hop hop ! Les commandes attendent, on se bouge !";
 
         if (manager.AllDelivered)
-            return "Toutes les commandes sont livrées ! Retourne au magasin Crousty";
+            return "Bien joué ! Reviens au magasin, y'a d'autres commandes !";
 
-        if (manager.PointInRange != null)
-            return $"Appuie sur {key} pour livrer";
+        if (manager.PointInRange != null && !manager.autoDeliver)
+            return $"Appuie sur {key} pour lancer le crousty !";
 
         if (manager.CroustyLeft > 0)
-            return $"Livre les commandes ({manager.Delivered} livrée(s))";
+            return manager.CroustyLeft == 1
+                ? "Plus qu'une commande, on lâche rien !"
+                : $"Encore {manager.CroustyLeft} commandes, les clients ont faim !";
 
         return "";
     }
@@ -225,12 +233,15 @@ public class CroustyHUD : MonoBehaviour
                 TextAnchor.UpperLeft, fontSize
             );
 
+        // Sans texte assigné, les messages passent par la boîte du gérant
         if (messageText == null)
-            messageText = CreateText(
-                canvas.transform, "Message", font,
-                new Vector2(0.5f, 0f), new Vector2(0f, 60f),
-                TextAnchor.LowerCenter, fontSize - 4
-            );
+        {
+            gerant = GetComponent<GerantDialogue>();
+            if (gerant == null)
+                gerant = gameObject.AddComponent<GerantDialogue>();
+
+            gerant.Build(canvas.transform);
+        }
     }
 
     private static Text CreateText(

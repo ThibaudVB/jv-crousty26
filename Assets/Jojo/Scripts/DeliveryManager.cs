@@ -18,6 +18,8 @@ public class DeliveryManager : MonoBehaviour
     public List<DeliveryPoint> deliveryPoints = new List<DeliveryPoint>();
 
     [Header("Livraison")]
+    [Tooltip("Livre tout seul en passant à côté d'une adresse. Décoché : il faut appuyer sur la touche.")]
+    public bool autoDeliver = true;
     public Key deliverKey = Key.E;
     public float throwDuration = 0.8f;
     public float throwArcHeight = 4f;
@@ -83,12 +85,16 @@ public class DeliveryManager : MonoBehaviour
         // LIVRAISON
         PointInRange = FindDeliverablePoint();
 
-        if (PointInRange != null &&
-            Keyboard.current != null &&
-            Keyboard.current[deliverKey].wasPressedThisFrame)
+        if (PointInRange != null && (autoDeliver || DeliverKeyPressed()))
         {
             ThrowCrousty(PointInRange);
         }
+    }
+
+    private bool DeliverKeyPressed()
+    {
+        return Keyboard.current != null &&
+               Keyboard.current[deliverKey].wasPressedThisFrame;
     }
 
     private bool CanLoadOrders()
