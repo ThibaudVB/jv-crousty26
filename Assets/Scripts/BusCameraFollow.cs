@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[DefaultExecutionOrder(100)]
 [RequireComponent(typeof(Camera))]
 public class BusCameraFollow : MonoBehaviour
 {
@@ -9,10 +10,18 @@ public Transform target;
 public Rigidbody targetRigidbody;
 
     [Header("Position")]
-    public float distance = 10f;
-    public float height = 4.5f;
+    public float distance = 8f;
+    public float height = 3.3f;
     public float lookHeight = 2f;
     public float lookAheadDistance = 2f;
+
+    [Header("Vue de la poursuite")]
+    public PoliceChaseManager chaseManager;
+    public float chaseDistance = 9.5f;
+    public float chaseHeight = 3.5f;
+    [Range(0f, 0.5f)] public float policeFramingWeight = 0.1f;
+    public float chaseFramingSpeed = 4f;
+    private float chaseBlend;
 
     [Header("Mouse Orbit")]
     public float mouseSensitivity = 0.12f;
@@ -71,6 +80,7 @@ public float defaultPitch = 12f;
         }
 
         targetRb = targetRigidbody;
+        if (chaseManager == null) chaseManager = FindFirstObjectByType<PoliceChaseManager>();
 
         // Commence directement derrière le bus
         yaw = target.eulerAngles.y;
@@ -97,7 +107,9 @@ public float defaultPitch = 12f;
         currentPitch = pitch;
     }
 
-    private void LateUpdate()
+    private void LateUpdate() => UpdateCamera(Time.deltaTime);
+
+    private void UpdateCamera(float deltaTime)
 {
     if (target == null || Time.timeScale <= 0f)
         return;
@@ -112,7 +124,10 @@ public float defaultPitch = 12f;
         HandleAutoRecenter();
     }
 
-    UpdateCameraPosition();
+    chaseBlend = Mathf.MoveTowards(chaseBlend,
+        chaseManager != null && chaseManager.ChaseStarted ? 1f : 0f,
+        chaseFramingSpeed * deltaTime);
+    UpdateCameraPosition(deltaTime);
 }
     private void HandleMouseOrbit()
 {
@@ -167,7 +182,7 @@ public float defaultPitch = 12f;
         );
     }
 
-    private void UpdateCameraPosition()
+    private void UpdateCameraPosition(float deltaTime)
     {
         float speedRatio =
             Mathf.Clamp01(
@@ -179,10 +194,14 @@ public float defaultPitch = 12f;
             lookAheadDistance *
             speedRatio;
 
-        Vector3 pivot =
-            target.position +
-            Vector3.up * height +
-            lookAhead;
+        Vector3 policeFocus = Vector3.zero;
+        if (chaseManager != null && chaseManager.ActivePolice != null)
+            policeFocus = Vector3.ProjectOnPlane(
+                chaseManager.ActivePolice.transform.position - target.position, Vector3.up) * policeFramingWeight * chaseBlend;
+        lookAhead *= 1f - chaseBlend;
+        float framedDistance = Mathf.Lerp(distance, chaseDistance, chaseBlend);
+        float framedHeight = Mathf.Lerp(height, chaseHeight, chaseBlend);
+        Vector3 pivot = target.position + policeFocus + Vector3.up * framedHeight + lookAhead;
 
         Quaternion orbitRotation =
             Quaternion.Euler(
@@ -195,20 +214,22 @@ public float defaultPitch = 12f;
             pivot -
             orbitRotation *
             Vector3.forward *
-            distance;
+            framedDistance;
 
         transform.position =
             Vector3.SmoothDamp(
                 transform.position,
                 desiredPosition,
                 ref positionVelocity,
-                positionSmoothTime
+                positionSmoothTime,
+                Mathf.Infinity,
+                deltaTime
             );
 
         Vector3 lookTarget =
             target.position +
             Vector3.up * lookHeight +
-            lookAhead;
+            policeFocus + lookAhead;
 
         Quaternion desiredRotation =
             Quaternion.LookRotation(
@@ -220,7 +241,7 @@ public float defaultPitch = 12f;
             Quaternion.Slerp(
                 transform.rotation,
                 desiredRotation,
-                rotationSmoothSpeed * Time.deltaTime
+                rotationSmoothSpeed * deltaTime
             );
     }
 
