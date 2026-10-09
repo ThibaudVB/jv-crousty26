@@ -49,8 +49,7 @@ namespace MirzaBeig.CinematicExplosionsFree
 
             // Find all reflection probes.
 
-            reflectionProbes = FindObjectsByType<ReflectionProbe>(
-                FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            reflectionProbes = FindObjectsByType<ReflectionProbe>(FindObjectsInactive.Exclude);
 
             switch (currentScene)
             {
