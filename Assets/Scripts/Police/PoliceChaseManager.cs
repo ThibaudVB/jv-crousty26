@@ -9,22 +9,19 @@ public class PoliceChaseManager : MonoBehaviour
 
     [Header("Allure du bus")]
     [SerializeField, Min(1f)] private float safeSpeedKmh = 100f;
-    [SerializeField, Min(0f)] private float startupGraceSeconds = 0f;
-    [SerializeField, Min(0f)] private float minimumRecoverySpeedKmh = 20f;
-    [SerializeField, Min(0f)] private float accelerationRecoverySeconds = 0.75f;
+    [SerializeField, Min(0f)] private float startupGraceSeconds = 3f;
 
     [Header("Distance derriere le bus (metres)")]
-    [SerializeField, Min(1f)] private float appearanceDistance = 50f;
-    [SerializeField, Min(0.1f)] private float captureDistance = 3f;
-    [SerializeField, Min(1f)] private float disappearanceDistance = 65f;
-    [SerializeField, Min(0.1f)] private float retreatSpeed = 12f;
+    [SerializeField, Min(1f)] private float appearanceDistance = 8f;
+    [SerializeField, Min(1f)] private float disappearanceDistance = 18f;
+    [SerializeField, Min(0.1f)] private float retreatSpeed = 6f;
+    [SerializeField] private float appearanceSideOffset = 1.4f;
 
     private float distance;
     private float approachStartDistance;
+    private float approachProgress;
     private float graceRemaining;
-    private float previousSpeed;
-    private float recoveryRemaining;
-    private bool recovering;
+    private float captureAlignment;
     public bool ChaseStarted => ActivePolice != null;
     public PoliceCarAI ActivePolice { get; private set; }
     public float PoliceDistance => ActivePolice != null ? distance : disappearanceDistance;
@@ -45,12 +42,11 @@ public class PoliceChaseManager : MonoBehaviour
             return;
         }
         graceRemaining = startupGraceSeconds;
-        previousSpeed = ForwardSpeed();
     }
 
     private float ForwardSpeed()
     {
-        Vector3 forward = Vector3.ProjectOnPlane(busRigidbody.transform.forward, Vector3.up).normalized;
+        Vector3 forward = Vector3.ProjectOnPlane(busRigidbody.rotation * Vector3.forward, Vector3.up).normalized;
         return Mathf.Max(0f, Vector3.Dot(busRigidbody.linearVelocity, forward)) * 3.6f;
     }
 
@@ -59,12 +55,7 @@ public class PoliceChaseManager : MonoBehaviour
         if (busRigidbody == null || catchZone == null || catchZone.IsCaught || Time.timeScale <= 0f) return;
         float dt = Time.fixedDeltaTime;
         float speed = ForwardSpeed();
-        bool accelerating = speed >= minimumRecoverySpeedKmh && (speed - previousSpeed) / dt > 3f;
-        bool slowingDown = speed < previousSpeed - 0.05f;
-        previousSpeed = speed;
-        recoveryRemaining = accelerating ? accelerationRecoverySeconds :
-            slowingDown ? 0f : Mathf.Max(0f, recoveryRemaining - dt);
-        recovering = speed >= safeSpeedKmh || recoveryRemaining > 0f;
+        bool recovering = speed >= safeSpeedKmh;
         if (graceRemaining > 0f)
         {
             graceRemaining = Mathf.Max(0f, graceRemaining - dt);
@@ -75,31 +66,48 @@ public class PoliceChaseManager : MonoBehaviour
         {
             catchZone.AdvanceCapture(false, dt);
             if (recovering) return;
-            // Instantiate inactive so the original prefab position is never visible for a frame.
-            GameObject staging = new GameObject("Police spawn");
-            staging.SetActive(false);
-            GameObject instance = Instantiate(policePrefab, staging.transform);
+            var instance = Instantiate(policePrefab);
+            instance.SetActive(false);
             ActivePolice = instance.GetComponent<PoliceCarAI>();
             ActivePolice.SetTarget(busRigidbody.transform, busRigidbody);
-            distance = Mathf.Max(captureDistance, appearanceDistance);
-            ActivePolice.SetFollowingDistance(distance);
-            instance.transform.SetParent(null, true);
-            Destroy(staging);
+            // Initialise la geometrie avant de rendre le vehicule visible.
+            ActivePolice.InitializeBody();
+            distance = Mathf.Max(ActivePolice.GetCaptureGap(catchZone.CaptureCollider) + 1f, appearanceDistance);
+            approachStartDistance = distance;
+            approachProgress = 0f;
+            captureAlignment = 0f;
+            ActivePolice.SetFollowingDistance(distance, appearanceSideOffset);
+            ActivePolice.UpdateFollowingPose(dt);
+            instance.SetActive(true);
+            // Le compteur commence a l'apparition, pas un pas physique avant.
+            return;
         }
-        float farDistance = Mathf.Max(disappearanceDistance, appearanceDistance + 1f, captureDistance + 1f);
+        float captureGap = ActivePolice.GetCaptureGap(catchZone.CaptureCollider);
+        float farDistance = Mathf.Max(disappearanceDistance, appearanceDistance + 1f, captureGap + 1f);
         if (recovering)
         {
+            catchZone.AdvanceCapture(false, dt);
+            approachProgress = 0f;
             distance = Mathf.MoveTowards(distance, farDistance, retreatSpeed * dt);
+            captureAlignment = Mathf.MoveTowards(captureAlignment, 0f, dt);
         }
         else
         {
-            // One clock covers the entire approach, rather than starting five more seconds on arrival.
             if (catchZone.CatchProgress01 <= 0f) approachStartDistance = distance;
-            float progress = Mathf.Clamp01(catchZone.CatchProgress01 + dt / catchZone.CaptureDurationSeconds);
-            distance = Mathf.Lerp(approachStartDistance, captureDistance, progress);
+            float clock = Mathf.Clamp01(catchZone.CatchProgress01 + dt / catchZone.CaptureDurationSeconds);
+            // A temps egal, un bus plus lent laisse la police gagner plus vite du terrain.
+            // Toutes les courbes atteignent la zone a exactement cinq secondes.
+            float curve = Mathf.Lerp(0.7f, 1.4f, Mathf.Clamp01(speed / safeSpeedKmh));
+            approachProgress = Mathf.Max(approachProgress, Mathf.Pow(clock, curve));
+            distance = Mathf.Lerp(approachStartDistance, captureGap, approachProgress);
+            // Rejoindre progressivement la zone pour conserver le contact a cinq secondes.
+            captureAlignment = Mathf.SmoothStep(0f, 1f, approachProgress);
         }
-        ActivePolice.SetFollowingDistance(distance);
-        catchZone.AdvanceCapture(!recovering, dt);
+        float sideOffset = appearanceSideOffset * (1f - approachProgress);
+        ActivePolice.SetFollowingDistance(distance, sideOffset, captureAlignment);
+        ActivePolice.UpdateFollowingPose(dt);
+        if (!recovering)
+            catchZone.AdvanceCapture(true, dt, ActivePolice.IsTouchingCaptureZone(catchZone.CaptureCollider));
         if (recovering && distance >= farDistance - 0.001f) RemovePolice();
     }
 

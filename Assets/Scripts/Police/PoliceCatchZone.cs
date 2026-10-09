@@ -1,12 +1,13 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-// Retains the scene's existing game-over event; capture is now driven by speed pressure.
+// Le delai commence au spawn; la defaite exige aussi le contact avec cette zone.
 [RequireComponent(typeof(BoxCollider))]
 public class PoliceCatchZone : MonoBehaviour
 {
     [SerializeField, Min(0.1f)] private float timeBeforeCaught = 5f;
     [SerializeField] private UnityEvent onPlayerCaught = new UnityEvent();
+    public BoxCollider CaptureCollider => GetComponent<BoxCollider>();
     private float catchTimer;
     private bool caught;
     public float CatchProgress01 => caught ? 1f : Mathf.Clamp01(catchTimer / Mathf.Max(0.1f, timeBeforeCaught));
@@ -15,10 +16,11 @@ public class PoliceCatchZone : MonoBehaviour
 
     private void Awake()
     {
-        GetComponent<BoxCollider>().enabled = false;
+        CaptureCollider.isTrigger = true;
+        CaptureCollider.enabled = true;
     }
 
-    public void AdvanceCapture(bool belowSafeSpeed, float deltaTime)
+    public void AdvanceCapture(bool belowSafeSpeed, float deltaTime, bool touchingCaptureZone = false)
     {
         if (caught || !isActiveAndEnabled) return;
         if (!belowSafeSpeed)
@@ -28,6 +30,7 @@ public class PoliceCatchZone : MonoBehaviour
         }
         catchTimer += Mathf.Max(0f, deltaTime);
         if (catchTimer + 0.0001f < Mathf.Max(0.1f, timeBeforeCaught)) return;
+        if (!touchingCaptureZone) return;
         caught = true;
         onPlayerCaught.Invoke();
     }
