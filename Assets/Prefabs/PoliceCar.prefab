@@ -101,6 +101,7 @@ MonoBehaviour:
   groundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  turningSpeed: 160
 --- !u!1001 &867623538237304313
 PrefabInstance:
   m_ObjectHideFlags: 0

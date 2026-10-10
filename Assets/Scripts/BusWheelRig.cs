@@ -122,6 +122,8 @@ public class BusWheelRig : MonoBehaviour
         }
     }
     public float RestBottom { get; private set; }
+    // Enabled only by the SceneBase terrain component; other scenes keep their existing drive.
+    [NonSerialized] public bool followTerrain;
 
     private void Awake() => Initialize();
 
@@ -367,6 +369,7 @@ public class BusWheelRig : MonoBehaviour
         UpdateProgressiveControls(throttle, steering, dt);
         Vector3 horizontal = Vector3.ProjectOnPlane(body.linearVelocity, Vector3.up);
         Vector3 forward = body.rotation * Vector3.forward;
+        if (followTerrain) forward = Vector3.ProjectOnPlane(forward, Vector3.up).normalized;
         float speed = horizontal.magnitude;
         float signedSpeed = speed * (Vector3.Dot(horizontal, forward) < -0.1f ? -1f : 1f);
         bool grounded = IsGrounded;
@@ -406,6 +409,7 @@ public class BusWheelRig : MonoBehaviour
             float slip = driftAngle * progressiveSteering * speedRatio * (handbrake ? 1.5f : 1f);
             Vector3 desiredHeading = body.rotation * Quaternion.Euler(0f, -slip, 0f) *
                 Vector3.forward * (signedSpeed < 0f ? -1f : 1f);
+            if (followTerrain) desiredHeading = Vector3.ProjectOnPlane(desiredHeading, Vector3.up).normalized;
             Vector3 heading = horizontal.magnitude > 0.5f && signedSpeed * Vector3.Dot(horizontal, forward) > 0f
                 ? Vector3.Slerp(horizontal.normalized, desiredHeading,
                     1f - Mathf.Exp(-turnTrajectoryResponse * dt)).normalized : desiredHeading;

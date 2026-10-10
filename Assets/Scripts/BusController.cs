@@ -61,6 +61,8 @@ public class BusController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         busCollider = GetComponent<BoxCollider>();
+        if (GetComponent<BusPropImpact>() == null)
+            gameObject.AddComponent<BusPropImpact>();
         rb.angularVelocity = Vector3.zero;
         wheelRig = GetComponent<BusWheelRig>();
         if (wheelRig != null)
