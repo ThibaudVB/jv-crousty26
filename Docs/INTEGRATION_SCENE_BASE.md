@@ -1,5 +1,26 @@
 # Intégration dans SceneBase
 
+## Minimap dynamique
+
+`BusMinimap` est attaché au `DeliveryManager` de SceneBase. En Play, il crée une caméra orthographique inclinée à 55° et un HUD carré en haut à droite : le bus reste au centre et orienté vers le haut, la carte tourne avec son cap, et les marqueurs indiquent le magasin, les livraisons en attente et la police. Les objectifs hors de la zone visible restent indiqués sur le bord. Le radar dessine les silhouettes de la géométrie active avec des rues claires et des îlots sombres ; aucune image fixe de la ville ni coordonnées de carte ne sont nécessaires.
+
+Pour une future carte générée par seed, les routes et bâtiments doivent avoir des MeshFilter classés avec RadarMapElement, puis appeler BusMinimap.RefreshMap avec la racine générée. Les nouvelles adresses doivent aussi être enregistrées dans `DeliveryManager.deliveryPoints` pour apparaître comme objectifs actifs. Le rayon affiché (`worldRadius`), la hauteur de la caméra et la taille du HUD se règlent sur le composant.
+
+## État actuel — migration du trafic, 10 octobre 2026
+
+Le trafic utilise maintenant les scripts les plus récents, `CarFollowPoints` et `IntersectionChooser`. Les descriptions NavMesh et les validations du 9 octobre ci-dessous sont historiques et ne valident pas ce nouveau contrôleur.
+
+- Les quatre voitures de SceneBase et les quatre voitures de Scenes Antoine utilisent CarFollowPoints, avec le tag voitures. Les tags nécessaires au mode de recherche libre sont également déclarés.
+- CarPointRoute conserve les points ordonnés et les liaisons des anciens parcours, sans dépendance au NavMesh. CarFollowPoints conserve son mode original de recherche par tags lorsque route est vide. Avec une route assignée, il suit les points successifs et utilise IntersectionChooser pour choisir une branche à la fin du parcours.
+- SceneBaseTrafficSetup sélectionne un point devant chaque voiture au démarrage. Le circuit de SceneBase garde sa route de retour. La fin de parcours sans suite de la scène de travail Antoine reste un arrêt volontaire du contrôleur.
+- Les anciens composants manquants et les NavMeshAgent des voitures ont été retirés des deux scènes. Le NavMesh enregistré est conservé comme asset mais ne pilote plus les voitures.
+- Le nouveau déplacement suit directement les segments entre points, à hauteur constante ; il ne possède pas le freinage devant les obstacles de l’ancien contrôleur NavMesh. Les virages, collisions, pentes et distances entre véhicules restent à évaluer en Play.
+
+Validation de cette migration : compilation de l’assembly de gameplay avec le compilateur et les références Unity 6000.4.0f1 réussie (un avertissement préexistant dans BusCameraFollow) ; aucun script manquant dans les deux scènes ; références de composants et de routes vérifiées ; quatre contrôleurs par scène ; aucune fin sans suite dans SceneBase. Aucun test en Play ni build player exécuté pour cette migration.
+
+## Historique de l’intégration du 9 octobre
+
+
 Les fonctionnalités des scènes de travail sont réunies dans Assets/SceneBase.unity. Les scènes sources, leurs scripts et leurs prefabs ne sont pas modifiés. Les scènes du build restent identiques.
 
 ## Fonctionnalités intégrées

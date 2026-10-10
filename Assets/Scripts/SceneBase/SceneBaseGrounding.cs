@@ -82,7 +82,7 @@ public sealed class SceneBaseGrounding : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        if (!configured || body.isKinematic) return;
+        if (!configured || body.isKinematic || !controller.isActiveAndEnabled || !rig.isActiveAndEnabled) return;
         Vector3 normal = Vector3.zero;
         int contacts = 0;
         float minimumUp = Mathf.Cos(maximumSlope * Mathf.Deg2Rad);

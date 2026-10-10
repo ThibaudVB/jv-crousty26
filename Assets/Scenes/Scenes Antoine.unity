@@ -4111,11 +4111,10 @@ GameObject:
   - component: {fileID: 36395505}
   - component: {fileID: 36395504}
   - component: {fileID: 36395503}
-  - component: {fileID: 36395502}
   - component: {fileID: 36395501}
   m_Layer: 0
   m_Name: Cube (1)
-  m_TagString: Untagged
+  m_TagString: voitures
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4129,47 +4128,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 36395500}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f871a1aa9d035234ba3c344ae8c3be28, type: 3}
+  m_Script: {fileID: 11500000, guid: ae7d3b8fba5187e4c977a1f905954cfa, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TrafficCarNavMesh
-  startRoad: {fileID: 1173044357}
-  reachDistance: 3
-  roadAreaName: Road
-  minSpeedKmh: 60
-  maxSpeedKmh: 70
-  acceleration: 8
-  angularSpeed: 100
-  frontOffset: 2.5
-  rayHeight: 0.6
-  detectionDistance: 10
-  stopDistance: 3
-  obstacleLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  brakeDeceleration: 20
-  stuckTime: 6
---- !u!195 &36395502
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 36395500}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 10.92
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 1
-  m_BaseOffset: 0.5
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
+  m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
+  route: {fileID: 1173044357}
+  firstPoint: {fileID: 0}
+  speed: 16.666667
+  turnSpeed: 8
+  reachDistance: 1.5
+  debugLogs: 0
 --- !u!54 &36395503
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -16124,7 +16091,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 203560845}
-  - component: {fileID: 203560844}
   m_Layer: 0
   m_Name: NavMeshManager
   m_TagString: Untagged
@@ -16132,24 +16098,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &203560844
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 203560843}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd7551fd7f5185948b4086b8984d944f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  roadsLayerName: Roads
-  geometry: 0
-  bakeOnAwake: 1
-  onBakeFinished:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!4 &203560845
 Transform:
   m_ObjectHideFlags: 0
@@ -35523,11 +35471,10 @@ GameObject:
   - component: {fileID: 511051129}
   - component: {fileID: 511051128}
   - component: {fileID: 511051127}
-  - component: {fileID: 511051126}
   - component: {fileID: 511051125}
   m_Layer: 0
   m_Name: Cube (2)
-  m_TagString: Untagged
+  m_TagString: voitures
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -35541,47 +35488,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 511051124}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f871a1aa9d035234ba3c344ae8c3be28, type: 3}
+  m_Script: {fileID: 11500000, guid: ae7d3b8fba5187e4c977a1f905954cfa, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TrafficCarNavMesh
-  startRoad: {fileID: 1173044357}
-  reachDistance: 3
-  roadAreaName: Road
-  minSpeedKmh: 60
-  maxSpeedKmh: 70
-  acceleration: 8
-  angularSpeed: 100
-  frontOffset: 2.5
-  rayHeight: 0.6
-  detectionDistance: 10
-  stopDistance: 3
-  obstacleLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  brakeDeceleration: 20
-  stuckTime: 6
---- !u!195 &511051126
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 511051124}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 10.92
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 1
-  m_BaseOffset: 0.5
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
+  m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
+  route: {fileID: 1173044357}
+  firstPoint: {fileID: 0}
+  speed: 16.666667
+  turnSpeed: 8
+  reachDistance: 1.5
+  debugLogs: 0
 --- !u!54 &511051127
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -52404,7 +52319,6 @@ GameObject:
   - component: {fileID: 764426455}
   - component: {fileID: 764426454}
   - component: {fileID: 764426453}
-  - component: {fileID: 764426452}
   m_Layer: 0
   m_Name: BR WHEEL.008
   m_TagString: Untagged
@@ -52427,18 +52341,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 21932769}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &764426452
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 764426450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2c4e5b85b31c4b248812aea20e758fa3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TrafficCar
 --- !u!54 &764426453
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -68686,11 +68588,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1019285604}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 039258ff7557d044882f21ad392ad65a, type: 3}
+  m_Script: {fileID: 11500000, guid: 86b1a4de20f64a49b462acc763023dcb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: '::'
-  endIntersection: {fileID: 0}
-  nextRoad: {fileID: 2049022557}
+  m_EditorClassIdentifier: Assembly-CSharp::CarPointRoute
+  nextRoute: {fileID: 2049022557}
+  intersection: {fileID: 0}
 --- !u!114 &1019285606
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -78479,11 +78381,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1173044350}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 039258ff7557d044882f21ad392ad65a, type: 3}
+  m_Script: {fileID: 11500000, guid: 86b1a4de20f64a49b462acc763023dcb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: '::'
-  endIntersection: {fileID: 1296550911}
-  nextRoad: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::CarPointRoute
+  nextRoute: {fileID: 0}
+  intersection: {fileID: 1296550911}
 --- !u!1 &1175370894
 GameObject:
   m_ObjectHideFlags: 0
@@ -85873,13 +85775,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 1296550909}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 922bf6f4b3ebd51419d2ffb9279fb351, type: 3}
+  m_Script: {fileID: 11500000, guid: a6b91a2ef47825c419260e3228d5758f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TrafficIntersection
-  exits:
-  - {fileID: 1330182374}
-  - {fileID: 2109370173}
-  gizmoRadius: 17.98
+  m_EditorClassIdentifier: Assembly-CSharp::IntersectionChooser
+  useAssignedEntrances: 1
+  allowUTurn: 0
+  maxTurnAngle: 120
+  debugLogs: 0
+  entrances:
+  - {fileID: 435359309}
+  - {fileID: 1018761704}
 --- !u!1 &1297681155
 GameObject:
   m_ObjectHideFlags: 0
@@ -89075,11 +88980,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1330182373}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 039258ff7557d044882f21ad392ad65a, type: 3}
+  m_Script: {fileID: 11500000, guid: 86b1a4de20f64a49b462acc763023dcb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: '::'
-  endIntersection: {fileID: 0}
-  nextRoad: {fileID: 1019285605}
+  m_EditorClassIdentifier: Assembly-CSharp::CarPointRoute
+  nextRoute: {fileID: 1019285605}
+  intersection: {fileID: 0}
 --- !u!114 &1330182375
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -98356,11 +98261,10 @@ GameObject:
   - component: {fileID: 1473980663}
   - component: {fileID: 1473980662}
   - component: {fileID: 1473980661}
-  - component: {fileID: 1473980660}
   - component: {fileID: 1473980659}
   m_Layer: 0
   m_Name: Cube (3)
-  m_TagString: Untagged
+  m_TagString: voitures
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -98374,47 +98278,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1473980658}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f871a1aa9d035234ba3c344ae8c3be28, type: 3}
+  m_Script: {fileID: 11500000, guid: ae7d3b8fba5187e4c977a1f905954cfa, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TrafficCarNavMesh
-  startRoad: {fileID: 1173044357}
-  reachDistance: 3
-  roadAreaName: Road
-  minSpeedKmh: 60
-  maxSpeedKmh: 70
-  acceleration: 8
-  angularSpeed: 100
-  frontOffset: 2.5
-  rayHeight: 0.6
-  detectionDistance: 10
-  stopDistance: 3
-  obstacleLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  brakeDeceleration: 20
-  stuckTime: 6
---- !u!195 &1473980660
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1473980658}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 10.92
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 1
-  m_BaseOffset: 0.5
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
+  m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
+  route: {fileID: 1173044357}
+  firstPoint: {fileID: 0}
+  speed: 16.666667
+  turnSpeed: 8
+  reachDistance: 1.5
+  debugLogs: 0
 --- !u!54 &1473980661
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -104992,11 +104864,10 @@ GameObject:
   - component: {fileID: 1562952584}
   - component: {fileID: 1562952583}
   - component: {fileID: 1562952582}
-  - component: {fileID: 1562952581}
   - component: {fileID: 1562952580}
   m_Layer: 0
   m_Name: Cube
-  m_TagString: Untagged
+  m_TagString: voitures
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -105010,47 +104881,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1562952579}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f871a1aa9d035234ba3c344ae8c3be28, type: 3}
+  m_Script: {fileID: 11500000, guid: ae7d3b8fba5187e4c977a1f905954cfa, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TrafficCarNavMesh
-  startRoad: {fileID: 1173044357}
-  reachDistance: 3
-  roadAreaName: Road
-  minSpeedKmh: 60
-  maxSpeedKmh: 70
-  acceleration: 8
-  angularSpeed: 100
-  frontOffset: 2.5
-  rayHeight: 0.6
-  detectionDistance: 10
-  stopDistance: 3
-  obstacleLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  brakeDeceleration: 20
-  stuckTime: 6
---- !u!195 &1562952581
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1562952579}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 10.92
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 1
-  m_BaseOffset: 0.5
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
+  m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
+  route: {fileID: 1173044357}
+  firstPoint: {fileID: 0}
+  speed: 16.666667
+  turnSpeed: 8
+  reachDistance: 1.5
+  debugLogs: 0
 --- !u!54 &1562952582
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -136611,11 +136450,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 2049022556}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 039258ff7557d044882f21ad392ad65a, type: 3}
+  m_Script: {fileID: 11500000, guid: 86b1a4de20f64a49b462acc763023dcb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: '::'
-  endIntersection: {fileID: 0}
-  nextRoad: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::CarPointRoute
+  nextRoute: {fileID: 0}
+  intersection: {fileID: 0}
 --- !u!114 &2049022558
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140891,11 +140730,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 2109370172}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 039258ff7557d044882f21ad392ad65a, type: 3}
+  m_Script: {fileID: 11500000, guid: 86b1a4de20f64a49b462acc763023dcb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: '::'
-  endIntersection: {fileID: 0}
-  nextRoad: {fileID: 2049022557}
+  m_EditorClassIdentifier: Assembly-CSharp::CarPointRoute
+  nextRoute: {fileID: 2049022557}
+  intersection: {fileID: 0}
 --- !u!114 &2109370174
 MonoBehaviour:
   m_ObjectHideFlags: 0

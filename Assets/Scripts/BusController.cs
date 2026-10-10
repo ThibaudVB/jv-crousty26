@@ -48,6 +48,9 @@ public class BusController : MonoBehaviour
     [SerializeField] private bool isReversing;
     [SerializeField] private bool isHandbraking;
 
+    private BusPetController pet;
+    public float EffectiveMaxSpeedKmh => maxSpeedKmh * (pet != null && pet.IsBoosting ? pet.speedMultiplier : 1f);
+    public float PetAccelerationMultiplier => pet != null && pet.IsBoosting ? pet.accelerationMultiplier : 1f;
     private Rigidbody rb;
     private BusWheelRig wheelRig;
 
@@ -60,6 +63,8 @@ public class BusController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        pet = GetComponent<BusPetController>();
+        if (pet == null) pet = gameObject.AddComponent<BusPetController>();
         busCollider = GetComponent<BoxCollider>();
         if (GetComponent<BusPropImpact>() == null)
             gameObject.AddComponent<BusPropImpact>();
@@ -75,6 +80,12 @@ public class BusController : MonoBehaviour
             rb.constraints &= ~RigidbodyConstraints.FreezeRotationY;
         else
             rb.constraints |= RigidbodyConstraints.FreezeRotationY;
+    }
+
+    private void OnDisable()
+    {
+        throttleInput = steeringInput = currentSteering = 0f;
+        handbrakeInput = isHandbraking = false;
     }
 
     private void Update()
@@ -98,15 +109,21 @@ public class BusController : MonoBehaviour
     private void FixedUpdate()
     {
         UpdateDebug();
+        // PET supplies thrust; braking and handbrake retain priority.
+        float driveThrottle = pet != null && pet.IsBoosting && throttleInput >= 0f && !handbrakeInput
+            ? 1f : throttleInput;
 
         if (wheelRig != null && wheelRig.IsReady)
         {
-            wheelRig.Drive(throttleInput, steeringInput, handbrakeInput, this);
+            wheelRig.Drive(driveThrottle, steeringInput, handbrakeInput, this);
             ApplyCurbTolerance(rb.rotation);
             return;
         }
 
+        float originalThrottle = throttleInput;
+        throttleInput = driveThrottle;
         ApplyLongitudinalMovement();
+        throttleInput = originalThrottle;
         Quaternion steeringRotation = ApplySteering();
         ApplyLateralGrip(steeringRotation);
         ApplyCurbTolerance(steeringRotation);
@@ -170,7 +187,7 @@ public class BusController : MonoBehaviour
 
         float forwardSpeed = localVelocity.z;
 
-        float maxForwardSpeed = maxSpeedKmh / 3.6f;
+        float maxForwardSpeed = EffectiveMaxSpeedKmh / 3.6f;
         float maxReverseSpeed = maxReverseSpeedKmh / 3.6f;
 
         // FREIN A MAIN
@@ -200,7 +217,7 @@ public class BusController : MonoBehaviour
                 forwardSpeed = Mathf.MoveTowards(
                     forwardSpeed,
                     maxForwardSpeed,
-                    acceleration * Time.fixedDeltaTime
+                    acceleration * PetAccelerationMultiplier * Time.fixedDeltaTime
                 );
             }
         }

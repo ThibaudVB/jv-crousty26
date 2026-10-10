@@ -1,31 +1,33 @@
 using UnityEngine;
-using UnityEngine.AI;
 
-// Places agents after the baked surface is registered and before the traffic drivers start.
+// Select a forward waypoint before CarFollowPoints starts.
 [DefaultExecutionOrder(-500)]
 public sealed class SceneBaseTrafficSetup : MonoBehaviour
 {
-    public TrafficCarNavMesh[] cars;
-    public float spawnSearchRadius = 5f;
+    public CarFollowPoints[] cars;
 
     private void Start()
     {
-        int road = NavMesh.GetAreaFromName("Road");
-        int mask = road >= 0 ? 1 << road : NavMesh.AllAreas;
+        var routes = FindObjectsByType<CarPointRoute>();
         foreach (var car in cars)
         {
             if (car == null) continue;
-            var agent = car.GetComponent<NavMeshAgent>();
-            if (NavMesh.SamplePosition(car.transform.position, out var hit, spawnSearchRadius, mask))
+            CarPointRoute best = null;
+            int index = 0;
+            float distance = float.PositiveInfinity;
+            foreach (var route in routes)
+            for (int i = 0; i < route.transform.childCount; i++)
             {
-                agent.areaMask = mask;
-                agent.Warp(hit.position);
+                Vector3 delta = route.transform.GetChild(i).position - car.transform.position;
+                delta.y = 0;
+                if (Vector3.Dot(car.transform.forward, delta) < 0) continue;
+                if (delta.sqrMagnitude >= distance) continue;
+                distance = delta.sqrMagnitude;
+                best = route;
+                index = i;
             }
-            else
-            {
-                car.enabled = false;
-                Debug.LogError($"SceneBase: no road NavMesh at traffic spawn {car.name}.", car);
-            }
+            if (best != null) car.FollowRoute(best, index);
+            else Debug.LogError($"No forward traffic point for {car.name}.", car);
         }
     }
 }

@@ -33,9 +33,11 @@ public class IntersectionChooser : MonoBehaviour
         GetComponent<Collider>().isTrigger = true;
     }
 
+    public bool useAssignedEntrances;
+
     private void Start()
     {
-        RefreshEntrances();
+        if (!useAssignedEntrances) RefreshEntrances();
     }
 
     // À rappeler après la génération de la map si elle est faite au runtime
@@ -121,7 +123,7 @@ public class IntersectionChooser : MonoBehaviour
         car.ForceDestination(chosen);
     }
 
-    private Transform ChooseEntrance(Transform car)
+    public Transform ChooseEntrance(Transform car)
     {
         if (entrances.Count == 0) return null;
 

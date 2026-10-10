@@ -28,6 +28,8 @@ public sealed class SceneBaseDriftSmoke : MonoBehaviour
     private Rigidbody body;
     private Emitter[] emitters;
     private Mesh cloudMesh;
+    private ParticleSystem petParticles;
+    private Material petMaterial;
     private Vector3 previousPosition;
     public float DriftIntensity { get; private set; }
 
@@ -173,14 +175,14 @@ public sealed class SceneBaseDriftSmoke : MonoBehaviour
         float slipAngle = Mathf.Atan2(Mathf.Abs(local.x), Mathf.Abs(local.z) + 0.01f) * Mathf.Rad2Deg;
         float physicalDrift = Mathf.InverseLerp(4f, 18f, slipAngle);
         float arcadeDrift = rig.fullArcade ? Mathf.InverseLerp(0.25f, 0.85f, Mathf.Abs(rig.SteeringAmount)) : 0f;
-        float target = rig.IsGrounded && !body.isKinematic
+        float target = rig.isActiveAndEnabled && rig.IsGrounded && !body.isKinematic
             ? Mathf.Max(physicalDrift, arcadeDrift) * speedFactor : 0f;
         DriftIntensity = Mathf.MoveTowards(DriftIntensity, target,
             (target > DriftIntensity ? buildResponse : fadeResponse) * dt);
 
         foreach (var emitter in emitters)
         {
-            if (!emitter.wheel.collider.GetGroundHit(out var hit) || hit.normal.y < 0.35f ||
+            if (!rig.isActiveAndEnabled || !emitter.wheel.collider.enabled || !emitter.wheel.collider.GetGroundHit(out var hit) || hit.normal.y < 0.35f ||
                 speedKmh <= minimumSpeedKmh || body.isKinematic)
             {
                 emitter.hadContact = false;
@@ -214,8 +216,78 @@ public sealed class SceneBaseDriftSmoke : MonoBehaviour
         }
     }
 
+    // A single world-space burst, using the existing faceted smoke mesh/material.
+    public void EmitLandingImpact(Vector3 point, Vector3 normal, float strength)
+    {
+        if (!isActiveAndEnabled || emitters == null || strength <= 0f) return;
+        strength = Mathf.Clamp01(strength);
+        Vector3 tangent = Vector3.Cross(normal, Vector3.forward);
+        if (tangent.sqrMagnitude < 0.01f) tangent = Vector3.Cross(normal, Vector3.right);
+        tangent.Normalize();
+        Vector3 bitangent = Vector3.Cross(normal, tangent);
+        int count = Mathf.RoundToInt(Mathf.Lerp(12f, 32f, strength));
+        for (int i = 0; i < count; i++)
+        {
+            float angle = i * Mathf.PI * 2f / count;
+            Vector3 radial = tangent * Mathf.Cos(angle) + bitangent * Mathf.Sin(angle);
+            var particle = new ParticleSystem.EmitParams {
+                position = point + normal * 0.2f + radial * 0.7f,
+                velocity = radial * Mathf.Lerp(3f, 8f, strength) + normal * 1.5f,
+                startSize = Mathf.Lerp(0.5f, 1.1f, strength),
+                startLifetime = Mathf.Lerp(0.45f, 0.8f, strength),
+                startColor = new Color(1f, 0.94f, 0.82f, 0.85f)
+            };
+            emitters[i % emitters.Length].particles.Emit(particle, 1);
+        }
+    }
+
+    public void EmitPetCloud()
+    {
+        if (!isActiveAndEnabled || emitters == null) return;
+        if (petParticles == null)
+        {
+            // Separate particle budget/material: the green cloud does not recolor tire smoke.
+            petParticles = CreateParticles(rig.wheels[0]);
+            petParticles.gameObject.name = "PET - nuage olive";
+            var main = petParticles.main;
+            main.maxParticles = 128;
+            var noise = petParticles.noise;
+            noise.strength = 0.45f;
+            noise.frequency = 0.8f;
+            noise.scrollSpeed = 0.6f;
+            petMaterial = new Material(smokeMaterial);
+            petMaterial.SetColor("_BaseColor", new Color(0.86f, 0.9f, 0.7f, 1f));
+            petMaterial.SetColor("_ShadowColor", new Color(0.36f, 0.4f, 0.18f, 1f));
+            petParticles.GetComponent<ParticleSystemRenderer>().sharedMaterial = petMaterial;
+        }
+        petParticles.Play();
+        Vector3 rear = transform.position - transform.forward * 3f + Vector3.up * 0.8f;
+        for (int i = 0; i < 96; i++)
+        {
+            float angle = i * 2.399963f;
+            float variation = (i * 37 % 101) / 100f;
+            bool core = i < 32;
+            bool detail = i >= 72;
+            float radius = core ? 1.4f : detail ? 4f : 2.6f;
+            Vector3 radial = transform.right * Mathf.Sin(angle) + Vector3.up * Mathf.Cos(angle) * 0.65f;
+            Color shade = core ? new Color(0.24f, 0.32f, 0.07f, 0.95f)
+                : Color.Lerp(new Color(0.32f, 0.4f, 0.1f, 0.9f), new Color(0.5f, 0.49f, 0.16f, 0.8f), variation);
+            var particle = new ParticleSystem.EmitParams {
+                position = rear + radial * radius - transform.forward * (variation * 8f),
+                velocity = -transform.forward * Mathf.Lerp(5f, 11f, variation) + radial * (detail ? 4.5f : 2.5f) + Vector3.up,
+                startSize = core ? Mathf.Lerp(3.6f, 5.2f, variation)
+                    : detail ? Mathf.Lerp(0.25f, 0.6f, variation) : Mathf.Lerp(1.8f, 3.2f, variation),
+                startLifetime = detail ? 1.1f + variation : 2.2f + variation,
+                rotation3D = new Vector3(i * 47f, i * 73f, i * 29f),
+                startColor = shade
+            };
+            petParticles.Emit(particle, 1);
+        }
+    }
+
     private void ClearSmoke()
     {
+        if (petParticles != null) petParticles.Clear();
         DriftIntensity = 0f;
         foreach (var emitter in emitters)
         {
@@ -235,6 +307,7 @@ public sealed class SceneBaseDriftSmoke : MonoBehaviour
 
     private void OnDisable()
     {
+        if (petParticles != null) petParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         if (emitters == null) return;
         DriftIntensity = 0f;
         foreach (var emitter in emitters)
@@ -248,5 +321,6 @@ public sealed class SceneBaseDriftSmoke : MonoBehaviour
     private void OnDestroy()
     {
         if (cloudMesh != null) Destroy(cloudMesh);
+        if (petMaterial != null) Destroy(petMaterial);
     }
 }

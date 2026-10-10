@@ -70,7 +70,8 @@ public static class SceneBaseTerrainRefresh
                         }
                     }
                 }
-                if (!root.name.StartsWith("CroustyCity_LowPoly")) continue;
+                if (!root.name.StartsWith("CroustyCity_LowPoly") &&
+                    !root.name.StartsWith("CroustyCity_PastelPalette")) continue;
                 foreach (var child in root.GetComponentsInChildren<Transform>(true))
                 {
                     if (child.name != "Road_Markings") continue;

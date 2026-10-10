@@ -33,7 +33,7 @@ public static class CroustyArcadeTuningRefresh
                 EditorUtility.SetDirty(rig);
                 EditorSceneManager.MarkSceneDirty(controller.gameObject.scene);
             }
-            Debug.Log("[Crousty] Conduite actualisee dans la scene chargee : 90 km/h, roues synchronisees, transitions adoucies.", controller);
+            Debug.Log("[Crousty] Conduite actualisee dans la scene chargee : direction plus reactive, retour au centre rapide et glisse reduite.", controller);
         }
     }
 }

@@ -33,6 +33,8 @@ public class DeliveryManager : MonoBehaviour
     public bool HasStarted { get; private set; }
     public DeliveryPoint PointInRange { get; private set; }
 
+    public event System.Action<DeliveryPoint> DeliveryCompleted;
+
     private int inFlight;
 
     public bool AllDelivered =>
@@ -193,6 +195,7 @@ public class DeliveryManager : MonoBehaviour
         target.CompleteDelivery();
         inFlight--;
         Delivered++;
+        DeliveryCompleted?.Invoke(target);
     }
 
     private GameObject CreateProjectile()

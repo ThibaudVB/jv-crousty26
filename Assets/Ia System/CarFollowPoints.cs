@@ -2,6 +2,16 @@ using UnityEngine;
 
 public class CarFollowPoints : MonoBehaviour
 {
+    public CarPointRoute route;
+    private int routeIndex;
+
+    public void FollowRoute(CarPointRoute path, int index = 0)
+    {
+        route = path;
+        routeIndex = index;
+        GoToFirstPoint(path.transform.GetChild(index));
+    }
+
     [Header("Point de départ (le seul que tu donnes)")]
     public Transform firstPoint;
 
@@ -54,8 +64,9 @@ public class CarFollowPoints : MonoBehaviour
 
     void Start()
     {
-        if (firstPoint != null)
-            GoToFirstPoint(firstPoint);
+        if (currentPoint != null) return;
+        if (route != null) FollowRoute(route);
+        else if (firstPoint != null) GoToFirstPoint(firstPoint);
     }
 
     // Appelé par toi, ou par le script d'intersection
@@ -87,12 +98,35 @@ public class CarFollowPoints : MonoBehaviour
 
         Quaternion targetRot = Quaternion.LookRotation(dir);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, turnSpeed * Time.deltaTime);
-        transform.position += transform.forward * speed * Time.deltaTime;
+        if (route != null)
+        {
+            Vector3 target = currentPoint.position;
+            target.y = transform.position.y;
+            transform.position = Vector3.MoveTowards(transform.position, target, speed * Time.deltaTime);
+        }
+        else transform.position += transform.forward * speed * Time.deltaTime;
     }
 
     void OnPointReached()
     {
         Transform reached = currentPoint;
+        if (route != null)
+        {
+            if (++routeIndex < route.transform.childCount)
+                SetCurrentPoint(route.transform.GetChild(routeIndex));
+            else
+            {
+                CarPointRoute nextRoute = route.nextRoute;
+                if (route.intersection != null)
+                {
+                    Transform entrance = route.intersection.ChooseEntrance(transform);
+                    if (entrance != null) nextRoute = entrance.GetComponentInParent<CarPointRoute>();
+                }
+                if (nextRoute != null) FollowRoute(nextRoute);
+                else SetCurrentPoint(null);
+            }
+            return;
+        }
 
         // Si le point atteint a un sens, la voiture l'adopte
         string lane = GetLane(reached);
