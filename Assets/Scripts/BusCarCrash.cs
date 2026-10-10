@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
 [RequireComponent(typeof(Rigidbody))]
 public class BusCarCrash : MonoBehaviour
 {
+    [Header("Détection")]
+    public string carTag = "voitures";
+
     [Header("Vitesse minimale pour exploser une voiture")]
     public float explosionSpeedKmh = 60f;
 
@@ -38,39 +40,44 @@ public class BusCarCrash : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        TrafficCarNavMesh car = collision.collider.GetComponentInParent<TrafficCarNavMesh>();
+        GameObject car = FindCarWithTag(collision.collider.transform);
         if (car == null) return;
 
-        if (!destroyedCars.Add(car.gameObject)) return;
+        // Trop lent : simple choc, la voiture reste
+        if (lastSpeedKmh < explosionSpeedKmh) return;
 
-        if (lastSpeedKmh < explosionSpeedKmh)
-        {
-            // Si on est trop lent, c'est juste un simple choc, la voiture reste
-            destroyedCars.Remove(car.gameObject);
-            return;
-        }
+        // Évite d'exploser deux fois la même voiture
+        if (!destroyedCars.Add(car)) return;
 
         ExplodeCar(car);
 
-        // Pour que le bus garde (en partie) son élan
+        // Le bus garde (en partie) son élan
         rb.linearVelocity = velocityBeforeImpact * speedKeptAfterImpact;
     }
 
-    private void ExplodeCar(TrafficCarNavMesh car)
+    // Remonte la hiérarchie : le tag peut être sur le collider ou sur un parent
+    private GameObject FindCarWithTag(Transform t)
+    {
+        while (t != null)
+        {
+            if (t.CompareTag(carTag))
+                return t.gameObject;
+            t = t.parent;
+        }
+        return null;
+    }
+
+    private void ExplodeCar(GameObject car)
     {
         if (explosionPrefab != null)
         {
-            GameObject fx = Instantiate(
-                explosionPrefab,
-                car.transform.position,
-                Quaternion.identity
-            );
+            GameObject fx = Instantiate(explosionPrefab, car.transform.position, Quaternion.identity);
             Destroy(fx, explosionLifetime);
         }
 
         foreach (Collider c in car.GetComponentsInChildren<Collider>())
             c.enabled = false;
 
-        Destroy(car.gameObject);
+        Destroy(car);
     }
 }
