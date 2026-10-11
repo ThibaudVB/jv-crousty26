@@ -1,16 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-// Gère les commandes : chargement au magasin, livraison avec E, compteur.
+// Gère les commandes : chargement au magasin, livraison automatique, compteur.
 // A mettre sur un GameObject vide de la scène (ex : "DeliveryManager").
 public class DeliveryManager : MonoBehaviour
 {
     public static DeliveryManager Instance { get; private set; }
 
     [Header("Commandes")]
-    [Min(1)] public int ordersPerRun = 10;
+    [Tooltip("Nombre de commandes de la toute première tournée")]
+    [Min(1)] public int firstRunOrders = 3;
+    [Tooltip("Ensuite : 1 x pas, 2 x pas, 3 x pas... (avec 5 : 5, 10, 15...)")]
+    [Min(1)] public int ordersStep = 5;
 
     [Header("Références (auto si vide)")]
     public Transform player;
@@ -18,9 +20,6 @@ public class DeliveryManager : MonoBehaviour
     public List<DeliveryPoint> deliveryPoints = new List<DeliveryPoint>();
 
     [Header("Livraison")]
-    [Tooltip("Livre tout seul en passant à côté d'une adresse. Décoché : il faut appuyer sur la touche.")]
-    public bool autoDeliver = true;
-    public Key deliverKey = Key.E;
     public float throwDuration = 0.8f;
     public float throwArcHeight = 4f;
     public float throwStartHeight = 2.5f;
@@ -33,8 +32,8 @@ public class DeliveryManager : MonoBehaviour
     public int OrdersTotal { get; private set; }
     public int Delivered { get; private set; }
     public bool HasStarted { get; private set; }
-    public DeliveryPoint PointInRange { get; private set; }
 
+    private int runsLoaded;
     private int inFlight;
 
     public bool AllDelivered =>
@@ -82,19 +81,16 @@ public class DeliveryManager : MonoBehaviour
             LoadOrders();
         }
 
-        // LIVRAISON
-        PointInRange = FindDeliverablePoint();
-
-        if (PointInRange != null && (autoDeliver || DeliverKeyPressed()))
-        {
-            ThrowCrousty(PointInRange);
-        }
+        // LIVRAISON (automatique en passant à côté d'une adresse)
+        DeliveryPoint target = FindDeliverablePoint();
+        if (target != null)
+            ThrowCrousty(target);
     }
 
-    private bool DeliverKeyPressed()
+    // 3, puis 5, 10, 15, 20...
+    private int OrdersForRun(int run)
     {
-        return Keyboard.current != null &&
-               Keyboard.current[deliverKey].wasPressedThisFrame;
+        return run == 0 ? firstRunOrders : ordersStep * run;
     }
 
     private bool CanLoadOrders()
@@ -115,12 +111,13 @@ public class DeliveryManager : MonoBehaviour
             return;
         }
 
-        int count = Mathf.Min(ordersPerRun, deliveryPoints.Count);
+        int wanted = OrdersForRun(runsLoaded);
+        int count = Mathf.Min(wanted, deliveryPoints.Count);
 
-        if (count < ordersPerRun)
+        if (count < wanted)
             Debug.LogWarning(
                 $"DeliveryManager : seulement {deliveryPoints.Count} points de livraison " +
-                $"pour {ordersPerRun} commandes, on en prend {count}."
+                $"pour {wanted} commandes, on en prend {count}."
             );
 
         // Tirage au hasard des adresses
@@ -137,6 +134,7 @@ public class DeliveryManager : MonoBehaviour
         Delivered = 0;
         inFlight = 0;
         HasStarted = true;
+        runsLoaded++;
     }
 
     private DeliveryPoint FindDeliverablePoint()

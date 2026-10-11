@@ -13,9 +13,6 @@ public class CroustyShop : MonoBehaviour
     public float beamHeight = 150f;
     public float beamWidth = 3f;
 
-    [Tooltip("Icône sur l'écran, visible à travers les bâtiments")]
-    public string screenLabel = "Crousty";
-
     private void Start()
     {
         if (marker == null)
