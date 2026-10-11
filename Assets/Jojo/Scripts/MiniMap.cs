@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
@@ -5,7 +6,8 @@ using UnityEngine.UI;
 // Mini map ronde en bas à droite de l'écran.
 // Une caméra vue du dessus suit le bus et filme dans une texture,
 // affichée dans le HUD. Le bus est la flèche au centre.
-// Les faisceaux des adresses et du magasin se voient d'en haut.
+// Les adresses à livrer (et le magasin quand il faut y retourner) ont une pastille,
+// collée au bord de la carte quand elles sont trop loin.
 public class MiniMap : MonoBehaviour
 {
     [Tooltip("Objet suivi. Si vide, le bus.")]
@@ -25,10 +27,14 @@ public class MiniMap : MonoBehaviour
     public float borderWidth = 6f;
     public Color borderColor = new Color32(0x26, 0x26, 0x31, 0xFF);
     public Color playerColor = new Color(1f, 0.6f, 0.1f);
+    public float iconSize = 22f;
 
+    private DeliveryManager manager;
     private Camera mapCamera;
     private RenderTexture texture;
     private RectTransform playerArrow;
+    private Transform iconLayer;
+    private readonly List<Image> icons = new List<Image>();
 
     public void Build(Transform canvas)
     {
@@ -40,6 +46,8 @@ public class MiniMap : MonoBehaviour
             else
                 Debug.LogWarning("MiniMap : aucun bus (BusController) trouvé.");
         }
+
+        manager = DeliveryManager.Instance;
 
         CreateCamera();
 
@@ -67,6 +75,10 @@ public class MiniMap : MonoBehaviour
         RawImage viewImage = view.GetComponent<RawImage>();
         viewImage.texture = texture;
         viewImage.raycastTarget = false;
+
+        // Pastilles des objectifs, sous la flèche du bus
+        iconLayer = new GameObject("Icones", typeof(RectTransform)).transform;
+        iconLayer.SetParent(root.transform, false);
 
         // Le bus, toujours au centre
         GameObject arrow = new GameObject("Bus", typeof(RectTransform), typeof(Image), typeof(Outline));
@@ -110,6 +122,68 @@ public class MiniMap : MonoBehaviour
 
         // Carte fixe : c'est la flèche qui tourne
         playerArrow.localRotation = Quaternion.Euler(0f, 0f, rotateWithBus ? 0f : -yaw);
+
+        UpdateIcons(yaw);
+    }
+
+    private void UpdateIcons(float yaw)
+    {
+        int used = 0;
+
+        if (manager != null)
+        {
+            // Magasin : seulement quand il faut y aller
+            CroustyShop shop = manager.shop;
+            if (shop != null && (!manager.HasStarted || manager.AllDelivered))
+                ShowIcon(used++, shop.transform.position, shop.markerColor, yaw);
+
+            // Adresses avec une commande en attente
+            foreach (DeliveryPoint point in manager.deliveryPoints)
+            {
+                if (point.IsWaiting)
+                    ShowIcon(used++, point.transform.position, point.markerColor, yaw);
+            }
+        }
+
+        // Cache les pastilles en trop
+        for (int i = used; i < icons.Count; i++)
+            icons[i].gameObject.SetActive(false);
+    }
+
+    private void ShowIcon(int index, Vector3 worldPosition, Color color, float yaw)
+    {
+        while (icons.Count <= index)
+            icons.Add(CreateIcon());
+
+        Image icon = icons[index];
+        icon.gameObject.SetActive(true);
+        icon.color = color;
+
+        // Position par rapport au bus, vue de dessus
+        Vector3 offset = worldPosition - target.position;
+        Vector2 position = new Vector2(offset.x, offset.z);
+
+        // Si la carte tourne, on tourne la position pareil (devant le bus = en haut)
+        if (rotateWithBus)
+            position = Quaternion.Euler(0f, 0f, yaw) * position;
+
+        // Mètres -> pixels, puis colle au bord si c'est hors de la carte
+        position *= size * 0.5f / viewRadius;
+        position = Vector2.ClampMagnitude(position, (size - iconSize) * 0.5f);
+
+        icon.rectTransform.anchoredPosition = position;
+    }
+
+    private Image CreateIcon()
+    {
+        GameObject iconObject = new GameObject("Pastille", typeof(RectTransform), typeof(Image), typeof(Outline));
+        iconObject.transform.SetParent(iconLayer, false);
+        iconObject.GetComponent<RectTransform>().sizeDelta = Vector2.one * iconSize;
+        iconObject.GetComponent<Outline>().effectColor = Color.black;
+
+        Image image = iconObject.GetComponent<Image>();
+        SetupImage(image, JojoVisuals.CircleSprite, Color.white);
+        return image;
     }
 
     private void OnDestroy()
