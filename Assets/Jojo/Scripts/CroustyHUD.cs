@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// Affiche le nombre de crousty restants et un message d'aide.
+// Affiche le nombre de crousty restants, un message d'aide et la mini map.
 // Si aucun Text n'est assigné, ils sont créés automatiquement.
 public class CroustyHUD : MonoBehaviour
 {
@@ -94,6 +94,12 @@ public class CroustyHUD : MonoBehaviour
 
             gerant.Build(canvas.transform);
         }
+
+        MiniMap miniMap = GetComponent<MiniMap>();
+        if (miniMap == null)
+            miniMap = gameObject.AddComponent<MiniMap>();
+
+        miniMap.Build(canvas.transform);
     }
 
     private static Text CreateText(

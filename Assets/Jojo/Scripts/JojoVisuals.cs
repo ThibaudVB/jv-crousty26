@@ -86,8 +86,12 @@ public static class JojoVisuals
         return material;
     }
 
-    // Petit triangle généré pour le HUD
+    // Petits sprites générés pour le HUD
+    private static Sprite circleSprite;
     private static Sprite arrowSprite;
+
+    public static Sprite CircleSprite =>
+        circleSprite != null ? circleSprite : circleSprite = CreateSprite(IsInCircle);
 
     public static Sprite ArrowSprite =>
         arrowSprite != null ? arrowSprite : arrowSprite = CreateSprite(IsInArrow);
@@ -111,6 +115,12 @@ public static class JojoVisuals
 
         texture.Apply();
         return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+    }
+
+    private static float IsInCircle(float u, float v)
+    {
+        float distance = Mathf.Sqrt(u * u + v * v);
+        return Mathf.Clamp01((1f - distance) * 16f);
     }
 
     // Triangle qui pointe vers le haut
