@@ -5,6 +5,8 @@ using UnityEngine;
 public class CroustyShop : MonoBehaviour
 {
     public float pickupRadius = 8f;
+    [Tooltip("Écart vertical maximal pour charger les commandes devant le magasin.")]
+    [Min(0f)] public float maxHeightDifference = 6f;
 
     [Header("Marqueur")]
     [Tooltip("Optionnel : objet affiché au-dessus du magasin. Si vide, un faisceau lumineux jaune est créé.")]
@@ -24,7 +26,8 @@ public class CroustyShop : MonoBehaviour
 
     public bool IsInRange(Vector3 position)
     {
-        return FlatDistance(position, transform.position) <= pickupRadius;
+        return Mathf.Abs(position.y - transform.position.y) <= maxHeightDifference &&
+            FlatDistance(position, transform.position) <= pickupRadius;
     }
 
     private static float FlatDistance(Vector3 a, Vector3 b)

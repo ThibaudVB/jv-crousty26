@@ -104,6 +104,7 @@ public static class CroustyBonusHUDBuilder
         row.pivot = new Vector2(0.5f, 0f);
         row.anchoredPosition = new Vector2(0f, 6f);
         row.sizeDelta = new Vector2(1040f, 220f);
+        row.localScale = new Vector3(0.6f, 0.6f, 1f);
         CroustyBonusHUD behaviour = row.gameObject.AddComponent<CroustyBonusHUD>();
         SerializedObject serialized = new SerializedObject(behaviour);
         Set(serialized, "grayMaterial", grayMaterial);

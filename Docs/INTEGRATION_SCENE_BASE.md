@@ -6,6 +6,14 @@
 
 Pour une future carte générée par seed, les routes et bâtiments doivent avoir des MeshFilter classés avec RadarMapElement, puis appeler BusMinimap.RefreshMap avec la racine générée. Les nouvelles adresses doivent aussi être enregistrées dans `DeliveryManager.deliveryPoints` pour apparaître comme objectifs actifs. Le rayon affiché (`worldRadius`), la hauteur de la caméra et la taille du HUD se règlent sur le composant.
 
+## Livraisons sur la map Pastel V3 — 11 octobre 2026
+
+Le groupe `Livraisons Crousty` utilise maintenant l'origine de `CroustyCity_PastelPalette_V3_Unity`. Le magasin correspond au repère importé `Pickup_Crousty`, avec un rayon de chargement de 16 m. Les six adresses sont réparties au pied des bâtiments des îlots r4/c1, r3/c1, r2/c1, r1/c3, r0/c4 et r4/c4, avec un rayon de livraison de 12 m. Le chargement automatique, la touche E et les tournées de six commandes sont conservés.
+
+Le modèle Pastel V3 est désormais lisible pour permettre la construction du NavMesh du GPS. Le magasin et les adresses limitent l'écart vertical à 6 m pour éviter une interaction depuis les parcours surélevés ou pendant le vol.
+
+Validation Unity 6000.4.0f1 dans un projet temporaire isolé : 55 contrôles réussis, couvrant le repère du restaurant, la construction du NavMesh, les chemins complets depuis le bus vers les six adresses, les hauteurs au sol, les portées d'interaction et les transitions attente/envoi/livré. Le script `Tools/Validation/DeliveryMapChecks.cs` s'exécute en batch après copie sous `Assets/Editor` du projet de validation ; l'argument `-croustySourceProject` permet de désigner le projet source. Cette validation ne remplace pas une appréciation visuelle et une tournée jouée dans SceneBase.
+
 ## État actuel — migration du trafic, 10 octobre 2026
 
 Le trafic utilise maintenant les scripts les plus récents, `CarFollowPoints` et `IntersectionChooser`. Les descriptions NavMesh et les validations du 9 octobre ci-dessous sont historiques et ne valident pas ce nouveau contrôleur.
