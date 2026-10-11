@@ -112,6 +112,7 @@ public sealed class BusGPS : MonoBehaviour
             var candidate = candidates[(index+i)%candidates.Count];
             if (!Calculate(candidate)) continue;
             Target = candidate;
+            Charges--;
             SetRoute();
             return true;
         }
@@ -140,7 +141,6 @@ public sealed class BusGPS : MonoBehaviour
     private void OnDelivered(DeliveryPoint point)
     {
         if (point != Target) return;
-        Charges = Mathf.Max(0, Charges-1);
         Target = null;
         Route.Clear();
         Status = Charges > 0 ? "[G] GPS : prochaine livraison" : "GPS epuise";

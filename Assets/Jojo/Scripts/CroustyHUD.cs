@@ -2,16 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Affiche le nombre de crousty restants, un message d'aide,
+// Affiche le nombre de crousty restants,
 // et des repères à l'écran (visibles à travers les bâtiments) vers les objectifs.
-// Si aucun Text n'est assigné, ils sont créés automatiquement.
+// Les textes et le modèle de repère sont placés dans la scène.
 public class CroustyHUD : MonoBehaviour
 {
     public DeliveryManager manager;
 
-    [Header("Textes (optionnels)")]
+    [Header("Textes placés dans la scène")]
     public Text counterText;
-    public Text messageText;
 
     public int fontSize = 32;
 
@@ -21,7 +20,8 @@ public class CroustyHUD : MonoBehaviour
     public float screenEdgeMargin = 60f;
     public float waypointHeightOffset = 4f;
 
-    private Canvas canvas;
+    [SerializeField] private Canvas canvas;
+    [SerializeField] private RectTransform waypointTemplate;
     private Font font;
     private readonly List<Waypoint> waypoints = new List<Waypoint>();
 
@@ -40,7 +40,11 @@ public class CroustyHUD : MonoBehaviour
                 ? DeliveryManager.Instance
                 : FindAnyObjectByType<DeliveryManager>();
 
-        BuildDefaultUI();
+        if (canvas == null || counterText == null || waypointTemplate == null)
+        {
+            Debug.LogError("Assigner les panels du HUD dans l’Inspector.", this);
+            enabled = false;
+        }
     }
 
     private void Update()
@@ -52,29 +56,24 @@ public class CroustyHUD : MonoBehaviour
             ? $"Crousty : {manager.CroustyLeft} / {manager.OrdersTotal}"
             : "Crousty : 0";
 
-        messageText.text = GetMessage();
-
         UpdateWaypoints();
     }
 
-    private string GetMessage()
+#if UNITY_EDITOR
+    public void PrepareUI()
     {
-        string key = manager.deliverKey.ToString().ToUpper();
-
-        if (!manager.HasStarted)
-            return "Va au magasin Crousty pour prendre les commandes";
-
-        if (manager.AllDelivered)
-            return "Toutes les commandes sont livrées ! Retourne au magasin Crousty";
-
-        if (manager.PointInRange != null)
-            return $"Appuie sur {key} pour livrer";
-
-        if (manager.CroustyLeft > 0)
-            return $"Livre les commandes ({manager.Delivered} livrée(s))";
-
-        return "";
+        if (canvas != null && waypointTemplate != null) return;
+        BuildDefaultUI();
+        var template = CreateWaypoint();
+        waypointTemplate = template.root;
+        waypointTemplate.name = "Modèle de repère";
+        template.icon.sprite = CroustyUISpriteAssets.Save(template.icon.sprite, "RepereCercle");
+        var arrow = template.arrow.GetComponent<Image>();
+        arrow.sprite = CroustyUISpriteAssets.Save(arrow.sprite, "RepereFleche");
+        waypointTemplate.gameObject.SetActive(false);
+        if (string.IsNullOrEmpty(counterText.text)) counterText.text = "Crousty : 0";
     }
+#endif
 
     // ---------- REPERES ----------
 
@@ -108,7 +107,16 @@ public class CroustyHUD : MonoBehaviour
     private void ShowWaypoint(int index, Camera cam, Vector3 worldPosition, Color color, string title)
     {
         while (waypoints.Count <= index)
-            waypoints.Add(CreateWaypoint());
+        {
+            var root = Instantiate(waypointTemplate, canvas.transform);
+            root.name = "Repère";
+            waypoints.Add(new Waypoint {
+                root = root,
+                icon = root.Find("Icone").GetComponent<Image>(),
+                arrow = root.Find("Fleche").GetComponent<RectTransform>(),
+                label = root.Find("Distance").GetComponent<Text>()
+            });
+        }
 
         Waypoint waypoint = waypoints[index];
         waypoint.root.gameObject.SetActive(true);
@@ -161,6 +169,7 @@ public class CroustyHUD : MonoBehaviour
             : $"{title}\n{distance:0} m";
     }
 
+#if UNITY_EDITOR
     private Waypoint CreateWaypoint()
     {
         Waypoint waypoint = new Waypoint();
@@ -196,9 +205,11 @@ public class CroustyHUD : MonoBehaviour
 
         return waypoint;
     }
+#endif
 
     // ---------- CREATION DE L'UI ----------
 
+#if UNITY_EDITOR
     private void BuildDefaultUI()
     {
         GameObject canvasObject = new GameObject(
@@ -225,14 +236,10 @@ public class CroustyHUD : MonoBehaviour
                 TextAnchor.UpperLeft, fontSize
             );
 
-        if (messageText == null)
-            messageText = CreateText(
-                canvas.transform, "Message", font,
-                new Vector2(0.5f, 0f), new Vector2(0f, 60f),
-                TextAnchor.LowerCenter, fontSize - 4
-            );
     }
+#endif
 
+#if UNITY_EDITOR
     private static Text CreateText(
         Transform parent, string name, Font font,
         Vector2 anchor, Vector2 offset, TextAnchor alignment, int size)
@@ -267,4 +274,5 @@ public class CroustyHUD : MonoBehaviour
 
         return text;
     }
+#endif
 }

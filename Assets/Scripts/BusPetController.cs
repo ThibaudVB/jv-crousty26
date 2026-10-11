@@ -12,22 +12,32 @@ public sealed class BusPetController : MonoBehaviour
     [Min(1f)] public float speedMultiplier = 1.85f;
     [Min(1f)] public float accelerationMultiplier = 1.8f;
     [Min(0f)] public float cloudRange = 40f;
-    public int UsesRemaining { get; private set; } = 2;
+    [Range(0, 3)] public int startingCharges = 3;
+    public int UsesRemaining { get; private set; } = 3;
     public float BoostRemaining { get; private set; }
     public bool IsBoosting => isActiveAndEnabled && BoostRemaining > 0f && drive != null &&
         drive.enabled && (flight == null || !flight.IsAirborne);
     private BusController drive;
     private BusFlightController flight;
     private PoliceChaseManager police;
-    private Text label;
-    private GameObject hud;
+    [SerializeField] private Text label;
+    [SerializeField] private GameObject hud;
 
     private void Start()
     {
+        UsesRemaining = startingCharges;
         drive = GetComponent<BusController>();
         flight = GetComponent<BusFlightController>();
         police = FindAnyObjectByType<PoliceChaseManager>();
+        if (hud != null) hud.SetActive(false);
+    }
+
+#if UNITY_EDITOR
+    public void PrepareUI()
+    {
+        if (hud != null) return;
         hud = new GameObject("PET - HUD", typeof(Canvas), typeof(CanvasScaler));
+        hud.transform.SetParent(transform, false);
         var canvas = hud.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 100;
@@ -47,14 +57,10 @@ public sealed class BusPetController : MonoBehaviour
         rect.sizeDelta = new Vector2(650, 50);
     }
 
+#endif
+
     private void Update()
     {
-        if (label != null)
-        {
-            label.enabled = Time.timeScale > 0f;
-            label.text = IsBoosting ? $"PET — BOOST {BoostRemaining:0.0} s   |   {UsesRemaining}/2"
-                : $"[P] PET   {UsesRemaining}/2";
-        }
         if (Time.timeScale <= 0f) return;
         if (Keyboard.current != null && Keyboard.current[activationKey].wasPressedThisFrame) TryActivate();
     }
@@ -80,8 +86,6 @@ public sealed class BusPetController : MonoBehaviour
     private void OnDisable()
     {
         BoostRemaining = 0f;
-        if (hud != null) hud.SetActive(false);
     }
-    private void OnEnable() { if (hud != null) hud.SetActive(true); }
-    private void OnDestroy() { if (hud != null) Destroy(hud); }
+
 }

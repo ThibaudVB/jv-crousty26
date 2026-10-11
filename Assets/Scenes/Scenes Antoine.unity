@@ -4133,9 +4133,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
   route: {fileID: 1173044357}
   firstPoint: {fileID: 0}
-  speed: 16.666667
+  routeTag: route
+  exitTag: sortie
+  useLanes: 1
+  leftLaneTag: GaucheSens
+  rightLaneTag: DroitSens
+  speed: 16.666668
   turnSpeed: 8
   reachDistance: 1.5
+  frontOffset: 2
+  searchDistance: 10
+  searchHalfAngle: 60
+  fallbackHalfAngle: 60
+  fallbackDuration: 1
+  retryInterval: 0.1
+  currentPoint: {fileID: 0}
+  currentPointName: 
+  currentLane: 
+  showGizmos: 1
+  showSearchZone: 1
   debugLogs: 0
 --- !u!54 &36395503
 Rigidbody:
@@ -12388,8 +12404,11 @@ MonoBehaviour:
   maxSteeringSpeed: 55
   steeringResponse: 5
   highSpeedSteeringMultiplier: 0.35
+  handbrakeSteeringMultiplier: 1.2
   lateralGrip: 14
   handbrakeGrip: 3
+  maxStepHeight: 0.6
+  stepProbeDistance: 0.15
   resetKey: 32
   resetHeight: 2
   currentSpeedKmh: 0
@@ -12461,11 +12480,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7cc822c87e74bf449d7508f16f19ec3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  carTag: voitures
   explosionSpeedKmh: 60
   explosionPrefab: {fileID: 8372507955426573714, guid: 7b8bb78ab9eb729448bf14240195a087, type: 3}
   explosionLifetime: 5
   speedKeptAfterImpact: 0.9
   lastSpeedKmh: 0
+--- !u!114 &156125693
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156125686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33e3fd45b3884b77ab78b92d97902904, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BusPetController
+  activationKey: 30
+  blindDuration: 5
+  boostDuration: 3
+  speedMultiplier: 1.85
+  accelerationMultiplier: 1.8
+  cloudRange: 40
+  label: {fileID: 977930608}
+  hud: {fileID: 407696201}
 --- !u!1 &157116380
 GameObject:
   m_ObjectHideFlags: 0
@@ -28885,6 +28925,91 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 406242150}
   m_Mesh: {fileID: -3688208800382650539, guid: e6b822218407b3a439a39bc3c3197ee9, type: 3}
+--- !u!1 &407696201
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 407696204}
+  - component: {fileID: 407696203}
+  - component: {fileID: 407696202}
+  m_Layer: 0
+  m_Name: PET - HUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &407696202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407696201}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
+  m_UiScaleMode: 1
+  m_ReferencePixelsPerUnit: 100
+  m_ScaleFactor: 1
+  m_ReferenceResolution: {x: 1920, y: 1080}
+  m_ScreenMatchMode: 0
+  m_MatchWidthOrHeight: 0
+  m_PhysicalUnit: 3
+  m_FallbackScreenDPI: 96
+  m_DefaultSpriteDPI: 96
+  m_DynamicPixelsPerUnit: 1
+  m_PresetInfoIsWorld: 0
+--- !u!223 &407696203
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407696201}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 0
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 0
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_UseReflectionProbes: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 100
+  m_TargetDisplay: 0
+--- !u!224 &407696204
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407696201}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 977930605}
+  m_Father: {fileID: 156125691}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0, y: 0}
 --- !u!1 &410241742
 GameObject:
   m_ObjectHideFlags: 0
@@ -35493,9 +35618,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
   route: {fileID: 1173044357}
   firstPoint: {fileID: 0}
-  speed: 16.666667
+  routeTag: route
+  exitTag: sortie
+  useLanes: 1
+  leftLaneTag: GaucheSens
+  rightLaneTag: DroitSens
+  speed: 16.666668
   turnSpeed: 8
   reachDistance: 1.5
+  frontOffset: 2
+  searchDistance: 10
+  searchHalfAngle: 60
+  fallbackHalfAngle: 60
+  fallbackDuration: 1
+  retryInterval: 0.1
+  currentPoint: {fileID: 0}
+  currentPointName: 
+  currentLane: 
+  showGizmos: 1
+  showSearchZone: 1
   debugLogs: 0
 --- !u!54 &511051127
 Rigidbody:
@@ -57524,6 +57665,11 @@ MonoBehaviour:
   height: 4.5
   lookHeight: 2
   lookAheadDistance: 2
+  chaseManager: {fileID: 0}
+  chaseDistance: 9.5
+  chaseHeight: 3.5
+  policeFramingWeight: 0.1
+  chaseFramingSpeed: 4
   mouseSensitivity: 0.12
   minPitch: -5
   maxPitch: 35
@@ -57538,11 +57684,20 @@ MonoBehaviour:
   maxFOV: 78
   fovAtSpeedKmh: 120
   fovSmoothSpeed: 5
+  flightController: {fileID: 0}
+  flightDistance: 12
+  flightHeight: 4.5
+  flightLookAhead: 9
+  flightFOV: 85
+  flightBankInfluence: 0.25
   currentSpeedKmh: 0
   currentYaw: 0
   currentPitch: 0
   cameraLocked: 0
   defaultPitch: 12
+  landingShakeDistance: 0.16
+  landingShakeAngle: 1.2
+  landingShakeDuration: 0.28
 --- !u!114 &840371656
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -65431,6 +65586,101 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 975049330}
   m_Mesh: {fileID: 5897772325291833275, guid: e6b822218407b3a439a39bc3c3197ee9, type: 3}
+--- !u!1 &977930604
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 977930605}
+  - component: {fileID: 977930607}
+  - component: {fileID: 977930608}
+  - component: {fileID: 977930606}
+  m_Layer: 0
+  m_Name: Charges PET
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &977930605
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 977930604}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 407696204}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 30, y: 30}
+  m_SizeDelta: {x: 650, y: 50}
+  m_Pivot: {x: 0, y: 0}
+--- !u!114 &977930606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 977930604}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
+  m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
+  m_EffectDistance: {x: 1, y: -1}
+  m_UseGraphicAlpha: 1
+--- !u!222 &977930607
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 977930604}
+  m_CullTransparentMesh: 1
+--- !u!114 &977930608
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 977930604}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.7, g: 1, b: 0.45, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_FontSize: 26
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 0
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: 
 --- !u!1 &978233218
 GameObject:
   m_ObjectHideFlags: 0
@@ -85778,13 +86028,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6b91a2ef47825c419260e3228d5758f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IntersectionChooser
-  useAssignedEntrances: 1
+  entranceTag: entree
+  carTag: voitures
+  detectionRadius: 15
   allowUTurn: 0
   maxTurnAngle: 120
-  debugLogs: 0
+  retryDelay: 0.5
   entrances:
   - {fileID: 435359309}
   - {fileID: 1018761704}
+  debugLogs: 0
+  useAssignedEntrances: 1
 --- !u!1 &1297681155
 GameObject:
   m_ObjectHideFlags: 0
@@ -96953,6 +97207,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 400002, guid: 3adaaac074a312b41835d892dbf493bb, type: 3}
       insertIndex: 0
       addedObject: {fileID: 260856000}
+    - targetCorrespondingSourceObject: {fileID: 400002, guid: 3adaaac074a312b41835d892dbf493bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 407696204}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 100002, guid: 3adaaac074a312b41835d892dbf493bb, type: 3}
       insertIndex: -1
@@ -96969,6 +97226,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100002, guid: 3adaaac074a312b41835d892dbf493bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 156125692}
+    - targetCorrespondingSourceObject: {fileID: 100002, guid: 3adaaac074a312b41835d892dbf493bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 156125693}
     - targetCorrespondingSourceObject: {fileID: 100010, guid: 3adaaac074a312b41835d892dbf493bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 833251720}
@@ -98283,9 +98543,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
   route: {fileID: 1173044357}
   firstPoint: {fileID: 0}
-  speed: 16.666667
+  routeTag: route
+  exitTag: sortie
+  useLanes: 1
+  leftLaneTag: GaucheSens
+  rightLaneTag: DroitSens
+  speed: 16.666668
   turnSpeed: 8
   reachDistance: 1.5
+  frontOffset: 2
+  searchDistance: 10
+  searchHalfAngle: 60
+  fallbackHalfAngle: 60
+  fallbackDuration: 1
+  retryInterval: 0.1
+  currentPoint: {fileID: 0}
+  currentPointName: 
+  currentLane: 
+  showGizmos: 1
+  showSearchZone: 1
   debugLogs: 0
 --- !u!54 &1473980661
 Rigidbody:
@@ -104886,9 +105162,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CarFollowPoints
   route: {fileID: 1173044357}
   firstPoint: {fileID: 0}
-  speed: 16.666667
+  routeTag: route
+  exitTag: sortie
+  useLanes: 1
+  leftLaneTag: GaucheSens
+  rightLaneTag: DroitSens
+  speed: 16.666668
   turnSpeed: 8
   reachDistance: 1.5
+  frontOffset: 2
+  searchDistance: 10
+  searchHalfAngle: 60
+  fallbackHalfAngle: 60
+  fallbackDuration: 1
+  retryInterval: 0.1
+  currentPoint: {fileID: 0}
+  currentPointName: 
+  currentLane: 
+  showGizmos: 1
+  showSearchZone: 1
   debugLogs: 0
 --- !u!54 &1562952582
 Rigidbody:

@@ -8,13 +8,15 @@ public sealed class SceneBaseSession : MonoBehaviour
     public DeliveryManager deliveries;
     public CroustyHUD deliveryHUD;
     public BusPassengers passengers;
-    private Canvas hudCanvas;
-    private Text passengerText;
+    [SerializeField] private Canvas hudCanvas;
+    [SerializeField] private Text passengerText;
     private bool suspendedDeliveries;
     private int displayedCount = -1;
 
-    private void Start()
+#if UNITY_EDITOR
+    public void PrepareUI()
     {
+        if (passengerText != null || deliveryHUD == null) return;
         hudCanvas = deliveryHUD.GetComponentInChildren<Canvas>(true);
         if (hudCanvas == null) return;
         var label = new GameObject("Passagers", typeof(RectTransform), typeof(Text), typeof(Outline));
@@ -32,6 +34,8 @@ public sealed class SceneBaseSession : MonoBehaviour
         rect.sizeDelta = new Vector2(500, 50);
         label.GetComponent<Outline>().effectColor = Color.black;
     }
+
+#endif
 
     private void LateUpdate()
     {

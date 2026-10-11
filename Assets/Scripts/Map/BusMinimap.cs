@@ -23,23 +23,24 @@ public sealed class BusMinimap : MonoBehaviour
     [Range(512, 2048)] public int textureSize = 1024;
     [Range(120f, 360f)] public float sizeOnScreen = 260f;
 
+    [SerializeField] private Image deliveryIconTemplate;
     private Camera mapCamera;
     private RenderTexture mapTexture;
-    private Canvas mapCanvas;
-    private RectTransform maskRect;
-    private Image busIcon;
-    private Image shopIcon;
-    private Image policeIcon;
+    [SerializeField] private Canvas mapCanvas;
+    [SerializeField] private RectTransform maskRect;
+    [SerializeField] private Image busIcon;
+    [SerializeField] private Image shopIcon;
+    [SerializeField] private Image policeIcon;
     private readonly List<Image> deliveryIcons = new List<Image>();
     private float nextReferenceSearch;
-    private Sprite circleSprite;
-    private Sprite arrowSprite;
-    private RawImage mapImage;
+    [SerializeField] private Sprite circleSprite;
+    [SerializeField] private Sprite arrowSprite;
+    [SerializeField] private RawImage mapImage;
     private BusGPS gps;
-    private TextMeshProUGUI gpsLabel;
-    private MinimapRouteGraphic routeGraphic;
-    private RectTransform routeRoot;
-    private RectTransform northRect;
+    [SerializeField] private TextMeshProUGUI gpsLabel;
+    [SerializeField] private MinimapRouteGraphic routeGraphic;
+    [SerializeField] private RectTransform routeRoot;
+    [SerializeField] private RectTransform northRect;
     private RadarMapRenderer radar;
     private float headingYaw;
     private float nextGeometrySearch;
@@ -48,13 +49,29 @@ public sealed class BusMinimap : MonoBehaviour
     {
         gps = GetComponent<BusGPS>();
         FindReferences();
-        circleSprite = CreateSmoothSprite(false, 512);
-        arrowSprite = CreateSmoothSprite(true, 128);
+        if (mapCanvas == null || deliveryIconTemplate == null)
+        {
+            Debug.LogError("Assigner les panels de la mini-carte dans l’Inspector.", this);
+            enabled = false;
+            return;
+        }
         BuildCamera();
-        BuildHUD();
+
         if (radarShader != null) radar = new RadarMapRenderer(radarShader);
         RefreshMap(mapRoot);
     }
+
+#if UNITY_EDITOR
+    public void PrepareUI()
+    {
+        if (mapCanvas != null) return;
+        circleSprite = CroustyUISpriteAssets.Save(CreateSmoothSprite(false, 512), "MinimapCercle");
+        arrowSprite = CroustyUISpriteAssets.Save(CreateSmoothSprite(true, 128), "MinimapFleche");
+        BuildHUD();
+        deliveryIconTemplate = CreateIcon("Modèle livraison", circleSprite, new Color(0.3f, 1f, 0.3f), 16f);
+        deliveryIconTemplate.gameObject.SetActive(false);
+    }
+#endif
 
     private void OnEnable()
     {
@@ -102,7 +119,7 @@ public sealed class BusMinimap : MonoBehaviour
         Vector2 north = ProjectToMap(busPosition + Vector3.forward * 100f);
         float northExtent = Mathf.Max(Mathf.Abs(north.x), Mathf.Abs(north.y));
         northRect.anchoredPosition = northExtent > 0.001f
-            ? north * ((sizeOnScreen * 0.5f - 12f) / northExtent) : Vector2.zero;
+            ? north * ((Mathf.Min(maskRect.rect.width, maskRect.rect.height) * 0.5f - 12f) / northExtent) : Vector2.zero;
         radar?.Render(mapCamera, mapTexture);
 
         UpdateGPS();
@@ -161,7 +178,7 @@ public sealed class BusMinimap : MonoBehaviour
     private void UpdateTextureResolution()
     {
         // Sur-echantillonnage 2x, y compris sur ecran haute densite / apres redimensionnement.
-        float pixels = sizeOnScreen * (mapCanvas != null ? mapCanvas.scaleFactor : 1f);
+        float pixels = (maskRect != null ? Mathf.Max(maskRect.rect.width, maskRect.rect.height) : sizeOnScreen) * (mapCanvas != null ? mapCanvas.scaleFactor : 1f);
         int resolution = Mathf.Clamp(Mathf.NextPowerOfTwo(
             Mathf.CeilToInt(Mathf.Max(textureSize, pixels * 2f))), 512, 2048);
         if (mapTexture != null && mapTexture.width == resolution) return;
@@ -173,7 +190,8 @@ public sealed class BusMinimap : MonoBehaviour
         // La texture est reduite dans le HUD : filtrer les lignes routieres fines
         // evite leur scintillement en mouvement. Un biais modere preserve la nettete.
         mapTexture.useMipMap = true;
-        mapTexture.autoGenerateMips = true;
+        // RadarMapRenderer generates the mip chain after drawing the map.
+        mapTexture.autoGenerateMips = false;
         mapTexture.mipMapBias = -0.35f;
         mapTexture.Create();
         mapCamera.targetTexture = mapTexture;
@@ -185,6 +203,7 @@ public sealed class BusMinimap : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR
     private void BuildHUD()
     {
         GameObject canvasObject = new GameObject("Minimap Crousty", typeof(Canvas), typeof(CanvasScaler));
@@ -253,12 +272,13 @@ public sealed class BusMinimap : MonoBehaviour
         north.text = "N";
         north.raycastTarget = false;
     }
+#endif
 
     private Vector2 ProjectToMap(Vector3 worldPosition)
     {
         worldPosition.y = radar != null ? radar.GroundHeight : 0f;
         Vector3 viewport = mapCamera.WorldToViewportPoint(worldPosition);
-        return new Vector2(viewport.x - 0.5f, viewport.y - 0.5f) * sizeOnScreen;
+        return Vector2.Scale(new Vector2(viewport.x - 0.5f, viewport.y - 0.5f), maskRect.rect.size);
     }
 
     private void UpdateGPS()
@@ -285,8 +305,7 @@ public sealed class BusMinimap : MonoBehaviour
             {
                 if (point == null || !point.IsWaiting) continue;
                 while (deliveryIcons.Count <= used)
-                    deliveryIcons.Add(CreateIcon("Livraison", circleSprite,
-                        new Color(0.3f, 1f, 0.3f), 16f));
+                    deliveryIcons.Add(Instantiate(deliveryIconTemplate, maskRect));
                 Image icon = deliveryIcons[used++];
                 icon.gameObject.SetActive(true);
                 icon.color = point.markerColor;
@@ -308,7 +327,7 @@ public sealed class BusMinimap : MonoBehaviour
 
     private void PlaceIcon(Image icon, Vector3 targetPosition, float size)
     {
-        float radius = sizeOnScreen * 0.5f - size * 0.8f;
+        float radius = Mathf.Min(maskRect.rect.width, maskRect.rect.height) * 0.5f - size * 0.8f;
         Vector2 position = ProjectToMap(targetPosition);
         // Intersection avec le bord carre, en conservant la direction de l'objectif.
         float extent = Mathf.Max(Mathf.Abs(position.x), Mathf.Abs(position.y));
@@ -324,6 +343,7 @@ public sealed class BusMinimap : MonoBehaviour
             : Quaternion.identity;
     }
 
+#if UNITY_EDITOR
     private Image CreateIcon(string name, Sprite sprite, Color color, float size)
     {
         RectTransform rect = CreateRect(name, maskRect);
@@ -338,14 +358,18 @@ public sealed class BusMinimap : MonoBehaviour
         outline.effectDistance = new Vector2(1.5f, -1.5f);
         return image;
     }
+#endif
 
+#if UNITY_EDITOR
     private static RectTransform CreateRect(string name, Transform parent)
     {
         GameObject instance = new GameObject(name, typeof(RectTransform));
         instance.transform.SetParent(parent, false);
         return instance.GetComponent<RectTransform>();
     }
+#endif
 
+#if UNITY_EDITOR
     private static Sprite CreateSmoothSprite(bool arrow, int resolution)
     {
         var texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, true);
@@ -370,6 +394,7 @@ public sealed class BusMinimap : MonoBehaviour
         return Sprite.Create(texture, new Rect(0, 0, resolution, resolution),
             new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
     }
+#endif
 
     private void OnDestroy()
     {
@@ -379,13 +404,7 @@ public sealed class BusMinimap : MonoBehaviour
             mapCamera.targetTexture = null;
             Destroy(mapCamera.gameObject);
         }
-        if (mapCanvas != null) Destroy(mapCanvas.gameObject);
-        foreach (Sprite sprite in new[] { circleSprite, arrowSprite })
-        {
-            if (sprite == null) continue;
-            Destroy(sprite.texture);
-            Destroy(sprite);
-        }
+
         if (mapTexture != null)
         {
             mapTexture.Release();

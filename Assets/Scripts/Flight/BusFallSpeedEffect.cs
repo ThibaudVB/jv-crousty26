@@ -13,10 +13,10 @@ public sealed class BusFallSpeedEffect : MonoBehaviour
 
     private BusFlightController flight;
     private Rigidbody body;
-    private Canvas canvas;
-    private RectTransform viewport;
-    private CanvasGroup group;
-    private RectTransform[] streaks;
+    [SerializeField] private Canvas canvas;
+    [SerializeField] private RectTransform viewport;
+    [SerializeField] private CanvasGroup group;
+    [SerializeField] private RectTransform[] streaks;
     private float[] phases;
     private Texture2D texture;
     private Sprite sprite;
@@ -25,12 +25,16 @@ public sealed class BusFallSpeedEffect : MonoBehaviour
     {
         flight = GetComponent<BusFlightController>();
         body = GetComponent<Rigidbody>();
+        phases = new float[streaks != null ? streaks.Length : 0];
+        for (int i = 0; i < phases.Length; i++) phases[i] = Mathf.Repeat(i * 0.618034f, 1f);
     }
 
+#if UNITY_EDITOR
     private void CreateOverlay()
     {
         var root = new GameObject("Bus Fighter - vitesse de chute", typeof(RectTransform), typeof(Canvas),
             typeof(CanvasScaler), typeof(CanvasGroup));
+        root.transform.SetParent(transform, false);
         canvas = root.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 5;
@@ -71,6 +75,17 @@ public sealed class BusFallSpeedEffect : MonoBehaviour
             phases[i] = Mathf.Repeat(i * 0.618034f, 1f);
         }
     }
+#endif
+
+#if UNITY_EDITOR
+    public void PrepareUI()
+    {
+        if (canvas != null) return;
+        CreateOverlay();
+        sprite = CroustyUISpriteAssets.Save(sprite, "Chute");
+        foreach (var streak in streaks) streak.GetComponent<Image>().sprite = sprite;
+    }
+#endif
 
     private void Update() => UpdateEffect(Time.deltaTime);
 
@@ -91,7 +106,7 @@ public sealed class BusFallSpeedEffect : MonoBehaviour
             if (canvas != null) canvas.enabled = false;
             return;
         }
-        if (canvas == null) CreateOverlay();
+        if (canvas == null) return;
         canvas.enabled = true;
         group.alpha = Intensity * maximumOpacity;
         float height = Mathf.Max(1f, viewport.rect.height);
@@ -112,10 +127,5 @@ public sealed class BusFallSpeedEffect : MonoBehaviour
         if (canvas != null) canvas.enabled = false;
     }
 
-    private void OnDestroy()
-    {
-        if (canvas != null) Destroy(canvas.gameObject);
-        if (sprite != null) Destroy(sprite);
-        if (texture != null) Destroy(texture);
-    }
+
 }

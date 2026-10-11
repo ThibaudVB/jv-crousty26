@@ -15,6 +15,8 @@ public class BusFlightController : MonoBehaviour
 
     [Header("Activation")]
     public Key activationKey = Key.F;
+    [Range(0, 3)] public int startingCharges = 3;
+    public int UsesRemaining { get; private set; } = 3;
     [Min(1f)] public float flightDuration = 15f;
 
     [Header("Impulsion initiale")]
@@ -84,6 +86,7 @@ public class BusFlightController : MonoBehaviour
 
     private void Awake()
     {
+        UsesRemaining = startingCharges;
         rb = GetComponent<Rigidbody>();
         busController = GetComponent<BusController>();
         wheelRig = GetComponent<BusWheelRig>();
@@ -105,7 +108,7 @@ public class BusFlightController : MonoBehaviour
             return;
         }
 
-        // Activation illimitee pour les tests.
+        // Chaque envol consomme une charge.
         if (!IsAirborne &&
             keyboard[activationKey].wasPressedThisFrame)
         {
@@ -184,7 +187,7 @@ public class BusFlightController : MonoBehaviour
 
     private void ActivateFlight()
     {
-        if (IsAirborne || !isActiveAndEnabled || Time.timeScale <= 0f ||
+        if (IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
             rb.isKinematic || !busController.enabled)
             return;
 
@@ -245,6 +248,7 @@ public class BusFlightController : MonoBehaviour
         Vector3 velocity = rb.linearVelocity;
         velocity.y = Mathf.Max(velocity.y, launchUpSpeed);
         rb.linearVelocity = velocity;
+        UsesRemaining--;
         mode = FlightMode.Flying;
     }
 
