@@ -134,7 +134,7 @@ public class MiniMap : MonoBehaviour
         {
             // Magasin : seulement quand il faut y aller
             CroustyShop shop = manager.shop;
-            if (shop != null && (!manager.HasStarted || manager.AllDelivered))
+            if (shop != null && manager.NeedsPickup)
                 ShowIcon(used++, shop.transform.position, shop.markerColor, yaw);
 
             // Adresses avec une commande en attente

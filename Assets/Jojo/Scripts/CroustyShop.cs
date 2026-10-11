@@ -1,7 +1,7 @@
 using UnityEngine;
 
 // Magasin Crousty : les commandes sont chargées automatiquement
-// quand le bus entre dans le rayon.
+// quand le bus entre dans le rayon. Le faisceau n'apparaît que quand il faut y aller.
 public class CroustyShop : MonoBehaviour
 {
     public float pickupRadius = 8f;
@@ -17,6 +17,14 @@ public class CroustyShop : MonoBehaviour
     {
         if (marker == null)
             marker = JojoVisuals.CreateBeacon(transform, markerColor, beamHeight, beamWidth);
+    }
+
+    // Le faisceau disparaît pendant la tournée et revient quand tout est livré
+    private void Update()
+    {
+        DeliveryManager manager = DeliveryManager.Instance;
+        if (marker != null && manager != null)
+            marker.SetActive(manager.NeedsPickup);
     }
 
     public bool IsInRange(Vector3 position)

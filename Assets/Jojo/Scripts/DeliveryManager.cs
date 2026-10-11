@@ -39,6 +39,9 @@ public class DeliveryManager : MonoBehaviour
     public bool AllDelivered =>
         HasStarted && CroustyLeft == 0 && inFlight == 0;
 
+    // Il faut passer au magasin : début de partie ou tournée terminée
+    public bool NeedsPickup => !HasStarted || AllDelivered;
+
     private void Awake()
     {
         Instance = this;
@@ -76,7 +79,7 @@ public class DeliveryManager : MonoBehaviour
         // RECUPERATION AU MAGASIN (automatique)
         if (shop != null &&
             shop.IsInRange(player.position) &&
-            CanLoadOrders())
+            NeedsPickup)
         {
             LoadOrders();
         }
@@ -91,12 +94,6 @@ public class DeliveryManager : MonoBehaviour
     private int OrdersForRun(int run)
     {
         return run == 0 ? firstRunOrders : ordersStep * run;
-    }
-
-    private bool CanLoadOrders()
-    {
-        // On ne recharge que quand la tournée précédente est terminée
-        return !HasStarted || AllDelivered;
     }
 
     private void LoadOrders()
