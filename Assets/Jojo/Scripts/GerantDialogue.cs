@@ -1,3 +1,5 @@
+// DÉSACTIVÉ avec le HUD de Jojo (CroustyHUDJojo.cs) : compilé seulement si CROUSTY_HUD_JOJO est défini.
+#if CROUSTY_HUD_JOJO
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -174,3 +176,4 @@ public class GerantDialogue : MonoBehaviour
         rect.sizeDelta = area.size;
     }
 }
+#endif

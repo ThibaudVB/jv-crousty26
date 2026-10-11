@@ -1,38 +1,37 @@
-using System.Globalization;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// HUD de la partie, d'après la maquette 1920x1080 :
-// argent et commandes en haut à gauche, objectif en haut à droite,
-// gérant en bas à gauche, mini map en bas à droite.
-// Les images sont chargées depuis Resources si les champs sont vides.
+// Affiche le nombre de crousty restants,
+// et des repères à l'écran (visibles à travers les bâtiments) vers les objectifs.
+// Les textes et le modèle de repère sont placés dans la scène.
 public class CroustyHUD : MonoBehaviour
 {
     public DeliveryManager manager;
 
-    [Header("Images (auto depuis Resources si vides)")]
-    [Tooltip("Bandeau papier de l'objectif, aussi utilisé en sombre derrière l'argent")]
-    public Sprite banner;
-    [Tooltip("Forme sombre derrière les commandes")]
-    public Sprite tag;
-    public Sprite moneyIcon;
-    public Sprite ordersIcon;
-    public Sprite objectiveIcon;
+    [Header("Textes placés dans la scène")]
+    public Text counterText;
 
-    [Header("Texte")]
-    [Tooltip("Police du HUD. Si vide, police par défaut de Unity.")]
-    public Font font;
-    public Color darkColor = new Color32(0x26, 0x26, 0x31, 0xFF);
-    public Color lightColor = new Color32(0xEC, 0xE7, 0xDE, 0xFF);
+    public int fontSize = 32;
 
-    private Text moneyText;
-    private Text ordersText;
-    private Text objectiveText;
-    private GerantDialogue gerant;
+    [Header("Repères à l'écran")]
+    public bool showWaypoints = true;
+    public float waypointSize = 44f;
+    public float screenEdgeMargin = 60f;
+    public float waypointHeightOffset = 4f;
 
-    // Milliers séparés par un point : 6.767
-    private static readonly NumberFormatInfo MoneyFormat =
-        new NumberFormatInfo { NumberGroupSeparator = "." };
+    [SerializeField] private Canvas canvas;
+    [SerializeField] private RectTransform waypointTemplate;
+    private Font font;
+    private readonly List<Waypoint> waypoints = new List<Waypoint>();
+
+    private class Waypoint
+    {
+        public RectTransform root;
+        public Image icon;
+        public RectTransform arrow;
+        public Text label;
+    }
 
     private void Start()
     {
@@ -41,7 +40,11 @@ public class CroustyHUD : MonoBehaviour
                 ? DeliveryManager.Instance
                 : FindAnyObjectByType<DeliveryManager>();
 
-        BuildUI();
+        if (canvas == null || counterText == null || waypointTemplate == null)
+        {
+            Debug.LogError("Assigner les panels du HUD dans l’Inspector.", this);
+            enabled = false;
+        }
     }
 
     private void Update()
@@ -49,47 +52,166 @@ public class CroustyHUD : MonoBehaviour
         if (manager == null)
             return;
 
-        moneyText.text = manager.Score.ToString("#,0", MoneyFormat);
+        counterText.text = manager.HasStarted
+            ? $"Crousty : {manager.CroustyLeft} / {manager.OrdersTotal}"
+            : "Crousty : 0";
 
-        ordersText.text = manager.HasStarted
-            ? $"{manager.Delivered}/{manager.OrdersTotal}"
-            : $"0/{manager.NextRunOrders}";
-
-        objectiveText.text = manager.NeedsPickup
-            ? "Récupère les commandes au restaurant de Crousty (0/1)"
-            : $"Livre les crousty aux adresses indiquées sur la carte ({manager.Delivered}/{manager.OrdersTotal})";
-
-        gerant.SetMessage(GetMessage());
+        UpdateWaypoints();
     }
 
-    // Répliques du gérant
-    private string GetMessage()
+#if UNITY_EDITOR
+    public void PrepareUI()
     {
-        if (!manager.HasStarted)
-            return "Hop hop hop ! Les commandes attendent, on se bouge !";
-
-        if (manager.AllDelivered)
-            return "Bien joué ! Reviens au magasin, y'a d'autres commandes !";
-
-        if (manager.CroustyLeft > 0)
-            return manager.CroustyLeft == 1
-                ? "Plus qu'une commande, on lâche rien !"
-                : $"Encore {manager.CroustyLeft} commandes, les clients ont faim !";
-
-        return "";
+        if (canvas != null && waypointTemplate != null) return;
+        BuildDefaultUI();
+        var template = CreateWaypoint();
+        waypointTemplate = template.root;
+        waypointTemplate.name = "Modèle de repère";
+        template.icon.sprite = CroustyUISpriteAssets.Save(template.icon.sprite, "RepereCercle");
+        var arrow = template.arrow.GetComponent<Image>();
+        arrow.sprite = CroustyUISpriteAssets.Save(arrow.sprite, "RepereFleche");
+        waypointTemplate.gameObject.SetActive(false);
+        if (string.IsNullOrEmpty(counterText.text)) counterText.text = "Crousty : 0";
     }
+#endif
+
+    // ---------- REPERES ----------
+
+    private void UpdateWaypoints()
+    {
+        int used = 0;
+        Camera cam = Camera.main;
+
+        if (showWaypoints && cam != null && manager.player != null)
+        {
+            // Magasin : seulement quand il faut y aller
+            if (manager.shop != null && (!manager.HasStarted || manager.AllDelivered))
+            {
+                ShowWaypoint(used++, cam, manager.shop.transform.position,
+                    manager.shop.markerColor, manager.shop.screenLabel);
+            }
+
+            // Adresses avec une commande en attente
+            foreach (DeliveryPoint point in manager.deliveryPoints)
+            {
+                if (point != null && point.IsWaiting)
+                    ShowWaypoint(used++, cam, point.transform.position, point.markerColor, null);
+            }
+        }
+
+        // Cache les repères en trop
+        for (int i = used; i < waypoints.Count; i++)
+            waypoints[i].root.gameObject.SetActive(false);
+    }
+
+    private void ShowWaypoint(int index, Camera cam, Vector3 worldPosition, Color color, string title)
+    {
+        while (waypoints.Count <= index)
+        {
+            var root = Instantiate(waypointTemplate, canvas.transform);
+            root.name = "Repère";
+            waypoints.Add(new Waypoint {
+                root = root,
+                icon = root.Find("Icone").GetComponent<Image>(),
+                arrow = root.Find("Fleche").GetComponent<RectTransform>(),
+                label = root.Find("Distance").GetComponent<Text>()
+            });
+        }
+
+        Waypoint waypoint = waypoints[index];
+        waypoint.root.gameObject.SetActive(true);
+
+        Vector3 screen = cam.WorldToScreenPoint(worldPosition + Vector3.up * waypointHeightOffset);
+        bool behind = screen.z < 0f;
+
+        float margin = screenEdgeMargin * canvas.scaleFactor;
+        Vector2 center = new Vector2(Screen.width, Screen.height) * 0.5f;
+        Vector2 position = new Vector2(screen.x, screen.y);
+
+        // Derrière la caméra, le point est projeté en miroir : on le retourne
+        if (behind)
+            position = center - (position - center);
+
+        bool onScreen =
+            !behind &&
+            position.x > margin && position.x < Screen.width - margin &&
+            position.y > margin && position.y < Screen.height - margin;
+
+        if (!onScreen)
+        {
+            // Colle le repère au bord de l'écran, dans la direction de la cible
+            Vector2 direction = position - center;
+            if (direction.sqrMagnitude < 0.01f)
+                direction = Vector2.down;
+
+            Vector2 halfSize = center - Vector2.one * margin;
+            float scale = Mathf.Min(
+                halfSize.x / Mathf.Max(Mathf.Abs(direction.x), 0.001f),
+                halfSize.y / Mathf.Max(Mathf.Abs(direction.y), 0.001f)
+            );
+            position = center + direction * scale;
+
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
+            waypoint.arrow.localRotation = Quaternion.Euler(0f, 0f, angle);
+            waypoint.arrow.anchoredPosition =
+                (Vector2)(Quaternion.Euler(0f, 0f, angle) * Vector3.up) * waypointSize * 0.85f;
+        }
+
+        waypoint.arrow.gameObject.SetActive(!onScreen);
+        waypoint.root.position = position;
+
+        waypoint.icon.color = color;
+        waypoint.arrow.GetComponent<Image>().color = color;
+
+        float distance = Vector3.Distance(manager.player.position, worldPosition);
+        waypoint.label.text = string.IsNullOrEmpty(title)
+            ? $"{distance:0} m"
+            : $"{title}\n{distance:0} m";
+    }
+
+#if UNITY_EDITOR
+    private Waypoint CreateWaypoint()
+    {
+        Waypoint waypoint = new Waypoint();
+
+        GameObject root = new GameObject("Repere", typeof(RectTransform));
+        root.transform.SetParent(canvas.transform, false);
+        waypoint.root = root.GetComponent<RectTransform>();
+        waypoint.root.sizeDelta = Vector2.one * waypointSize;
+
+        // Rond de couleur
+        GameObject icon = new GameObject("Icone", typeof(RectTransform), typeof(Image), typeof(Outline));
+        icon.transform.SetParent(root.transform, false);
+        waypoint.icon = icon.GetComponent<Image>();
+        waypoint.icon.sprite = JojoVisuals.CircleSprite;
+        waypoint.icon.raycastTarget = false;
+        icon.GetComponent<RectTransform>().sizeDelta = Vector2.one * waypointSize;
+        icon.GetComponent<Outline>().effectColor = Color.black;
+
+        // Flèche quand la cible est hors de l'écran
+        GameObject arrow = new GameObject("Fleche", typeof(RectTransform), typeof(Image));
+        arrow.transform.SetParent(root.transform, false);
+        Image arrowImage = arrow.GetComponent<Image>();
+        arrowImage.sprite = JojoVisuals.ArrowSprite;
+        arrowImage.raycastTarget = false;
+        waypoint.arrow = arrow.GetComponent<RectTransform>();
+        waypoint.arrow.sizeDelta = Vector2.one * waypointSize * 0.6f;
+
+        // Distance
+        waypoint.label = CreateText(root.transform, "Distance", font,
+            new Vector2(0.5f, 0f), new Vector2(0f, -8f), TextAnchor.UpperCenter, fontSize - 10);
+        waypoint.label.rectTransform.pivot = new Vector2(0.5f, 1f);
+        waypoint.label.rectTransform.sizeDelta = new Vector2(300f, 80f);
+
+        return waypoint;
+    }
+#endif
 
     // ---------- CREATION DE L'UI ----------
 
-    private void BuildUI()
+#if UNITY_EDITOR
+    private void BuildDefaultUI()
     {
-        if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (banner == null) banner = Resources.Load<Sprite>("Gerant/bandeau");
-        if (tag == null) tag = Resources.Load<Sprite>("Gerant/etiquette");
-        if (moneyIcon == null) moneyIcon = Resources.Load<Sprite>("HUD/dollar");
-        if (ordersIcon == null) ordersIcon = Resources.Load<Sprite>("HUD/sac");
-        if (objectiveIcon == null) objectiveIcon = Resources.Load<Sprite>("HUD/epingle");
-
         GameObject canvasObject = new GameObject(
             "Crousty HUD",
             typeof(Canvas),
@@ -97,7 +219,7 @@ public class CroustyHUD : MonoBehaviour
         );
         canvasObject.transform.SetParent(transform, false);
 
-        Canvas canvas = canvasObject.GetComponent<Canvas>();
+        canvas = canvasObject.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 100;
 
@@ -105,98 +227,52 @@ public class CroustyHUD : MonoBehaviour
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
 
-        // Positions en pixels depuis le coin haut-gauche de chaque bloc, d'après la maquette
+        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-        // Argent (points) : le bandeau papier, en sombre
-        RectTransform money = CreatePanel(canvas.transform, "Argent",
-            new Vector2(0f, 1f), new Vector2(48f, -57f), new Vector2(327f, 115f));
-        CreateImage(money, "Fond", banner, darkColor, new Rect(0f, 0f, 327f, 115f), false);
-        CreateImage(money, "Icone", moneyIcon, Color.white, new Rect(14f, 5f, 64f, 95f), true);
-        moneyText = CreateText(money, "Valeur", new Rect(100f, 0f, 220f, 115f), 64, lightColor);
+        if (counterText == null)
+            counterText = CreateText(
+                canvas.transform, "Compteur", font,
+                new Vector2(0f, 1f), new Vector2(30f, -30f),
+                TextAnchor.UpperLeft, fontSize
+            );
 
-        // Commandes livrées / à livrer
-        RectTransform orders = CreatePanel(canvas.transform, "Commandes",
-            new Vector2(0f, 1f), new Vector2(48f, -192f), new Vector2(302f, 114f));
-        CreateImage(orders, "Fond", tag, Color.white, new Rect(0f, 6f, 302f, 108f), false);
-        CreateImage(orders, "Icone", ordersIcon, Color.white, new Rect(34f, 0f, 58f, 70f), true);
-        ordersText = CreateText(orders, "Valeur", new Rect(112f, 25f, 180f, 64f), 52, lightColor);
-
-        // Objectif
-        RectTransform objective = CreatePanel(canvas.transform, "Objectif",
-            Vector2.one, new Vector2(-55f, -57f), new Vector2(555f, 239f));
-        CreateImage(objective, "Fond", banner, Color.white, new Rect(0f, 0f, 555f, 239f), false);
-        CreateImage(objective, "Icone", objectiveIcon, Color.white, new Rect(33f, 23f, 49f, 62f), true);
-        CreateText(objective, "Titre", new Rect(98f, 18f, 440f, 74f), 62, darkColor).text = "OBJECTIF";
-        objectiveText = CreateText(objective, "Texte", new Rect(42f, 118f, 470f, 100f), 30, darkColor);
-        objectiveText.alignment = TextAnchor.UpperLeft;
-        objectiveText.horizontalOverflow = HorizontalWrapMode.Wrap;
-
-        // Gérant en bas à gauche
-        gerant = GetComponent<GerantDialogue>();
-        if (gerant == null)
-            gerant = gameObject.AddComponent<GerantDialogue>();
-        gerant.Build(canvas.transform);
-
-        // Mini map en bas à droite
-        MiniMap miniMap = GetComponent<MiniMap>();
-        if (miniMap == null)
-            miniMap = gameObject.AddComponent<MiniMap>();
-        miniMap.Build(canvas.transform);
     }
+#endif
 
-    // Bloc accroché à un coin de l'écran
-    private static RectTransform CreatePanel(Transform parent, string name,
-        Vector2 corner, Vector2 offset, Vector2 size)
+#if UNITY_EDITOR
+    private static Text CreateText(
+        Transform parent, string name, Font font,
+        Vector2 anchor, Vector2 offset, TextAnchor alignment, int size)
     {
-        RectTransform panel = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-        panel.SetParent(parent, false);
-        panel.anchorMin = panel.anchorMax = panel.pivot = corner;
-        panel.anchoredPosition = offset;
-        panel.sizeDelta = size;
-        return panel;
-    }
+        GameObject textObject = new GameObject(
+            name,
+            typeof(RectTransform),
+            typeof(Text),
+            typeof(Outline)
+        );
+        textObject.transform.SetParent(parent, false);
 
-    private static void CreateImage(RectTransform panel, string name, Sprite sprite, Color color,
-        Rect area, bool preserveAspect)
-    {
-        GameObject imageObject = new GameObject(name, typeof(RectTransform), typeof(Image));
-        imageObject.transform.SetParent(panel, false);
-        Place(imageObject.GetComponent<RectTransform>(), area);
-
-        Image image = imageObject.GetComponent<Image>();
-        image.sprite = sprite;
-        image.color = color;
-        image.preserveAspect = preserveAspect;
-        image.raycastTarget = false;
-
-        // Image pas encore ajoutée au projet : on la cache
-        if (sprite == null)
-            imageObject.SetActive(false);
-    }
-
-    private Text CreateText(RectTransform panel, string name, Rect area, int size, Color color)
-    {
-        GameObject textObject = new GameObject(name, typeof(RectTransform), typeof(Text));
-        textObject.transform.SetParent(panel, false);
-        Place(textObject.GetComponent<RectTransform>(), area);
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.anchorMin = anchor;
+        rect.anchorMax = anchor;
+        rect.pivot = anchor;
+        rect.anchoredPosition = offset;
+        rect.sizeDelta = new Vector2(1200f, 80f);
 
         Text text = textObject.GetComponent<Text>();
         text.font = font;
         text.fontSize = size;
-        text.fontStyle = font.name == "LegacyRuntime" ? FontStyle.Bold : FontStyle.Normal;
-        text.color = color;
-        text.alignment = TextAnchor.MiddleLeft;
+        text.fontStyle = FontStyle.Bold;
+        text.alignment = alignment;
+        text.color = Color.white;
         text.horizontalOverflow = HorizontalWrapMode.Overflow;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
         text.raycastTarget = false;
+
+        Outline outline = textObject.GetComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2f, -2f);
+
         return text;
     }
-
-    // Place un élément dans son bloc à partir du coin haut-gauche
-    private static void Place(RectTransform rect, Rect area)
-    {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(area.x, -area.y);
-        rect.sizeDelta = area.size;
-    }
+#endif
 }

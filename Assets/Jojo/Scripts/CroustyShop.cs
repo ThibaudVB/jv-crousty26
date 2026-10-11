@@ -5,6 +5,8 @@ using UnityEngine;
 public class CroustyShop : MonoBehaviour
 {
     public float pickupRadius = 8f;
+    [Tooltip("Écart vertical maximal pour charger les commandes devant le magasin.")]
+    [Min(0f)] public float maxHeightDifference = 6f;
 
     [Header("Marqueur")]
     [Tooltip("Optionnel : objet affiché au-dessus du magasin. Si vide, un faisceau lumineux jaune est créé.")]
@@ -12,6 +14,9 @@ public class CroustyShop : MonoBehaviour
     public Color markerColor = new Color(1f, 0.85f, 0.1f);
     public float beamHeight = 150f;
     public float beamWidth = 3f;
+
+    [Tooltip("Icône sur l'écran, visible à travers les bâtiments")]
+    public string screenLabel = "Crousty";
 
     private void Start()
     {
@@ -29,7 +34,8 @@ public class CroustyShop : MonoBehaviour
 
     public bool IsInRange(Vector3 position)
     {
-        return FlatDistance(position, transform.position) <= pickupRadius;
+        return Mathf.Abs(position.y - transform.position.y) <= maxHeightDifference &&
+            FlatDistance(position, transform.position) <= pickupRadius;
     }
 
     private static float FlatDistance(Vector3 a, Vector3 b)

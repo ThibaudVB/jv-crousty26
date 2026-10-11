@@ -1,0 +1,15 @@
+# Pouvoir PET
+
+P active le pouvoir. Le bus dispose de deux utilisations par partie ; seul le rechargement de la scène les renouvelle. Le compteur apparaît en bas à gauche. Une utilisation produit un nuage vert sombre et olive derrière le bus et un boost de 3 secondes, avec une vitesse cible multipliée par 1,85 (166,5 km/h pour une limite normale à 90), avec une accélération multipliée par 1,8. Le bus accélère vers cette cible ; le frein et le frein à main restent prioritaires.
+
+Si la voiture de police active se trouve derrière le bus, dans une distance de poursuite de 40 mètres, elle est aveuglée pendant 5 secondes maximum : sa capture est remise à zéro puis suspendue, et sa distance de poursuite augmente progressivement. La poursuite reprend ensuite normalement. Une charge reste consommée si aucun policier n’est touché : le boost reste disponible. Le nuage est un effet visuel ; la détection de la cible est instantanée à l’activation et non un volume persistant qui touche de nouveaux véhicules.
+
+Le pouvoir ne peut pas être utilisé en pause, après une défaite, pendant un boost PET, pendant le Bus Fighter ou sa chute, ni avec un Rigidbody cinématique. Un passage en vol interrompt le boost terrestre ; la suppression de la police nettoie l’aveuglement. La valeur de vitesse maximale enregistrée dans BusController n’est pas modifiée. Le contrôleur de conduite et ses roues lisent une limite effective temporaire.
+
+BusPetController est installé automatiquement par BusController et expose la touche, les durées, le multiplicateur et la portée dans l’Inspector. Le nuage réutilise le mesh facetté de SceneBaseDriftSmoke avec un émetteur dédié et un matériau distinct : 96 particules, un cœur vert sombre, des bouffées olive, de petites volutes dispersées et une turbulence renforcée. La taille varie de 0,25 à 5,2 m et la durée de vie de 1,1 à 3,2 s. Le budget de cet émetteur est plafonné à 128 particules. La fumée du drift conserve son matériau. Le HUD est créé à l’exécution et ne bloque pas les clics.
+
+Validation : compilation réussie et 61 contrôles réussis dans une copie isolée de SceneBase sous Unity 6000.4.0f1, dont 10 contrôles PET : deux charges initiales, pause, consommation unique, aveuglement/capture, limite de vitesse temporaire, anti-cumul, recul, expiration, deuxième utilisation et refus d’une troisième. Les contrôles de vol, gravité, impact et traînées restent passants. Le rendu du nuage et le ressenti du boost restent à apprécier en Play.
+
+Validation du boost renforcé et du nuage détaillé : 65 contrôles réussis, 0 échec, dans la copie isolée Unity. Vérifications supplémentaires des multiplicateurs, des 64 particules, des variations de taille/couleur et de l’isolation du matériau. La compilation est réussie ; l’appréciation visuelle en Play reste à faire.
+
+Agrandissement du nuage : 96 bouffées réparties sur 8 m de profondeur initiale, rayon de dispersion allant jusqu’à 4 m pour les détails, grosses bouffées de 3,6 à 5,2 m. L’expansion se poursuit pendant leur vie. La portée de poursuite affectée passe à 40 m derrière le bus ; la détection reste instantanée lors de l’activation.

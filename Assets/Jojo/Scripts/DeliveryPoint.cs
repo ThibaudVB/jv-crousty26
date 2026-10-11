@@ -5,6 +5,8 @@ using UnityEngine;
 public class DeliveryPoint : MonoBehaviour
 {
     public float deliveryRadius = 10f;
+    [Tooltip("Écart vertical maximal pour livrer depuis la rue, sans atteindre un autre étage.")]
+    [Min(0f)] public float maxHeightDifference = 6f;
 
     [Tooltip("Optionnel : endroit où le crousty atterrit (porte, boîte aux lettres...). Sinon, ce point.")]
     public Transform dropTarget;
@@ -53,6 +55,8 @@ public class DeliveryPoint : MonoBehaviour
 
     public bool IsInRange(Vector3 position)
     {
+        if (Mathf.Abs(position.y - transform.position.y) > maxHeightDifference)
+            return false;
         position.y = 0f;
         Vector3 here = transform.position;
         here.y = 0f;
