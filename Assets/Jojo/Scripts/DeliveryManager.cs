@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Gère les commandes : chargement au magasin, livraison automatique, compteur.
+// Gère les commandes : chargement au magasin, livraison automatique, compteur, points.
 // A mettre sur un GameObject vide de la scène (ex : "DeliveryManager").
 public class DeliveryManager : MonoBehaviour
 {
@@ -13,6 +13,9 @@ public class DeliveryManager : MonoBehaviour
     [Min(1)] public int firstRunOrders = 3;
     [Tooltip("Ensuite : 1 x pas, 2 x pas, 3 x pas... (avec 5 : 5, 10, 15...)")]
     [Min(1)] public int ordersStep = 5;
+
+    [Header("Points")]
+    public int pointsPerDelivery = 100;
 
     [Header("Références (auto si vide)")]
     public Transform player;
@@ -32,6 +35,7 @@ public class DeliveryManager : MonoBehaviour
     public int OrdersTotal { get; private set; }
     public int Delivered { get; private set; }
     public bool HasStarted { get; private set; }
+    public int Score { get; private set; }
 
     private int runsLoaded;
     private int inFlight;
@@ -41,6 +45,9 @@ public class DeliveryManager : MonoBehaviour
 
     // Il faut passer au magasin : début de partie ou tournée terminée
     public bool NeedsPickup => !HasStarted || AllDelivered;
+
+    // Commandes de la prochaine tournée (limitées au nombre d'adresses)
+    public int NextRunOrders => Mathf.Min(OrdersForRun(runsLoaded), deliveryPoints.Count);
 
     private void Awake()
     {
@@ -109,7 +116,7 @@ public class DeliveryManager : MonoBehaviour
         }
 
         int wanted = OrdersForRun(runsLoaded);
-        int count = Mathf.Min(wanted, deliveryPoints.Count);
+        int count = NextRunOrders;
 
         if (count < wanted)
             Debug.LogWarning(
@@ -194,6 +201,7 @@ public class DeliveryManager : MonoBehaviour
         target.CompleteDelivery();
         inFlight--;
         Delivered++;
+        Score += pointsPerDelivery;
     }
 
     private GameObject CreateProjectile()
