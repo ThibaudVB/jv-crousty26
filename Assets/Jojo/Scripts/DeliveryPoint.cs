@@ -22,6 +22,7 @@ public class DeliveryPoint : MonoBehaviour
     private State state = State.Inactive;
 
     public bool IsWaiting => state == State.Waiting;
+    public bool HasOpenOrder => state == State.Waiting || state == State.Pending;
 
     public Vector3 DropPosition =>
         dropTarget != null ? dropTarget.position : transform.position;

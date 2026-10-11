@@ -19,8 +19,16 @@ public static class CroustyPanelValidation
             if (opened) scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
             try
             {
+                int pauseCount = 0;
+                bool hasEventSystem = false;
                 foreach (var root in scene.GetRootGameObjects())
                 {
+                    if (root.GetComponentInChildren<EventSystem>(true) != null) hasEventSystem = true;
+                    foreach (var pause in root.GetComponentsInChildren<CroustyPauseMenu>(true))
+                    {
+                        CheckPause(pause);
+                        pauseCount++;
+                    }
                     foreach (var menu in root.GetComponentsInChildren<CroustyMenu>(true))
                     {
                         Check(menu, "mainPanel", "optionsPanel", "sensitivitySlider", "sensitivityLabel", "volumeSlider", "volumeLabel", "fullscreenLabel");
@@ -39,7 +47,7 @@ public static class CroustyPanelValidation
                         foreach (var button in menu.GetComponentsInChildren<Button>(true))
                             Require(button.onClick.GetPersistentEventCount() > 0 && button.onClick.GetPersistentTarget(0) == menu, "Bouton non relié : " + button.name);
                     }
-                    foreach (var hud in root.GetComponentsInChildren<CroustyHUD>(true)) Check(hud, "canvas", "counterText", "waypointTemplate");
+                    foreach (var hud in root.GetComponentsInChildren<CroustyHUD>(true)) CheckHud(hud);
                     foreach (var map in root.GetComponentsInChildren<BusMinimap>(true)) Check(map, "mapCanvas", "maskRect", "mapImage", "busIcon", "shopIcon", "policeIcon", "gpsLabel", "routeGraphic", "northRect", "deliveryIconTemplate", "circleSprite", "arrowSprite");
                     foreach (var pet in root.GetComponentsInChildren<BusPetController>(true)) Check(pet, "hud", "label");
                     foreach (var fall in root.GetComponentsInChildren<BusFallSpeedEffect>(true)) Check(fall, "canvas", "viewport", "group");
@@ -55,6 +63,11 @@ public static class CroustyPanelValidation
                                     "Carte incomplète : " + card + "." + field);
                         }
                     }
+                }
+                if (path == "Assets/SceneBase.unity" || path == "Assets/Jojo/SceneJojo.unity")
+                {
+                    Require(pauseCount == 1, path + " : un menu pause attendu.");
+                    Require(hasEventSystem, path + " : EventSystem absent.");
                 }
             }
             finally { if (opened) EditorSceneManager.CloseScene(scene, true); }
@@ -91,7 +104,7 @@ public static class CroustyPanelValidation
             Require(map != null && map.enabled && hud != null && hud.enabled, "HUD absent ou désactivé.");
             Check(map, "mapCanvas", "mapImage");
             Require(map.GetComponentInChildren<RawImage>(true).texture != null, "Texture de mini-carte absente.");
-            Check(hud, "canvas", "counterText", "waypointTemplate");
+            CheckHud(hud);
             var bonuses = UnityEngine.Object.FindAnyObjectByType<CroustyBonusHUD>();
             Require(bonuses != null, "Cartes d'atouts absentes.");
             bonuses.Refresh();
@@ -108,6 +121,34 @@ public static class CroustyPanelValidation
         var serialized = new SerializedObject(target);
         foreach (string field in fields)
             Require(serialized.FindProperty(field)?.objectReferenceValue != null, target.name + " : référence absente " + field);
+    }
+    private static void CheckHud(CroustyHUD hud)
+    {
+        Check(hud, "canvas", "waypointTemplate", "deliveryValue", "objectiveValue", "speedValue", "speedFill");
+        var serialized = new SerializedObject(hud);
+        var canvas = (Canvas)serialized.FindProperty("canvas").objectReferenceValue;
+        foreach (string card in new[] { "Carte score", "Carte livraisons", "Carte objectif", "Compteur de vitesse" })
+            Require(canvas.transform.Find(card) != null, hud.name + " : panel absent dans le Canvas : " + card);
+        Require(canvas.transform.Find("Compteur") == null, hud.name + " : ancien compteur encore présent.");
+        var speedFill = (Image)serialized.FindProperty("speedFill").objectReferenceValue;
+        Require(speedFill.sprite != null && speedFill.type == Image.Type.Filled,
+            hud.name + " : jauge de vitesse non remplissable.");
+    }
+    private static void CheckPause(CroustyPauseMenu pause)
+    {
+        var serialized = new SerializedObject(pause);
+        var panel = (GameObject)serialized.FindProperty("pausePanel").objectReferenceValue;
+        Require(panel != null && !panel.activeSelf, pause.name + " : panel pause absent ou ouvert par défaut.");
+        var canvas = pause.GetComponentInChildren<Canvas>(true);
+        Require(canvas != null && panel.transform.IsChildOf(canvas.transform), pause.name + " : Canvas pause absent.");
+        var card = panel.transform.Find("Fond du menu");
+        Require(card != null, pause.name + " : fond du menu absent.");
+        var resume = card.Find("Bouton reprendre")?.GetComponent<Button>();
+        Require(resume != null && resume.onClick.GetPersistentEventCount() == 1 &&
+            resume.onClick.GetPersistentTarget(0) == pause, pause.name + " : bouton Reprendre non relié.");
+        foreach (string placeholder in new[] { "Bouton réglages (placeholder)", "Bouton menu principal (placeholder)" })
+            Require(card.Find(placeholder)?.GetComponent<Button>() != null,
+                pause.name + " : UI placeholder absente : " + placeholder);
     }
     private static void Require(bool condition, string message)
     {

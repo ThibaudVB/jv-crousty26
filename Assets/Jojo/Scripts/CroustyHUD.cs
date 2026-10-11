@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,8 +10,11 @@ public class CroustyHUD : MonoBehaviour
 {
     public DeliveryManager manager;
 
-    [Header("Textes placés dans la scène")]
-    public Text counterText;
+    [Header("Panels placés dans le Canvas")]
+    [SerializeField] private TMP_Text deliveryValue;
+    [SerializeField] private TMP_Text objectiveValue;
+    [SerializeField] private TMP_Text speedValue;
+    [SerializeField] private Image speedFill;
 
     public int fontSize = 32;
 
@@ -23,6 +27,7 @@ public class CroustyHUD : MonoBehaviour
     [SerializeField] private Canvas canvas;
     [SerializeField] private RectTransform waypointTemplate;
     private Font font;
+    private Rigidbody busBody;
     private readonly List<Waypoint> waypoints = new List<Waypoint>();
 
     private class Waypoint
@@ -40,11 +45,14 @@ public class CroustyHUD : MonoBehaviour
                 ? DeliveryManager.Instance
                 : FindAnyObjectByType<DeliveryManager>();
 
-        if (canvas == null || counterText == null || waypointTemplate == null)
+        if (canvas == null || waypointTemplate == null || deliveryValue == null ||
+            objectiveValue == null || speedValue == null || speedFill == null)
         {
             Debug.LogError("Assigner les panels du HUD dans l’Inspector.", this);
             enabled = false;
+            return;
         }
+        FindBusBody();
     }
 
     private void Update()
@@ -52,9 +60,22 @@ public class CroustyHUD : MonoBehaviour
         if (manager == null)
             return;
 
-        counterText.text = manager.HasStarted
-            ? $"Crousty : {manager.CroustyLeft} / {manager.OrdersTotal}"
-            : "Crousty : 0";
+        int total = manager.HasStarted ? manager.OrdersTotal : manager.ordersPerRun;
+        int done = manager.HasStarted ? manager.Delivered : 0;
+        if (deliveryValue != null) deliveryValue.text = $"{done}/{total}";
+        if (objectiveValue != null)
+        {
+            int remaining = Mathf.Max(0, manager.OrdersTotal - manager.Delivered);
+            objectiveValue.text = !manager.HasStarted
+                ? "Récupérer les commandes au restaurant"
+                : remaining > 0
+                    ? $"Livrer les commandes aux clients ({remaining} restante{(remaining > 1 ? "s" : "")})"
+                    : "Tournée terminée ! Retourne au restaurant";
+        }
+        if (busBody == null) FindBusBody();
+        float kmh = busBody != null ? Vector3.ProjectOnPlane(busBody.linearVelocity, Vector3.up).magnitude * 3.6f : 0f;
+        if (speedValue != null) speedValue.text = $"{Mathf.RoundToInt(kmh)} <size=48%>km/h</size>";
+        if (speedFill != null) speedFill.fillAmount = Mathf.Clamp01(kmh / 160f);
 
         UpdateWaypoints();
     }
@@ -62,18 +83,26 @@ public class CroustyHUD : MonoBehaviour
 #if UNITY_EDITOR
     public void PrepareUI()
     {
-        if (canvas != null && waypointTemplate != null) return;
-        BuildDefaultUI();
-        var template = CreateWaypoint();
-        waypointTemplate = template.root;
-        waypointTemplate.name = "Modèle de repère";
-        template.icon.sprite = CroustyUISpriteAssets.Save(template.icon.sprite, "RepereCercle");
-        var arrow = template.arrow.GetComponent<Image>();
-        arrow.sprite = CroustyUISpriteAssets.Save(arrow.sprite, "RepereFleche");
-        waypointTemplate.gameObject.SetActive(false);
-        if (string.IsNullOrEmpty(counterText.text)) counterText.text = "Crousty : 0";
+        if (canvas == null) BuildDefaultUI();
+        if (waypointTemplate == null)
+        {
+            if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var template = CreateWaypoint();
+            waypointTemplate = template.root;
+            waypointTemplate.name = "Modèle de repère";
+            template.icon.sprite = CroustyUISpriteAssets.Save(template.icon.sprite, "RepereCercle");
+            var arrow = template.arrow.GetComponent<Image>();
+            arrow.sprite = CroustyUISpriteAssets.Save(arrow.sprite, "RepereFleche");
+            waypointTemplate.gameObject.SetActive(false);
+        }
     }
 #endif
+
+    private void FindBusBody()
+    {
+        if (manager != null && manager.player != null)
+            busBody = manager.player.GetComponentInParent<Rigidbody>();
+    }
 
     // ---------- REPERES ----------
 
@@ -226,15 +255,6 @@ public class CroustyHUD : MonoBehaviour
         CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
-
-        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
-        if (counterText == null)
-            counterText = CreateText(
-                canvas.transform, "Compteur", font,
-                new Vector2(0f, 1f), new Vector2(30f, -30f),
-                TextAnchor.UpperLeft, fontSize
-            );
 
     }
 #endif

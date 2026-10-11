@@ -30,7 +30,7 @@ public sealed class SceneBaseSession : MonoBehaviour
         passengerText.raycastTarget = false;
         var rect = passengerText.rectTransform;
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
-        rect.anchoredPosition = new Vector2(30, -78);
+        rect.anchoredPosition = new Vector2(30, -230);
         rect.sizeDelta = new Vector2(500, 50);
         label.GetComponent<Outline>().effectColor = Color.black;
     }

@@ -20,12 +20,15 @@ public sealed class BusGPS : MonoBehaviour
     private NavMeshQueryFilter filter;
     private NavMeshPath path;
     private float nextRepath;
+    private ProceduralCity proceduralCity;
+    private readonly List<Vector3> proceduralRoute = new List<Vector3>();
 
     private void Awake()
     {
         path = new NavMeshPath();
         Charges = startingCharges;
         if (deliveries == null) deliveries = GetComponent<DeliveryManager>();
+        proceduralCity = FindAnyObjectByType<ProceduralCity>();
     }
     private void OnEnable() { if (deliveries != null) deliveries.DeliveryCompleted += OnDelivered; }
     private void OnDisable()
@@ -89,6 +92,8 @@ public sealed class BusGPS : MonoBehaviour
     private bool Calculate(DeliveryPoint point)
     {
         if (deliveries == null || deliveries.player == null || point == null) return false;
+        if (proceduralCity != null && proceduralCity.WorldRoot != null)
+            return proceduralCity.TryBuildRoute(deliveries.player.position, point.transform.position, proceduralRoute);
         // Echantillonnage court : ne jamais accrocher un toit ou une rue de l'autre cote d'un mur.
         return NavMesh.SamplePosition(deliveries.player.position, out var start, 6f, filter) &&
             NavMesh.SamplePosition(point.transform.position, out var end, 4f, filter) &&
@@ -99,7 +104,7 @@ public sealed class BusGPS : MonoBehaviour
     {
         if (!isActiveAndEnabled || Time.timeScale <= 0f || Charges <= 0 || deliveries == null) return false;
         if (Target != null && !Target.IsWaiting) return false; // Colis en vol.
-        if (!EnsureNavigation()) return false;
+        if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         var candidates = new List<DeliveryPoint>();
         foreach (var point in deliveries.deliveryPoints)
             if (point != null && point.IsWaiting) candidates.Add(point);
@@ -133,7 +138,8 @@ public sealed class BusGPS : MonoBehaviour
     private void SetRoute()
     {
         Route.Clear();
-        Route.AddRange(path.corners);
+        if (proceduralCity != null && proceduralCity.WorldRoot != null) Route.AddRange(proceduralRoute);
+        else Route.AddRange(path.corners);
         float distance = 0;
         for (int i=1; i<Route.Count; i++) distance += Vector3.Distance(Route[i-1], Route[i]);
         Status = $"GPS : {distance:0} m  [G] changer";

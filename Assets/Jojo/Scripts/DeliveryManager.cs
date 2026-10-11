@@ -99,8 +99,21 @@ public class DeliveryManager : MonoBehaviour
         return !HasStarted || AllDelivered;
     }
 
+    public void RegisterPoint(DeliveryPoint point)
+    {
+        if (point != null && !deliveryPoints.Contains(point)) deliveryPoints.Add(point);
+    }
+
+    public void UnregisterPoint(DeliveryPoint point)
+    {
+        // Chunks containing waiting orders or airborne parcels must remain loaded.
+        if (point != null && point.HasOpenOrder) return;
+        deliveryPoints.Remove(point);
+    }
+
     private void LoadOrders()
     {
+        deliveryPoints.RemoveAll(point => point == null || !point.isActiveAndEnabled);
         // Désactive les anciens points
         foreach (DeliveryPoint point in deliveryPoints)
             point.SetOrderActive(false);

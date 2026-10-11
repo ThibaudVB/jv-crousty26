@@ -571,7 +571,7 @@ public class BusCameraFollow : MonoBehaviour
 
     private void HandleCursor()
     {
-        if (Keyboard.current != null &&
+        if (!CroustyPauseMenu.ToggledThisFrame && Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             Cursor.lockState = CursorLockMode.None;
