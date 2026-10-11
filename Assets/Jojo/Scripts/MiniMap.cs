@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
-// Mini map ronde en haut à droite de l'écran.
+// Mini map ronde en bas à droite de l'écran.
 // Une caméra vue du dessus suit le bus et filme dans une texture,
 // affichée dans le HUD. Le bus est la flèche au centre.
 // Les faisceaux des adresses et du magasin se voient d'en haut.
@@ -19,9 +19,9 @@ public class MiniMap : MonoBehaviour
     public float cameraHeight = 300f;
     public Color backgroundColor = new Color32(0x3A, 0x3A, 0x45, 0xFF);
 
-    [Header("Affichage (depuis le coin haut-droit)")]
+    [Header("Affichage (depuis le coin bas-droit)")]
     public float size = 280f;
-    public Vector2 screenOffset = new Vector2(-30f, -30f);
+    public Vector2 screenOffset = new Vector2(-30f, 30f);
     public float borderWidth = 6f;
     public Color borderColor = new Color32(0x26, 0x26, 0x31, 0xFF);
     public Color playerColor = new Color(1f, 0.6f, 0.1f);
@@ -48,7 +48,7 @@ public class MiniMap : MonoBehaviour
         root.transform.SetParent(canvas, false);
 
         RectTransform rect = root.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 0f);
         rect.anchoredPosition = screenOffset;
         rect.sizeDelta = Vector2.one * (size + borderWidth * 2f);
         SetupImage(root.GetComponent<Image>(), JojoVisuals.CircleSprite, borderColor);
