@@ -34,9 +34,25 @@ public class BusDamage : MonoBehaviour
     public Color fireColor = new Color(1f, 0.42f, 0.05f);
     public Color fireCoreColor = new Color(1f, 0.85f, 0.2f);
 
+    [Header("Position du feu")]
+    [Tooltip("Points qui marquent les emplacements du feu (optionnel). Si vide, on cherche les enfants du bus portant le nom ci-dessous")]
+    public Transform[] firePoint;
+    public string firePointName = "PointFeu";
+    [Tooltip("Sinon : position libre dans le repère local du bus (x = droite, y = haut, z = avant)")]
+    public bool useCustomPosition = false;
+    public Vector3 customFirePosition = new Vector3(0f, 1.5f, 2f);
+
+    private Vector3 defaultEnginePoint;   // position d'origine, calculée d'après le collider
+
     public bool IsDamaged { get; private set; }
     // Appelé à chaque choc
     public event System.Action Damaged;
+    // Éteint les flammes de tous les points de feu (carrosserie noircie et fumée restent)
+    public void ExtinguishFire()
+    {
+        foreach (Transform fire in fires)
+            if (fire != null) fire.gameObject.SetActive(false);
+    }
 
     private Rigidbody rb;
     private BoxCollider body;
@@ -51,10 +67,11 @@ public class BusDamage : MonoBehaviour
     private readonly List<Paint> paints = new List<Paint>();
     private readonly List<Material> busMaterials = new List<Material>();
 
-    // Point du moteur (repère local du bus) d'où sortent fumée et flammes
-    private Vector3 enginePoint;
-    private Transform fire;
-    private Light fireLight;
+    // Points du moteur (repère local du bus) d'où sortent fumée et flammes
+    private readonly List<Vector3> enginePoints = new List<Vector3>();
+    private readonly List<Transform> firePointSources = new List<Transform>();
+    private readonly List<Transform> fires = new List<Transform>();
+    private readonly List<Light> fireLights = new List<Light>();
     private readonly List<Transform> flames = new List<Transform>();
     private readonly List<Vector3> flameScales = new List<Vector3>();
 
@@ -168,9 +185,12 @@ public class BusDamage : MonoBehaviour
         {
             IsDamaged = true;
             ApplyPaint();
-            if (onFire && fire != null)
-                fire.gameObject.SetActive(true);
         }
+
+        // Les flammes (re)démarrent à chaque choc, y compris après un passage au garage
+        if (onFire)
+            foreach (Transform fire in fires)
+                fire.gameObject.SetActive(true);
 
         Damaged?.Invoke();
 
@@ -221,41 +241,26 @@ public class BusDamage : MonoBehaviour
             center = body.center;
             size = body.size;
         }
-        enginePoint = center + new Vector3(0f, size.y * 0.5f, size.z * 0.3f);
+        defaultEnginePoint = center + new Vector3(0f, size.y * 0.5f, size.z * 0.3f);
 
-        // Les flammes suivent le bus. On compense son échelle pour garder des tailles en mètres.
-        fire = new GameObject("Feu bus").transform;
-        fire.SetParent(transform, false);
-        fire.localPosition = enginePoint;
-        Vector3 scale = transform.lossyScale;
-        fire.localScale = new Vector3(1f / Mathf.Max(0.01f, Mathf.Abs(scale.x)),
-            1f / Mathf.Max(0.01f, Mathf.Abs(scale.y)), 1f / Mathf.Max(0.01f, Mathf.Abs(scale.z)));
+        firePointSources.Clear();
+        if (firePoint != null)
+            foreach (Transform point in firePoint)
+                if (point != null && !firePointSources.Contains(point))
+                    firePointSources.Add(point);
 
-        for (int i = 0; i < 5; i++)
+        if (firePointSources.Count == 0 && !string.IsNullOrEmpty(firePointName))
+            firePointSources.AddRange(FindChildrenByName(transform, firePointName));
+
+        if (firePointSources.Count == 0)
+            firePointSources.Add(null);
+
+        enginePoints.Clear();
+        foreach (Transform point in firePointSources)
         {
-            bool core = i >= 3;
-            GameObject flame = JojoVisuals.CreateShape(PrimitiveType.Cube, fire, core ? fireCoreColor : fireColor);
-            flame.name = "Flamme";
-            float angle = i * 2.4f;
-            flame.transform.localPosition = core
-                ? new Vector3((i - 3.5f) * 0.3f, 0.3f, 0f)
-                : new Vector3(Mathf.Cos(angle) * 0.5f, 0.4f, Mathf.Sin(angle) * 0.4f);
-            flame.transform.localRotation = Quaternion.Euler(0f, 45f + i * 20f, 0f);
-            Vector3 flameScale = core ? new Vector3(0.35f, 0.9f, 0.35f) : new Vector3(0.6f, 1.3f, 0.6f);
-            flame.transform.localScale = flameScale;
-            flames.Add(flame.transform);
-            flameScales.Add(flameScale);
+            enginePoints.Add(ComputeEnginePoint(point));
+            BuildFireEffect(enginePoints[enginePoints.Count - 1]);
         }
-
-        fireLight = new GameObject("Lumiere feu").AddComponent<Light>();
-        fireLight.transform.SetParent(fire, false);
-        fireLight.transform.localPosition = Vector3.up;
-        fireLight.type = LightType.Point;
-        fireLight.color = fireColor;
-        fireLight.range = 10f;
-        fireLight.intensity = 4f;
-
-        fire.gameObject.SetActive(false);
 
         // Fumée : quelques sphères réutilisées, dans le monde pour laisser une traînée
         smokeRoot = new GameObject("Fumee bus").transform;
@@ -285,8 +290,91 @@ public class BusDamage : MonoBehaviour
 
     private void Update()
     {
+        // Les positions sont relues à chaque frame pour permettre leur réglage en direct.
+        for (int i = 0; i < firePointSources.Count; i++)
+        {
+            enginePoints[i] = ComputeEnginePoint(firePointSources[i]);
+            fires[i].localPosition = enginePoints[i];
+        }
+
         UpdateSmoke();
         UpdateFire();
+    }
+
+    private void BuildFireEffect(Vector3 localPosition)
+    {
+        // Les flammes suivent le bus. On compense son échelle pour garder des tailles en mètres.
+        Transform fire = new GameObject("Feu bus").transform;
+        fire.SetParent(transform, false);
+        fire.localPosition = localPosition;
+        Vector3 scale = transform.lossyScale;
+        fire.localScale = new Vector3(1f / Mathf.Max(0.01f, Mathf.Abs(scale.x)),
+            1f / Mathf.Max(0.01f, Mathf.Abs(scale.y)), 1f / Mathf.Max(0.01f, Mathf.Abs(scale.z)));
+        fires.Add(fire);
+
+        for (int i = 0; i < 5; i++)
+        {
+            bool core = i >= 3;
+            GameObject flame = JojoVisuals.CreateShape(PrimitiveType.Cube, fire, core ? fireCoreColor : fireColor);
+            flame.name = "Flamme";
+            float angle = i * 2.4f;
+            flame.transform.localPosition = core
+                ? new Vector3((i - 3.5f) * 0.3f, 0.3f, 0f)
+                : new Vector3(Mathf.Cos(angle) * 0.5f, 0.4f, Mathf.Sin(angle) * 0.4f);
+            flame.transform.localRotation = Quaternion.Euler(0f, 45f + i * 20f, 0f);
+            Vector3 flameScale = core ? new Vector3(0.35f, 0.9f, 0.35f) : new Vector3(0.6f, 1.3f, 0.6f);
+            flame.transform.localScale = flameScale;
+            flames.Add(flame.transform);
+            flameScales.Add(flameScale);
+        }
+
+        Light fireLight = new GameObject("Lumiere feu").AddComponent<Light>();
+        fireLight.transform.SetParent(fire, false);
+        fireLight.transform.localPosition = Vector3.up;
+        fireLight.type = LightType.Point;
+        fireLight.color = fireColor;
+        fireLight.range = 10f;
+        fireLight.intensity = 4f;
+        fireLights.Add(fireLight);
+        fire.gameObject.SetActive(false);
+    }
+
+    // Ordre de priorité : transform assigné > position libre > position d'origine
+    private Vector3 ComputeEnginePoint(Transform point)
+    {
+        if (point != null)
+            return transform.InverseTransformPoint(point.position);
+        if (useCustomPosition)
+            return customFirePosition;
+        return defaultEnginePoint;
+    }
+
+    private static List<Transform> FindChildrenByName(Transform root, string childName)
+    {
+        List<Transform> matches = new List<Transform>();
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            if (child != root && child.name == childName)
+                matches.Add(child);
+        return matches;
+    }
+
+    // Sphères orange dans la Scene view pour voir tous les emplacements du feu
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(1f, 0.42f, 0.05f);
+        bool hasPoint = false;
+        if (firePoint != null)
+            foreach (Transform point in firePoint)
+                if (point != null)
+                {
+                    Gizmos.DrawWireSphere(point.position, 0.4f);
+                    hasPoint = true;
+                }
+
+        if (!hasPoint && useCustomPosition)
+            Gizmos.DrawWireSphere(transform.TransformPoint(customFirePosition), 0.4f);
+        else if (!hasPoint && Application.isPlaying)
+            Gizmos.DrawWireSphere(transform.TransformPoint(defaultEnginePoint), 0.4f);
     }
 
     private void UpdateSmoke()
@@ -295,11 +383,11 @@ public class BusDamage : MonoBehaviour
         if (IsDamaged)
         {
             puffTimer += 7f * Time.deltaTime;
-            Vector3 engine = transform.TransformPoint(enginePoint);
             while (puffTimer >= 1f)
             {
                 puffTimer -= 1f;
-                EmitPuff(engine + Random.insideUnitSphere * 0.4f, 0.5f, 1.1f);
+                foreach (Vector3 enginePoint in enginePoints)
+                    EmitPuff(transform.TransformPoint(enginePoint) + Random.insideUnitSphere * 0.4f, 0.5f, 1.1f);
             }
         }
 
@@ -321,7 +409,7 @@ public class BusDamage : MonoBehaviour
 
     private void UpdateFire()
     {
-        if (fire == null || !fire.gameObject.activeSelf) return;
+        if (fires.Count == 0 || !fires[0].gameObject.activeSelf) return;
 
         for (int i = 0; i < flames.Count; i++)
         {
@@ -334,6 +422,7 @@ public class BusDamage : MonoBehaviour
             flames[i].localPosition = p;
         }
 
-        fireLight.intensity = 3f + 2f * Mathf.PerlinNoise(Time.time * 9f, 0.5f);
+        foreach (Light fireLight in fireLights)
+            fireLight.intensity = 3f + 2f * Mathf.PerlinNoise(Time.time * 9f, fireLights.IndexOf(fireLight) * 0.5f);
     }
 }
