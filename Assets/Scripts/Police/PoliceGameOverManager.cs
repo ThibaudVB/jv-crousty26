@@ -19,10 +19,13 @@ public class PoliceGameOverManager : MonoBehaviour
     }
 
     public void TriggerPoliceGameOver()
-        => TriggerGameOver(false);
+        => TriggerGameOver(null);
     public void TriggerTimeoutGameOver()
-        => TriggerGameOver(true);
-    private void TriggerGameOver(bool timeout)
+        => TriggerGameOver("OUT OF TIME!");
+    public void TriggerWreckGameOver()
+        => TriggerGameOver("WRECKED!");
+    // title : remplace le titre "POLICE" du panneau (null = garde le titre de la police)
+    private void TriggerGameOver(string title)
     {
         if (gameOver)
             return;
@@ -36,12 +39,12 @@ public class PoliceGameOverManager : MonoBehaviour
         }
         if (gameOverPanel != null)
         {
-            if (timeout)
+            if (title != null)
             {
                 foreach (var text in gameOverPanel.GetComponentsInChildren<TMPro.TMP_Text>(true))
-                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
+                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = title;
                 foreach (var text in gameOverPanel.GetComponentsInChildren<UnityEngine.UI.Text>(true))
-                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
+                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = title;
             }
             CroustyPanelMotion.Show(gameOverPanel);
             CroustySoundDesignManager.PlayUI(CroustySound.Paper);
@@ -50,7 +53,7 @@ public class PoliceGameOverManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         Time.timeScale = 0f;
-        Debug.Log(timeout ? "Game Over : livraison hors delai." : "Game Over : la police a immobilise le bus.", this);
+        Debug.Log(title != null ? "Game Over : " + title : "Game Over : la police a immobilise le bus.", this);
     }
 
     public void RestartLevel()

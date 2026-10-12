@@ -15,6 +15,24 @@ public static class JojoVisuals
         if (material != null) renderer.sharedMaterial = material;
     }
 
+    // Forme simple sans collision ni ombre (flammes, fumée, débris)
+    public static GameObject CreateShape(PrimitiveType type, Transform parent, Color color)
+    {
+        GameObject shape = GameObject.CreatePrimitive(type);
+        var collider = shape.GetComponent<Collider>();
+        collider.enabled = false;
+        Object.Destroy(collider);
+
+        shape.transform.SetParent(parent, false);
+
+        Renderer renderer = shape.GetComponent<Renderer>();
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+
+        SetColor(shape, color);
+        return shape;
+    }
+
     // Faisceau lumineux vertical, visible au-dessus des bâtiments (sans collision)
     public static GameObject CreateBeacon(Transform parent, Color color, float height, float width)
     {
@@ -94,12 +112,16 @@ public static class JojoVisuals
     // Petits sprites générés pour le HUD
     private static Sprite circleSprite;
     private static Sprite arrowSprite;
+    private static Sprite heartSprite;
 
     public static Sprite CircleSprite =>
         circleSprite != null ? circleSprite : circleSprite = CreateSprite(IsInCircle);
 
     public static Sprite ArrowSprite =>
         arrowSprite != null ? arrowSprite : arrowSprite = CreateSprite(IsInArrow);
+
+    public static Sprite HeartSprite =>
+        heartSprite != null ? heartSprite : heartSprite = CreateSprite(IsInHeart);
 
     private static Sprite CreateSprite(System.Func<float, float, float> shape)
     {
@@ -126,6 +148,15 @@ public static class JojoVisuals
     {
         float distance = Mathf.Sqrt(u * u + v * v);
         return Mathf.Clamp01((1f - distance) * 16f);
+    }
+
+    // Coeur : (x² + y² - 1)³ - x²y³ <= 0
+    private static float IsInHeart(float u, float v)
+    {
+        float x = u * 1.25f;
+        float y = v * 1.25f + 0.1f;
+        float a = x * x + y * y - 1f;
+        return a * a * a - x * x * y * y * y <= 0f ? 1f : 0f;
     }
 
     // Triangle qui pointe vers le haut

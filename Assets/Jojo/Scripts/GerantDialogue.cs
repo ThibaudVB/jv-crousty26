@@ -29,6 +29,14 @@ public class GerantDialogue : MonoBehaviour
     public string runCompleteLine = "Nice job! {0} points! Come back to the shop for more orders!";
     [Tooltip("Temps écoulé ou arrêté par la police")]
     public string failedLine = "What a disaster... The customers are still waiting!";
+    [Tooltip("Après un choc. {0} = chances restantes")]
+    public string crashLine = "Hey! Watch my car! {0} chances left!";
+    [Tooltip("Après le choc qui met le feu, quand il ne reste qu'une chance")]
+    public string lastChanceLine = "It's on fire! One more crash and you're done!";
+    [Tooltip("Le bus est cassé")]
+    public string wreckedLine = "My car!! You wrecked it... You're fired!";
+    [Tooltip("Durée d'affichage d'une réplique de choc")]
+    public float crashLineSeconds = 3f;
     [Tooltip("Secondes restantes à partir desquelles le gérant presse le joueur")]
     public float hurrySeconds = 15f;
 
@@ -57,6 +65,9 @@ public class GerantDialogue : MonoBehaviour
     private RectTransform arrow;
     private string currentMessage = "";
     private float shownLetters;
+    private BusDamage damage;
+    private string crashMessage;
+    private float crashMessageUntil;
 
     // Taille de la boîte, d'après la maquette
     private static readonly Vector2 BoxSize = new Vector2(740f, 410f);
@@ -67,6 +78,10 @@ public class GerantDialogue : MonoBehaviour
             manager = DeliveryManager.Instance != null
                 ? DeliveryManager.Instance
                 : FindAnyObjectByType<DeliveryManager>();
+
+        damage = FindAnyObjectByType<BusDamage>();
+        if (damage != null)
+            damage.Damaged += OnDamaged;
 
         Build();
     }
@@ -141,6 +156,18 @@ public class GerantDialogue : MonoBehaviour
         arrow.localRotation = Quaternion.Euler(0f, 0f, 180f);
     }
 
+    private void OnDestroy()
+    {
+        if (damage != null)
+            damage.Damaged -= OnDamaged;
+    }
+
+    private void OnDamaged(int chancesLeft)
+    {
+        crashMessage = chancesLeft == 1 ? lastChanceLine : string.Format(crashLine, chancesLeft);
+        crashMessageUntil = Time.time + crashLineSeconds;
+    }
+
     public void SetMessage(string message)
     {
         if (messageText == null || message == null || message == currentMessage)
@@ -153,8 +180,14 @@ public class GerantDialogue : MonoBehaviour
     // Réplique selon l'état de la tournée. null = on garde la réplique actuelle.
     private string GetMessage()
     {
+        if (damage != null && damage.IsBroken)
+            return wreckedLine;
+
         if (manager.HasFailed)
             return failedLine;
+
+        if (Time.time < crashMessageUntil)
+            return crashMessage;
 
         if (!manager.HasStarted)
             return startLine;

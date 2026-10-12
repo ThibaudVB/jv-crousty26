@@ -89,6 +89,11 @@ public class DeliveryManager : MonoBehaviour
 
         if (player == null)
             Debug.LogWarning("DeliveryManager : aucun joueur (BusController) trouvé.");
+
+        // Dégâts du bus : au bout de 3 chocs, c'est perdu
+        BusController playerBus = player != null ? player.GetComponentInParent<BusController>() : null;
+        if (playerBus != null && playerBus.GetComponent<BusDamage>() == null)
+            playerBus.gameObject.AddComponent<BusDamage>();
     }
 
     private void OnDestroy()
