@@ -1,11 +1,13 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 // Controls only pause state. The visual menu and button events live in the scene Canvas.
 [DefaultExecutionOrder(-1000)]
 public sealed class CroustyPauseMenu : MonoBehaviour
 {
     [SerializeField] private GameObject pausePanel;
+    [SerializeField] private CroustyMenu optionsMenu;
 
     private bool paused;
     private CursorLockMode previousLockState;
@@ -23,12 +25,18 @@ public sealed class CroustyPauseMenu : MonoBehaviour
             return;
         }
         pausePanel.SetActive(false);
+        CroustyPanelMotion.Prepare(pausePanel);
     }
 
     private void Update()
     {
         if (Keyboard.current == null || !Keyboard.current.escapeKey.wasPressedThisFrame) return;
-        if (paused) Resume();
+        if (paused && optionsMenu != null && optionsMenu.IsOptionsOpen)
+        {
+            lastToggleFrame = Time.frameCount;
+            optionsMenu.CloseOptions();
+        }
+        else if (paused) Resume();
         else if (Time.timeScale > 0f) Pause();
     }
 
@@ -39,7 +47,8 @@ public sealed class CroustyPauseMenu : MonoBehaviour
         previousCursorVisibility = Cursor.visible;
         paused = true;
         lastToggleFrame = Time.frameCount;
-        pausePanel.SetActive(true);
+        CroustyPanelMotion.Show(pausePanel);
+        CroustySoundDesignManager.PlayUI(CroustySound.Paper);
         Time.timeScale = 0f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -50,7 +59,10 @@ public sealed class CroustyPauseMenu : MonoBehaviour
         if (!paused) return;
         paused = false;
         lastToggleFrame = Time.frameCount;
-        pausePanel.SetActive(false);
+        bool closingOptions = optionsMenu != null && optionsMenu.IsOptionsOpen;
+        if (closingOptions) optionsMenu.CloseOptions();
+        CroustyPanelMotion.Hide(pausePanel);
+        if (!closingOptions) CroustySoundDesignManager.PlayUI(CroustySound.Paper);
         Time.timeScale = 1f;
         Cursor.lockState = previousLockState;
         Cursor.visible = previousCursorVisibility;
@@ -59,5 +71,26 @@ public sealed class CroustyPauseMenu : MonoBehaviour
     private void OnDisable()
     {
         if (paused) Resume();
+    }
+
+    public void OpenSettings()
+    {
+        if (!paused || optionsMenu == null) return;
+        optionsMenu.OpenOptions();
+    }
+
+    public void ReturnToMainMenu()
+    {
+        if (!Application.CanStreamedLevelBeLoaded("CroustyMainMenu"))
+        {
+            Debug.LogError("Ajouter CroustyMainMenu aux scènes du build.", this);
+            return;
+        }
+        PlayerPrefs.Save();
+        Resume();
+        Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        SceneManager.LoadScene("CroustyMainMenu");
     }
 }

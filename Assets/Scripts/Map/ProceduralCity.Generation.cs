@@ -10,6 +10,7 @@ public sealed partial class ProceduralCity
     private const float SourceScale = BlockSize / 60f;
     private readonly Dictionary<string, Template> catalog = new Dictionary<string, Template>();
     private readonly List<Landmark> urbanBlocks = new List<Landmark>();
+    private readonly List<Landmark> denseBlocks = new List<Landmark>();
     private readonly List<Landmark> streetSets = new List<Landmark>();
     private readonly List<Template> roofCourse = new List<Template>();
     private readonly List<Template> streetKickers = new List<Template>();
@@ -80,7 +81,7 @@ public sealed partial class ProceduralCity
             float d = (new Vector3(bx * BlockSize + 32, 0, bz * BlockSize + 58) - p).sqrMagnitude;
             if (d < distance) { distance = d; nearestShopChunk = chunk; }
         }
-        LoadChunk(nearestShopChunk);
+        // Scheduled asynchronously within the streaming budget.
     }
 
     private void ReadTemplates()
@@ -130,8 +131,16 @@ public sealed partial class ProceduralCity
         foreach (var pair in native) if (pair.Value.Exists(p => p.name.StartsWith("Building_"))) urbanBlocks.Add(Assembly(pair.Key, pair.Value));
         foreach (var pair in streets) streetSets.Add(Assembly(pair.Key, pair.Value));
         foreach (var pair in groups) landmarks.Add(Assembly(pair.Key, pair.Value));
+        foreach (var block in urbanBlocks)
+        {
+            int count = 0;
+            foreach (var part in block.parts) if (part.name.StartsWith("Building_")) count++;
+            if (count >= 4) denseBlocks.Add(block);
+        }
+        if (denseBlocks.Count == 0) denseBlocks.AddRange(urbanBlocks);
         buildings.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
         urbanBlocks.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+        denseBlocks.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
         streetSets.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
         landmarks.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
         roofCourse.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
@@ -213,7 +222,7 @@ public sealed partial class ProceduralCity
     private void BuildNativeBlock(Transform parent, System.Random random, float yaw, District district)
     {
         // Weight dense source blocks; preserve each facade's orientation, height and alley.
-        var pool = urbanBlocks.FindAll(p => p.parts.FindAll(t => t.name.StartsWith("Building_")).Count >= 4);
+        var pool = denseBlocks;
         if (district == District.Industrial && random.Next(3) == 0) pool = urbanBlocks;
         Landmark source = pool[random.Next(pool.Count)];
         Transform root = new GameObject("Ilot original " + source.name).transform;
@@ -322,7 +331,7 @@ public sealed partial class ProceduralCity
             go.transform.localPosition = new Vector3(side == 0 ? -11 : 11, .15f, 25);
             var point = go.AddComponent<DeliveryPoint>();
             point.deliveryRadius = 12; point.beamHeight = 80; point.beamWidth = 1.6f;
-            go.SetActive(true); chunk.addresses.Add(point); deliveries.RegisterPoint(point);
+            go.SetActive(true); chunk.addresses.Add(point);
         }
     }
 
@@ -362,8 +371,13 @@ public sealed partial class ProceduralCity
         return root.gameObject;
     }
 
-    private static GameObject AddImported(Template part, Transform root, Vector3 offset, bool solid)
+    private void AddImported(Template part, Transform root, Vector3 offset, bool solid)
     {
+        if (deferImports)
+        {
+            importWork.Enqueue(new ImportWork { part = part, root = root, offset = offset, solid = solid });
+            return;
+        }
         var mesh = new GameObject("Visuel " + part.name, typeof(MeshFilter), typeof(MeshRenderer));
         mesh.transform.SetParent(root, false);
         mesh.transform.localPosition = part.matrix.GetColumn(3) - (Vector4)offset;
@@ -371,10 +385,46 @@ public sealed partial class ProceduralCity
         mesh.transform.localScale = part.matrix.lossyScale;
         mesh.GetComponent<MeshFilter>().sharedMesh = part.mesh;
         mesh.GetComponent<MeshRenderer>().sharedMaterials = part.materials;
-        if (solid && !part.name.Contains("Text") && !part.name.Contains("Sign"))
+        bool lamp = part.name.StartsWith("Lamp_");
+        bool streetProp = lamp || part.name.StartsWith("Bench_") || part.name.StartsWith("Bin_") ||
+            part.name.StartsWith("BikeRack_") || part.name.StartsWith("Hydrant_") ||
+            part.name.StartsWith("BusStop_") || part.name.StartsWith("Cone_") || part.name.StartsWith("Bollard_") ||
+            part.name.StartsWith("StreetSign_") || part.name.StartsWith("SignPost_");
+        if (streetProp) AddImpactPhysics(mesh, root, lamp || part.name.StartsWith("SignPost_") || part.name.StartsWith("StreetSign_"));
+        if (CroustyDayNightCycle.Instance != null)
+        {
+            var renderer = mesh.GetComponent<MeshRenderer>();
+            if (lamp || part.name.StartsWith("Building_") || part.name.EndsWith("_Shop"))
+                mesh.AddComponent<CroustyNightFixture>().Configure(renderer, lamp);
+        }
+        if (solid && !streetProp && !part.name.Contains("Text") && !part.name.Contains("Sign"))
             mesh.AddComponent<MeshCollider>().sharedMesh = part.mesh;
         if (solid) mesh.AddComponent<RadarMapElement>().kind = part.name.Contains("Ramp") || part.name.Contains("Deck") ||
             part.name.Contains("Bridge") ? RadarMapElement.Kind.Road : RadarMapElement.Kind.Building;
-        return mesh;
+
+    }
+
+    private static void AddImpactPhysics(GameObject mesh, Transform parent, bool pole)
+    {
+        // FBX mesh axes are rotated. Keep the physical root upright and preserve
+        // the imported mesh's world transform, including its original proportions.
+        Bounds bounds = mesh.GetComponent<Renderer>().bounds;
+        var root = new GameObject("Breakable " + mesh.name);
+        root.SetActive(false);
+        root.transform.SetParent(parent, false);
+        root.transform.position = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+        mesh.transform.SetParent(root.transform, true);
+        ConfigureImpact(root, pole);
+        root.SetActive(true);
+    }
+
+    private static MapImpactProp ConfigureImpact(GameObject root, bool pole)
+    {
+        var prop = root.AddComponent<MapImpactProp>();
+        prop.impactType = pole ? MapImpactProp.ImpactType.FallingLamppost : MapImpactProp.ImpactType.FlyingCone;
+        prop.mass = pole ? 30f : 14f;
+        prop.minimumImpactSpeedKmh = 6f;
+        if (!pole) { prop.upwardSpeed = .35f; prop.upwardSpeedMultiplier = .04f; prop.spinSpeed = 3f; prop.maximumLaunchSpeed = 12f; }
+        return prop;
     }
 }

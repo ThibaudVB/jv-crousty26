@@ -3,19 +3,23 @@ using UnityEngine;
 // Petits outils pour créer des marqueurs visibles sans préparer de matériau.
 public static class JojoVisuals
 {
+    private static Material markerMaterial;
+    private static bool reportedMissingMaterial;
     public static void SetColor(GameObject target, Color color)
     {
         Renderer renderer = target.GetComponent<Renderer>();
         if (renderer == null)
             return;
 
-        renderer.material = CreateUnlitMaterial(color, false);
+        var material = CreateUnlitMaterial(color, false);
+        if (material != null) renderer.sharedMaterial = material;
     }
 
     // Faisceau lumineux vertical, visible au-dessus des bâtiments (sans collision)
     public static GameObject CreateBeacon(Transform parent, Color color, float height, float width)
     {
         GameObject beacon = new GameObject("Faisceau");
+        beacon.SetActive(false);
         beacon.transform.SetParent(parent, false);
 
         // Coeur du faisceau : fin et très lumineux
@@ -23,7 +27,7 @@ public static class JojoVisuals
 
         // Halo : plus large et transparent, il pulse
         GameObject halo = CreateBeamPart(beacon.transform, "Halo", color, height, width, 0.35f);
-        halo.AddComponent<BeaconPulse>();
+        if (halo != null) halo.AddComponent<BeaconPulse>();
 
         // Lumière au sol
         GameObject lightObject = new GameObject("Lumiere");
@@ -36,14 +40,20 @@ public static class JojoVisuals
         light.range = 15f;
         light.intensity = 8f;
 
+        beacon.SetActive(true);
         return beacon;
     }
 
     private static GameObject CreateBeamPart(Transform parent, string name, Color color, float height, float width, float alpha)
     {
+        color.a = alpha;
+        var material = CreateUnlitMaterial(color, true);
+        if (material == null) return null;
         GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         part.name = name;
-        Object.Destroy(part.GetComponent<Collider>());
+        var collider = part.GetComponent<Collider>();
+        collider.enabled = false;
+        Object.Destroy(collider);
 
         part.transform.SetParent(parent, false);
         part.transform.localPosition = Vector3.up * (height * 0.5f);
@@ -54,35 +64,30 @@ public static class JojoVisuals
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         renderer.receiveShadows = false;
 
-        color.a = alpha;
-        renderer.material = CreateUnlitMaterial(color, true);
+        renderer.sharedMaterial = material;
 
         return part;
     }
 
     private static Material CreateUnlitMaterial(Color color, bool additive)
     {
-        Shader shader =
-            Shader.Find("Universal Render Pipeline/Unlit") ??
-            Shader.Find("Unlit/Color");
-
-        Material material = new Material(shader);
-        material.color = color;
-        if (material.HasProperty("_BaseColor"))
-            material.SetColor("_BaseColor", color);
-
-        if (additive && material.HasProperty("_Surface"))
+        // The Resources material references its shader, so player builds retain it.
+        // No runtime-only Shader.Find or transparent keyword variant is needed.
+        if (markerMaterial == null) markerMaterial = Resources.Load<Material>("Crousty/WorldMarker");
+        if (markerMaterial == null || markerMaterial.shader == null || !markerMaterial.shader.isSupported)
         {
-            // Matériau URP transparent en mode additif (effet lumineux)
-            material.SetFloat("_Surface", 1f);
-            material.SetFloat("_Blend", 2f);
-            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
-            material.SetFloat("_ZWrite", 0f);
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            if (!reportedMissingMaterial)
+                Debug.LogError("Matériau de repère Crousty/WorldMarker absent ou non compatible. Les livraisons restent disponibles.");
+            reportedMissingMaterial = true;
+            return null;
         }
-
+        Material material = new Material(markerMaterial);
+        material.SetColor("_BaseColor", color);
+        material.SetFloat("_SrcBlend", additive ? (float)UnityEngine.Rendering.BlendMode.SrcAlpha : (float)UnityEngine.Rendering.BlendMode.One);
+        material.SetFloat("_DstBlend", additive ? (float)UnityEngine.Rendering.BlendMode.One : (float)UnityEngine.Rendering.BlendMode.Zero);
+        material.SetFloat("_ZWrite", additive ? 0f : 1f);
+        material.SetOverrideTag("RenderType", additive ? "Transparent" : "Opaque");
+        material.renderQueue = additive ? (int)UnityEngine.Rendering.RenderQueue.Transparent : (int)UnityEngine.Rendering.RenderQueue.Geometry;
         return material;
     }
 

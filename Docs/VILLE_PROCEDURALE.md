@@ -22,11 +22,17 @@ Les grands parcs occupent une surface continue de 108 × 108 m dans une parcelle
 
 ## Streaming et gameplay
 
-Les chunks mesurent 128 × 128 m, avec des îlots de 64 m. Neuf chunks sont construits avant le gameplay, puis le voisinage de rayon `viewDistance = 2` est complété progressivement. Un anneau de rétention évite les recréations continuelles aux frontières et conserve les ponts voisins. Les déplacements exceptionnels rechargent immédiatement le sol autour du bus.
+Les chunks mesurent 128 × 128 m, avec des îlots de 64 m. Neuf quartiers sont construits avant le gameplay. Ensuite, la génération avance par petites étapes : préparation d’un îlot, import d’un mesh avec sa collision, puis signalisation carrefour par carrefour. `generationBudgetMs = 2` fixe le budget souple par frame ; `chunksPerFrame` limite le nombre de quartiers terminés. Une opération Unity, notamment la cuisson d’un MeshCollider, reste indivisible : ce budget ne garantit pas un maximum strict de 2 ms.
+
+Le rayon de construction est circulaire, de `viewDistance × 128 m`, avec une marge de rétention de 128 m. La priorité dépend de la distance entre le bus et les limites réelles du quartier. Après une téléportation, la construction devenue trop éloignée est annulée et le sol des neuf quartiers autour du bus est posé immédiatement. Les bâtiments arrivent ensuite dans le budget normal.
+
+Un brouillard linéaire bleu gris masque la périphérie. Sa limite reste en retrait du quartier incomplet le plus proche, avec une marge de 24 m ; elle s’ouvre progressivement à 45 m/s lorsque le décor est prêt. `streamingFog` et `streamingFogColor` permettent de le régler. Le brouillard d’origine est restauré à la destruction du composant. Après une téléportation, la reprise du décor peut encore être visible à très courte distance.
+
+Le déchargement retire au plus un quartier par passe de maintenance (0,2 s), puis détruit ses meshes progressivement, au plus huit par frame dans le budget partagé. La désactivation du quartier et la destruction finale de ses conteneurs restent indivisibles. Le magasin et le placement du trafic sont vérifiés à 5 Hz ; les feux restent actualisés chaque frame. La liste des îlots denses est calculée une fois au chargement du catalogue. Le marqueur Profiler `Crousty.City.Streaming` permet d’inspecter la construction et la destruction différées.
 
 La seed et les coordonnées déterminent les îlots indépendamment de l'ordre de chargement. Revenir dans un quartier reconstruit le même décor. Désactiver `randomSeed` et saisir la seed affichée dans la Console permet de retrouver une ville.
 
-Les adresses restent en bord de rue, hors des parcours et des grands ensembles. Les tournées comportent six commandes. Toute commande en attente ou tout colis en vol retient son chunk. Les voitures suivent les rues ordinaires ou le périmètre des grands ensembles. Le GPS cherche un chemin dans la grille et contourne les rues intérieures supprimées par un parc ou une place de cascades. La mini-carte est rafraîchie lorsque la géométrie change.
+Les adresses restent en bord de rue, hors des parcours et des grands ensembles. Les tournées comportent six commandes. Toute commande en attente ou tout colis en vol retient son chunk. Les voitures suivent les rues ordinaires ou le périmètre des grands ensembles. Le GPS cherche un chemin dans la grille et contourne les rues intérieures supprimées par un parc ou une place de cascades. La mini-carte indexe seulement le quartier terminé ou retiré, et écarte les empreintes hors champ lors du rendu. Les adresses sont enregistrées après la construction complète du quartier.
 
 ## Signalisation et circulation
 
@@ -39,3 +45,11 @@ Les carrefours à quatre branches alternent entre feux tricolores et priorité d
 Les scripts de `Tools/Validation` s'exécutent dans un projet Unity 6000.4.0f1 isolé, utilisant le véritable FBX, les scripts de génération, de livraison, de GPS et de trafic. Ils contrôlent notamment la présence effective de tous les éléments du parcours, leurs positions relatives entre chunks, les orientations des façades, la hauteur des rampes et des tours, les pentes détectées par la physique, le mobilier, la rareté des restaurants, les détours GPS, un déplacement de 2 km, le déchargement et la régénération, une livraison par projectile, les marquages, les phases des feux et l'arrêt des voitures.
 
 La compilation de l'assembly complet du projet réussit. Deux seeds ont passé la validation : 26011 (parcours sans rotation) et 42 (rotation à 90°). Les contrôles vérifient notamment la présence de la station et de ses deux inscriptions dans le voisinage de départ et la diversité des lieux proches. Des vues générales et rapprochées ont été rendues et inspectées. Le projet isolé utilise des adaptateurs pour la conduite et l'interface : ces contrôles ne constituent pas un essai manuel du bus ni une mesure du framerate URP dans SceneBase.
+
+## Vérification de l’optimisation (12 octobre 2026)
+
+L’assembly complet compile avec Roslyn fourni par Unity. La suite du contenu et du gameplay passe 91 contrôles sur la seed 26011. Les tests chargent explicitement les quartiers du parcours des toits hors du rayon circulaire et laissent plusieurs passes au streamer lors des déplacements.
+
+`Tools/Validation/StreamingChecks.cs` et `StreamingChecksSetup.cs` passent 16 contrôles supplémentaires : sol avant décor, import mesh par mesh, équivalence avec la génération synchrone, abandon après téléportation, sol immédiat, magasin distant, nombre de quartiers borné, fermeture et ouverture du brouillard, retour déterministe et indexation incrémentale idempotente de la mini-carte. Les adaptateurs BusMinimap doivent exposer `AddMapGeometry(Transform)` et `RemoveMapGeometry(Transform)`.
+
+L’aperçu `Docs/Previews/streaming-fog.png` utilise le véritable FBX dans le projet isolé. Ces contrôles ne mesurent pas le framerate URP de SceneBase sur le PC du joueur. Le chargement initial des neuf quartiers reste synchrone.

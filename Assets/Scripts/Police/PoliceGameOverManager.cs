@@ -9,6 +9,7 @@ public class PoliceGameOverManager : MonoBehaviour
     [Header("Bus")]
     [SerializeField] private BusController busController;
     private bool gameOver;
+    public bool IsGameOver => gameOver;
 
     private void Awake()
     {
@@ -18,18 +19,38 @@ public class PoliceGameOverManager : MonoBehaviour
     }
 
     public void TriggerPoliceGameOver()
+        => TriggerGameOver(false);
+    public void TriggerTimeoutGameOver()
+        => TriggerGameOver(true);
+    private void TriggerGameOver(bool timeout)
     {
         if (gameOver)
             return;
         gameOver = true;
+        DeliveryManager.Instance?.EndRunOnCapture();
         if (busController != null)
+        {
+            var flight = busController.GetComponent<BusFlightController>();
+            if (flight != null) flight.enabled = false;
             busController.enabled = false;
+        }
         if (gameOverPanel != null)
-            gameOverPanel.SetActive(true);
+        {
+            if (timeout)
+            {
+                foreach (var text in gameOverPanel.GetComponentsInChildren<TMPro.TMP_Text>(true))
+                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
+                foreach (var text in gameOverPanel.GetComponentsInChildren<UnityEngine.UI.Text>(true))
+                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
+            }
+            CroustyPanelMotion.Show(gameOverPanel);
+            CroustySoundDesignManager.PlayUI(CroustySound.Paper);
+            CroustySoundDesignManager.PlayUI(CroustySound.Alarm);
+        }
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         Time.timeScale = 0f;
-        Debug.Log("Game Over : la police a immobilise le bus.", this);
+        Debug.Log(timeout ? "Game Over : livraison hors delai." : "Game Over : la police a immobilise le bus.", this);
     }
 
     public void RestartLevel()

@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ef7ae4d3cba4c23b89c4dc658d3740f, type: 3}
+  m_Name: SoundBank
+  m_EditorClassIdentifier:
+  cues:
+  - sound: 0
+    clip: {fileID: 8300000, guid: da13762e0277f1d468d5d1ecd0944826, type: 3}
+    volume: 0.65
+    maximumDuration: 0
+    startTime: 0
+  - sound: 1
+    clip: {fileID: 8300000, guid: 1406e57c1d9b2d841964f9b75da8abd9, type: 3}
+    volume: 0.5
+    maximumDuration: 0.7
+    startTime: 0.74
+  - sound: 2
+    clip: {fileID: 8300000, guid: e176b0cf3290ebb4b99479bc4b768e45, type: 3}
+    volume: 0.7
+    maximumDuration: 0
+    startTime: 0.02
+  - sound: 3
+    clip: {fileID: 8300000, guid: d627fc272f245df4ba98c20b83641d69, type: 3}
+    volume: 0.75
+    maximumDuration: 0
+    startTime: 0
+  - sound: 4
+    clip: {fileID: 8300000, guid: da1d55bbac836e24884071c4ed25c7a3, type: 3}
+    volume: 0.5
+    maximumDuration: 2
+    startTime: 0.255
+  - sound: 5
+    clip: {fileID: 8300000, guid: 7697a8070d5a1594fba5e54268f66b98, type: 3}
+    volume: 0.65
+    maximumDuration: 0
+    startTime: 0.03
+  - sound: 6
+    clip: {fileID: 8300000, guid: 95846d5b0906d7c458edbb96c8280dec, type: 3}
+    volume: 0.35
+    maximumDuration: 1.8
+    startTime: 0.077
+  - sound: 7
+    clip: {fileID: 8300000, guid: 492cac95f5d15e84b8cfc56f9ae2f2ac, type: 3}
+    volume: 0.25
+    maximumDuration: 0
+    startTime: 0
+  - sound: 8
+    clip: {fileID: 8300000, guid: 7791079e16948384abb26a5da276e8fc, type: 3}
+    volume: 0.32
+    maximumDuration: 0
+    startTime: 0
+  - sound: 9
+    clip: {fileID: 8300000, guid: 663fba211a2c9d44783779f1d70c623d, type: 3}
+    volume: 0.7
+    maximumDuration: 2.8
+    startTime: 1.19
+  - sound: 10
+    clip: {fileID: 8300000, guid: e0c52921ac18afa46bdb887b075a0670, type: 3}
+    volume: 0.45
+    maximumDuration: 2.5
+    startTime: 0
+  - sound: 11
+    clip: {fileID: 8300000, guid: 35947462e1949a048a5ab8a695a394f6, type: 3}
+    volume: 0.35
+    maximumDuration: 0
+    startTime: 0
+  - sound: 12
+    clip: {fileID: 8300000, guid: 74a5167e4d68e844aade212ec547fd1a, type: 3}
+    volume: 0.35
+    maximumDuration: 0
+    startTime: 0
+  - sound: 13
+    clip: {fileID: 8300000, guid: 57449609276f8e345aa2f6e5a07b37e0, type: 3}
+    volume: 0.55
+    maximumDuration: 1.5
+    startTime: 0.24

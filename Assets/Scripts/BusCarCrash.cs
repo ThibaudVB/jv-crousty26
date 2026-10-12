@@ -44,7 +44,7 @@ public class BusCarCrash : MonoBehaviour
         if (car == null) return;
 
         // Trop lent : simple choc, la voiture reste
-        if (lastSpeedKmh < explosionSpeedKmh) return;
+        if (lastSpeedKmh < explosionSpeedKmh) { CroustySoundDesignManager.Play(CroustySound.Horn,car.transform.position); return; }
 
         // Évite d'exploser deux fois la même voiture
         if (!destroyedCars.Add(car)) return;
@@ -69,6 +69,7 @@ public class BusCarCrash : MonoBehaviour
 
     private void ExplodeCar(GameObject car)
     {
+        CroustySoundDesignManager.Play(CroustySound.Explosion,car.transform.position);
         if (explosionPrefab != null)
         {
             GameObject fx = Instantiate(explosionPrefab, car.transform.position, Quaternion.identity);

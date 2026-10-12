@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public sealed class CroustyMenuHover : MonoBehaviour,
-    IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
+    IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler, IPointerDownHandler, IPointerUpHandler
 {
     public RectTransform target;
     public bool highlighted;
@@ -18,11 +18,17 @@ public sealed class CroustyMenuHover : MonoBehaviour,
     private Color baseImageColor;
     private Color baseTextColor;
     private bool styleCaptured;
+    private bool pressed;
+    private float bounceAge = 10;
+    private Vector3 baseScale, scaleVelocity;
+    private Quaternion baseRotation;
 
     private void Awake()
     {
         if (target == null) target = transform as RectTransform;
         basePosition = target.anchoredPosition;
+        baseScale = target.localScale;
+        baseRotation = target.localRotation;
     }
 
     private void Update()
@@ -35,7 +41,11 @@ public sealed class CroustyMenuHover : MonoBehaviour,
         }
         float active = hovered || selected || highlighted ? 1f : 0f;
         float t = 1f - Mathf.Exp(-13f * Time.unscaledDeltaTime);
-        target.localScale = Vector3.Lerp(target.localScale, Vector3.one * (1f + active * 0.035f), t);
+        bounceAge += Time.unscaledDeltaTime;
+        float bounce = Mathf.Sin(bounceAge * 28f) * Mathf.Exp(-bounceAge * 12f) * .055f;
+        Vector3 desired = Vector3.Scale(baseScale, pressed ? new Vector3(.97f,.92f,1) : new Vector3(1f + active * .035f + bounce,1f + active * .035f + bounce,1));
+        target.localScale = Vector3.SmoothDamp(target.localScale,desired,ref scaleVelocity,.07f,Mathf.Infinity,Time.unscaledDeltaTime);
+        target.localRotation = Quaternion.Slerp(target.localRotation,baseRotation * Quaternion.Euler(0,0,pressed ? -1.5f : bounce * 22),t);
         target.anchoredPosition = Vector2.Lerp(target.anchoredPosition,
             basePosition + new Vector2(active * 5f, 0f), t);
         if (colorTarget != null)
@@ -48,10 +58,13 @@ public sealed class CroustyMenuHover : MonoBehaviour,
 
     private void OnDisable()
     {
-        hovered = selected = false;
+        hovered = selected = pressed = false;
+        scaleVelocity = Vector3.zero;
+        bounceAge = 10;
         if (target != null)
         {
-            target.localScale = Vector3.one;
+            target.localScale = baseScale;
+            target.localRotation = baseRotation;
             target.anchoredPosition = basePosition;
         }
         if (!styleCaptured) return;
@@ -63,4 +76,7 @@ public sealed class CroustyMenuHover : MonoBehaviour,
     public void OnPointerExit(PointerEventData e) => hovered = false;
     public void OnSelect(BaseEventData e) => selected = true;
     public void OnDeselect(BaseEventData e) => selected = false;
+    public void OnPointerDown(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left) pressed = true; }
+    public void OnPointerUp(PointerEventData e) { pressed = false; bounceAge = 0; }
+    public void Bounce() { pressed = false; bounceAge = 0; }
 }

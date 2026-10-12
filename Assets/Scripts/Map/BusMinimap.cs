@@ -137,6 +137,9 @@ public sealed class BusMinimap : MonoBehaviour
         radar?.RefreshGeometry(mapRoot);
     }
 
+    public void AddMapGeometry(Transform chunkRoot) => radar?.AddGeometry(chunkRoot);
+    public void RemoveMapGeometry(Transform chunkRoot) => radar?.RemoveGeometry(chunkRoot);
+
     private void FindReferences()
     {
         if (deliveries == null) deliveries = FindAnyObjectByType<DeliveryManager>();

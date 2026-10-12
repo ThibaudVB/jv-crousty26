@@ -33,7 +33,9 @@ public static class CroustyPanelValidation
                     {
                         Check(menu, "mainPanel", "optionsPanel", "sensitivitySlider", "sensitivityLabel", "volumeSlider", "volumeLabel", "fullscreenLabel");
                         Require(menu.categoryPanels.Length == 4, "Quatre panels d'options attendus.");
-                        Require(menu.GetComponentInChildren<EventSystem>(true) != null, "EventSystem du menu absent.");
+                        if (menu.pauseMenu == null)
+                            Require(menu.GetComponentInChildren<EventSystem>(true) != null, "EventSystem du menu absent.");
+                        bool mainWasActive = menu.mainPanel.activeSelf;
                         int count = menu.GetComponentsInChildren<Transform>(true).Length;
                         menu.OpenOptions();
                         for (int i = 0; i < 4; i++)
@@ -44,8 +46,10 @@ public static class CroustyPanelValidation
                         menu.SelectCategory(0);
                         menu.CloseOptions();
                         Require(menu.GetComponentsInChildren<Transform>(true).Length == count, "La navigation a créé des objets.");
-                        foreach (var button in menu.GetComponentsInChildren<Button>(true))
+                        var buttonRoot = menu.pauseMenu != null ? menu.optionsPanel.transform : menu.transform;
+                        foreach (var button in buttonRoot.GetComponentsInChildren<Button>(true))
                             Require(button.onClick.GetPersistentEventCount() > 0 && button.onClick.GetPersistentTarget(0) == menu, "Bouton non relié : " + button.name);
+                        menu.mainPanel.SetActive(mainWasActive);
                     }
                     foreach (var hud in root.GetComponentsInChildren<CroustyHUD>(true)) CheckHud(hud);
                     foreach (var map in root.GetComponentsInChildren<BusMinimap>(true)) Check(map, "mapCanvas", "maskRect", "mapImage", "busIcon", "shopIcon", "policeIcon", "gpsLabel", "routeGraphic", "northRect", "deliveryIconTemplate", "circleSprite", "arrowSprite");
@@ -82,22 +86,33 @@ public static class CroustyPanelValidation
         var menu = UnityEngine.Object.FindAnyObjectByType<CroustyMenu>();
         Require(menu != null, "Le menu principal doit être chargé.");
         menu.mainPanel.transform.Find("RÉGLAGES").GetComponent<Button>().onClick.Invoke();
-        Require(menu.optionsPanel.activeSelf && !menu.mainPanel.activeSelf, "Ouverture des options incorrecte.");
-        for (int i = 0; i < 4; i++)
-        {
-            menu.tabs[i].GetComponent<Button>().onClick.Invoke();
-            Require(menu.categoryPanels[i].activeSelf, "Onglet non fonctionnel.");
-        }
-        menu.optionsPanel.transform.Find("RETOUR").GetComponent<Button>().onClick.Invoke();
-        Require(menu.mainPanel.activeSelf && !menu.optionsPanel.activeSelf, "Retour incorrect.");
-        menu.mainPanel.transform.Find("JOUER").GetComponent<Button>().onClick.Invoke();
-        double ready = EditorApplication.timeSinceStartup + 1;
+        double ready = EditorApplication.timeSinceStartup + .45;
+        int stage = 0;
         EditorApplication.CallbackFunction verify = null;
         verify = () =>
         {
             if (EditorApplication.timeSinceStartup < ready) return;
+            if (!EditorApplication.isPlaying) { EditorApplication.update -= verify; return; }
+            if (stage == 0)
+            {
+                Require(menu.IsOptionsOpen && menu.optionsPanel.activeSelf && !menu.mainPanel.activeSelf, "Ouverture des options incorrecte.");
+                menu.tabs[0].GetComponent<Button>().onClick.Invoke();
+                stage = 1; ready = EditorApplication.timeSinceStartup + .45; return;
+            }
+            if (stage <= 4)
+            {
+                for (int i = 0; i < 4; i++) Require(menu.categoryPanels[i].activeSelf == (i == stage - 1), "Onglet non fonctionnel.");
+                if (stage < 4) menu.tabs[stage].GetComponent<Button>().onClick.Invoke();
+                else menu.optionsPanel.transform.Find("RETOUR").GetComponent<Button>().onClick.Invoke();
+                stage++; ready = EditorApplication.timeSinceStartup + .45; return;
+            }
+            if (stage == 5)
+            {
+                Require(!menu.IsOptionsOpen && menu.mainPanel.activeSelf && !menu.optionsPanel.activeSelf, "Retour incorrect.");
+                menu.mainPanel.transform.Find("JOUER").GetComponent<Button>().onClick.Invoke();
+                stage = 6; ready = EditorApplication.timeSinceStartup + 1; return;
+            }
             EditorApplication.update -= verify;
-            if (!EditorApplication.isPlaying) return;
             Require(SceneManager.GetActiveScene().name == "SceneBase", "Le bouton Jouer n'a pas chargé SceneBase.");
             var map = UnityEngine.Object.FindAnyObjectByType<BusMinimap>();
             var hud = UnityEngine.Object.FindAnyObjectByType<CroustyHUD>();
@@ -124,15 +139,16 @@ public static class CroustyPanelValidation
     }
     private static void CheckHud(CroustyHUD hud)
     {
-        Check(hud, "canvas", "waypointTemplate", "deliveryValue", "objectiveValue", "speedValue", "speedFill");
+        Check(hud, "canvas", "waypointTemplate", "deliveryValue", "objectiveValue", "speedValue", "timeValue", "timerValue", "scoreValue", "scoreGain");
         var serialized = new SerializedObject(hud);
         var canvas = (Canvas)serialized.FindProperty("canvas").objectReferenceValue;
-        foreach (string card in new[] { "Carte score", "Carte livraisons", "Carte objectif", "Compteur de vitesse" })
+        foreach (string card in new[] { "Carte score", "Carte livraisons", "Carte objectif", "Compteur de vitesse", "Time of day", "Delivery countdown" })
             Require(canvas.transform.Find(card) != null, hud.name + " : panel absent dans le Canvas : " + card);
         Require(canvas.transform.Find("Compteur") == null, hud.name + " : ancien compteur encore présent.");
         var speedFill = (Image)serialized.FindProperty("speedFill").objectReferenceValue;
-        Require(speedFill.sprite != null && speedFill.type == Image.Type.Filled,
-            hud.name + " : jauge de vitesse non remplissable.");
+        if (speedFill != null)
+            Require(speedFill.sprite != null && speedFill.type == Image.Type.Filled,
+                hud.name + " : jauge de vitesse non remplissable.");
     }
     private static void CheckPause(CroustyPauseMenu pause)
     {
@@ -146,9 +162,24 @@ public static class CroustyPanelValidation
         var resume = card.Find("Bouton reprendre")?.GetComponent<Button>();
         Require(resume != null && resume.onClick.GetPersistentEventCount() == 1 &&
             resume.onClick.GetPersistentTarget(0) == pause, pause.name + " : bouton Reprendre non relié.");
-        foreach (string placeholder in new[] { "Bouton réglages (placeholder)", "Bouton menu principal (placeholder)" })
-            Require(card.Find(placeholder)?.GetComponent<Button>() != null,
-                pause.name + " : UI placeholder absente : " + placeholder);
+        foreach (var entry in new[] { ("Bouton réglages", "OpenSettings"), ("Bouton menu principal", "ReturnToMainMenu") })
+        {
+            var button = card.Find(entry.Item1)?.GetComponent<Button>();
+            Require(button != null && button.onClick.GetPersistentEventCount() == 1 &&
+                button.onClick.GetPersistentTarget(0) == pause && button.onClick.GetPersistentMethodName(0) == entry.Item2,
+                pause.name + " : bouton non relié : " + entry.Item1);
+        }
+        var options = (CroustyMenu)serialized.FindProperty("optionsMenu").objectReferenceValue;
+        Require(options != null && options.pauseMenu == pause && options.mainPanel == panel &&
+            options.optionsPanel != null && !options.optionsPanel.activeSelf,
+            pause.name + " : réglages du menu pause incomplets.");
+        var optionsCanvas = options.optionsPanel.GetComponent<Canvas>();
+        var optionsScaler = options.optionsPanel.GetComponent<CanvasScaler>();
+        Require(optionsCanvas != null && optionsCanvas.isRootCanvas && optionsScaler != null &&
+            optionsScaler.referenceResolution == new Vector2(848, 480) &&
+            optionsScaler.screenMatchMode == CanvasScaler.ScreenMatchMode.Expand &&
+            options.optionsPanel.transform.Find("Contenu réglages pause") != null,
+            pause.name + " : Canvas des options non adapté à leur résolution.");
     }
     private static void Require(bool condition, string message)
     {

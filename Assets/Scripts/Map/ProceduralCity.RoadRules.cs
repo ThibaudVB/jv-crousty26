@@ -11,6 +11,8 @@ public sealed partial class ProceduralCity
     private const float StopLineDistance = 18f;
     private const float SignalCycle = 30f;
     private Material signalHousing, signalDark, signalRed, signalAmber, signalGreen, stopRed;
+    private GameObject stopSignModel;
+    private Bounds stopSignBounds;
     private readonly Dictionary<CarFollowPoints, StopProgress> stopProgress = new Dictionary<CarFollowPoints, StopProgress>();
 
     private sealed class StopProgress
@@ -26,6 +28,8 @@ public sealed partial class ProceduralCity
         public Vector2Int junction;
         public Vector2Int approach;
         public Renderer[] bulbs;
+        public MapImpactProp impact;
+        public bool broken;
         public LightAspect lastAspect = (LightAspect)(-1);
     }
 
@@ -76,6 +80,24 @@ public sealed partial class ProceduralCity
         signalAmber = GlowingMaterial(new Color(1f, .55f, .025f));
         signalGreen = GlowingMaterial(new Color(.08f, 1f, .22f));
         stopRed = Material(new Color(.82f, .055f, .055f));
+        stopSignModel = Resources.Load<GameObject>("Crousty/StopSign");
+        if (stopSignModel != null)
+        {
+            bool found = false;
+            foreach (var filter in stopSignModel.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null) continue;
+                Bounds bounds = filter.sharedMesh.bounds;
+                Matrix4x4 matrix = stopSignModel.transform.worldToLocalMatrix * filter.transform.localToWorldMatrix;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = matrix.MultiplyPoint3x4(bounds.center + Vector3.Scale(bounds.extents,
+                        new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1)));
+                    if (!found) { stopSignBounds = new Bounds(corner, Vector3.zero); found = true; }
+                    else stopSignBounds.Encapsulate(corner);
+                }
+            }
+        }
     }
 
     private static Material GlowingMaterial(Color color)
@@ -126,7 +148,7 @@ public sealed partial class ProceduralCity
         return LightAspect.Red; // one second of all-red between conflicting phases
     }
 
-    private void BuildRoadRules(Chunk chunk, Vector2Int coordinate)
+    private System.Collections.IEnumerator BuildRoadRuleSteps(Chunk chunk, Vector2Int coordinate)
     {
         var paint = new MarkingBuilder();
         int gx = coordinate.x * 2, gz = coordinate.y * 2;
@@ -150,6 +172,7 @@ public sealed partial class ProceduralCity
                     else if (rule == RoadRule.Stop) AddStopSign(chunk, center, outward);
                 }
             }
+            yield return null;
             // Centre lines only on existing edges. Leave their ends clear for zebra crossings.
             if (IsRoadEdgeOpen(junction, junction + Vector2Int.right))
                 for (int k = 0; k < 4; k++) paint.Rect(center.x + 21 + k * 7, center.y, 3.1f, .2f);
@@ -199,6 +222,7 @@ public sealed partial class ProceduralCity
         Vector2 right = RightOfIncoming(outward);
         Vector2 spot = center + (Vector2)outward * 14f + right * 9f;
         var post = new GameObject("Feu tricolore " + junction + " " + outward);
+        post.SetActive(false);
         post.transform.SetParent(chunk.root.transform, false);
         post.transform.localPosition = new Vector3(spot.x, 0, spot.y);
         post.transform.localRotation = Quaternion.LookRotation(new Vector3(outward.x, 0, outward.y));
@@ -215,15 +239,31 @@ public sealed partial class ProceduralCity
         }
         chunk.signals.Add(display);
         SetSignalAspect(display, LightAt(junction, outward, Time.time));
+        display.impact = ConfigureImpact(post, true);
+        post.SetActive(true);
     }
 
     private void AddStopSign(Chunk chunk, Vector2 center, Vector2Int outward)
     {
         Vector2 spot = center + (Vector2)outward * 21f + RightOfIncoming(outward) * 9f;
         var root = new GameObject("Panneau STOP");
+        root.SetActive(false);
         root.transform.SetParent(chunk.root.transform, false);
         root.transform.localPosition = new Vector3(spot.x, 0, spot.y);
         root.transform.localRotation = Quaternion.LookRotation(new Vector3(outward.x, 0, outward.y));
+        if (stopSignModel != null)
+        {
+            var model = Instantiate(stopSignModel, root.transform, false);
+            model.name = "STOP - Poly by Google";
+            float scale = 3.4f / Mathf.Max(.01f, stopSignBounds.size.y);
+            Quaternion orientation = Quaternion.Euler(0, 90f, 0);
+            model.transform.localRotation = orientation;
+            model.transform.localScale = Vector3.one * scale;
+            model.transform.localPosition = -(orientation * new Vector3(stopSignBounds.center.x, stopSignBounds.min.y, stopSignBounds.center.z)) * scale;
+            ConfigureImpact(root, true);
+            root.SetActive(true);
+            return;
+        }
         Box("Mat STOP", root.transform, new Vector3(0, 1.3f, 0), new Vector3(.12f, 2.6f, .12f), signalHousing, null, false);
         var face = new GameObject("Octogone STOP", typeof(MeshFilter), typeof(MeshRenderer));
         face.transform.SetParent(root.transform, false);
@@ -252,6 +292,8 @@ public sealed partial class ProceduralCity
         text.transform.localPosition = new Vector3(0, 0, .015f);
         text.text = "STOP"; text.anchor = TextAnchor.MiddleCenter; text.alignment = TextAlignment.Center;
         text.fontSize = 64; text.characterSize = .27f; text.color = Color.white;
+        ConfigureImpact(root, true);
+        root.SetActive(true);
     }
 
     private void SetSignalAspect(SignalDisplay display, LightAspect aspect)
@@ -267,6 +309,15 @@ public sealed partial class ProceduralCity
         foreach (var chunk in chunks.Values)
             foreach (var display in chunk.signals)
             {
+                if (display.impact != null && display.impact.HasBeenHit)
+                {
+                    if (!display.broken)
+                    {
+                        foreach (var bulb in display.bulbs) if (bulb != null) bulb.sharedMaterial = signalDark;
+                        display.broken = true;
+                    }
+                    continue;
+                }
                 LightAspect aspect = LightAt(display.junction, display.approach, Time.time);
                 if (aspect != display.lastAspect) SetSignalAspect(display, aspect);
             }

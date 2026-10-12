@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Profiling;
 
 // Roads share a global grid; only the contents of each block depend on its seed.
 [DefaultExecutionOrder(-1200)]
@@ -16,6 +18,11 @@ public sealed partial class ProceduralCity : MonoBehaviour
     public int seed = 26011;
     [Range(1, 4)] public int viewDistance = 2;
     [Range(1, 4)] public int chunksPerFrame = 1;
+    [Tooltip("Budget souple par frame ; une operation Unity reste indivisible.")]
+    [Range(.5f, 6f)] public float generationBudgetMs = 2f;
+    public bool streamingFog = true;
+    public Color streamingFogColor = new Color(.69f, .77f, .83f);
+    public bool dayNightCycle = true;
     public float groundHeight = -1.33f;
     public int Seed { get; private set; }
     public Transform WorldRoot { get; private set; }
@@ -36,6 +43,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
     private sealed class Chunk
     {
         public GameObject root;
+        public bool complete;
         public Mesh roadMarkings;
         public readonly List<Mesh> signMeshes = new List<Mesh>();
         public readonly List<SignalDisplay> signals = new List<SignalDisplay>();
@@ -59,8 +67,27 @@ public sealed partial class ProceduralCity : MonoBehaviour
     private Material asphalt, pavement, grass, markings, wood;
     private BusGPS gps;
     private BusMinimap minimap;
-    private bool geometryChanged;
-    private Vector2Int lastCenter = new Vector2Int(int.MaxValue, int.MaxValue);
+    private static readonly ProfilerMarker StreamingMarker = new ProfilerMarker("Crousty.City.Streaming");
+    private readonly Queue<Chunk> retiredChunks = new Queue<Chunk>();
+    private readonly List<MeshFilter> retirementMeshes = new List<MeshFilter>();
+    private Chunk retiringChunk;
+    private int retirementIndex;
+    private IEnumerator activeBuild;
+    private Vector2Int activeCoordinate;
+    private readonly Queue<ImportWork> importWork = new Queue<ImportWork>();
+    private bool deferImports;
+    private bool previousFog, fogConfigured;
+    private FogMode previousFogMode;
+    private Color previousFogColor;
+    private float previousFogStart, previousFogEnd, nextMaintenance;
+    private struct ImportWork
+    {
+        public Template part;
+        public Transform root;
+        public Vector3 offset;
+        public bool solid;
+    }
+
 
     private void Awake()
     {
@@ -84,6 +111,13 @@ public sealed partial class ProceduralCity : MonoBehaviour
         WorldRoot = new GameObject("Ville procedurale - seed " + Seed).transform;
         WorldRoot.SetParent(transform, false);
         WorldRoot.position = Origin;
+        if (dayNightCycle)
+        {
+            var cycle = GetComponent<CroustyDayNightCycle>();
+            if (cycle == null) cycle = gameObject.AddComponent<CroustyDayNightCycle>();
+            cycle.player = player;
+            foreach (var part in catalog.Values) part.materials = cycle.PrepareLuminousMaterials(part.materials);
+        }
         asphalt = Material(new Color(0.19f, 0.22f, 0.27f));
         pavement = Material(new Color(0.67f, 0.64f, 0.61f));
         grass = Material(new Color(0.39f, 0.66f, 0.45f));
@@ -110,7 +144,8 @@ public sealed partial class ProceduralCity : MonoBehaviour
             for (int z = -1; z <= 1; z++) LoadChunk(new Vector2Int(x, z));
         UpdateShop();
         UpdateTraffic(true);
-        lastCenter = ChunkAt(player.position);
+        ConfigureStreamingFog();
+
         Debug.Log("Ville procedurale : seed " + Seed + ", " + buildings.Count +
             " batiments et " + landmarks.Count + " lieux remarquables.", this);
     }
@@ -119,43 +154,125 @@ public sealed partial class ProceduralCity : MonoBehaviour
     {
         if (WorldRoot == null || player == null || Time.timeScale <= 0f) return;
         Vector2Int center = ChunkAt(player.position);
-        // Nearest missing chunks first: high speed or teleport never generates stale queues.
-        int budget = chunksPerFrame;
-        for (int ring = 0; ring <= viewDistance && budget > 0; ring++)
-            for (int x = -ring; x <= ring && budget > 0; x++)
-                for (int z = -ring; z <= ring && budget > 0; z++)
-                {
-                    if (Mathf.Max(Mathf.Abs(x), Mathf.Abs(z)) != ring) continue;
-                    var coordinate = center + new Vector2Int(x, z);
-                    if (chunks.ContainsKey(coordinate)) continue;
-                    LoadChunk(coordinate);
-                    budget--;
-                }
-        // On a teleport, generate the surrounding ground synchronously before physics.
-        if (Mathf.Abs(center.x - lastCenter.x) > 1 || Mathf.Abs(center.y - lastCenter.y) > 1)
-            for (int x = -1; x <= 1; x++)
-                for (int z = -1; z <= 1; z++) LoadChunk(center + new Vector2Int(x, z));
-        lastCenter = center;
         EnsureNearestShop();
+        // Protect physics, including teleports, without building nine full districts.
+        for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
+            EnsureGround(center + new Vector2Int(x, z));
+        if (activeBuild != null && DistanceToChunk(activeCoordinate) > (viewDistance + 2) * ChunkSize &&
+            !IsPinned(activeCoordinate, chunks[activeCoordinate]))
+        {
+            (activeBuild as IDisposable)?.Dispose();
+            activeBuild = null;
+            importWork.Clear();
+            UnloadChunk(activeCoordinate);
+        }
+        double deadline = Time.realtimeSinceStartupAsDouble + Mathf.Max(.5f, generationBudgetMs) / 1000.0;
+        int completed = 0;
+        using (StreamingMarker.Auto())
+        {
+            // Reserve a little of the shared budget for deferred Unity destruction.
+            for (int i = 0; i < 8 && Time.realtimeSinceStartupAsDouble < deadline; i++)
+                if (!RetireNextMesh()) break;
+            do
+            {
+                if (activeBuild == null)
+                {
+                    if (!TryNextChunk(center, out activeCoordinate)) break;
+                    activeBuild = BuildChunkSteps(activeCoordinate);
+                }
+                if (!activeBuild.MoveNext())
+                {
+                    (activeBuild as IDisposable)?.Dispose();
+                    activeBuild = null;
+                    completed++;
+                }
+            } while (Time.realtimeSinceStartupAsDouble < deadline && completed < Mathf.Max(1, chunksPerFrame));
+        }
+        UpdateStreamingFog(center);
+        RefreshSignals();
+        if (Time.unscaledTime < nextMaintenance) return;
+        nextMaintenance = Time.unscaledTime + .2f;
         UpdateShop();
         UpdateTraffic(false);
-        RefreshSignals();
         removal.Clear();
         foreach (var pair in chunks)
         {
-            if (Mathf.Max(Mathf.Abs(pair.Key.x - center.x), Mathf.Abs(pair.Key.y - center.y)) <= viewDistance + 1)
-                continue;
-            bool pinned = pair.Key == nearestShopChunk;
-            foreach (var address in pair.Value.addresses)
-                if (address != null && address.HasOpenOrder) { pinned = true; break; }
-            if (!pinned) removal.Add(pair.Key);
+            if (pair.Key == activeCoordinate && activeBuild != null) continue;
+            if (DistanceToChunk(pair.Key) <= (viewDistance + 1) * ChunkSize || IsPinned(pair.Key, pair.Value)) continue;
+            removal.Add(pair.Key);
         }
-        foreach (var coordinate in removal) UnloadChunk(coordinate);
-        if (geometryChanged)
+        // Retire one district per maintenance pass to spread destruction costs too.
+        if (removal.Count > 0) UnloadChunk(removal[0]);
+    }
+
+    private bool IsPinned(Vector2Int coordinate, Chunk chunk)
+    {
+        if (coordinate == nearestShopChunk) return true;
+        foreach (var address in chunk.addresses)
+            if (address != null && address.HasOpenOrder) return true;
+        return false;
+    }
+
+    private float DistanceToChunk(Vector2Int coordinate)
+    {
+        Vector3 p = player.position - Origin;
+        float x = Mathf.Max(coordinate.x * ChunkSize - p.x, 0, p.x - (coordinate.x + 1) * ChunkSize);
+        float z = Mathf.Max(coordinate.y * ChunkSize - p.z, 0, p.z - (coordinate.y + 1) * ChunkSize);
+        return Mathf.Sqrt(x * x + z * z);
+    }
+
+    private bool TryNextChunk(Vector2Int center, out Vector2Int next)
+    {
+        next = center;
+        float best = float.PositiveInfinity;
+        int radius = viewDistance + 1;
+        for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++)
         {
-            minimap?.RefreshMap(WorldRoot);
-            geometryChanged = false;
+            var candidate = center + new Vector2Int(x, z);
+            if (chunks.TryGetValue(candidate, out var existing) && existing.complete) continue;
+            float distance = DistanceToChunk(candidate);
+            if (distance > viewDistance * ChunkSize || distance >= best) continue;
+            best = distance;
+            next = candidate;
         }
+        if (float.IsPositiveInfinity(best) &&
+            (!chunks.TryGetValue(nearestShopChunk, out var shopChunk) || !shopChunk.complete))
+        { next = nearestShopChunk; return true; }
+        return !float.IsPositiveInfinity(best);
+    }
+
+    private void ConfigureStreamingFog()
+    {
+        if (!streamingFog) return;
+        previousFog = RenderSettings.fog;
+        previousFogMode = RenderSettings.fogMode;
+        previousFogColor = RenderSettings.fogColor;
+        previousFogStart = RenderSettings.fogStartDistance;
+        previousFogEnd = RenderSettings.fogEndDistance;
+        fogConfigured = true;
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogColor = streamingFogColor;
+        RenderSettings.fogStartDistance = 50f;
+        RenderSettings.fogEndDistance = 110f;
+    }
+
+    private void UpdateStreamingFog(Vector2Int center)
+    {
+        if (!fogConfigured) return;
+        float frontier = viewDistance * ChunkSize;
+        int radius = viewDistance + 1;
+        for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++)
+        {
+            var coordinate = center + new Vector2Int(x, z);
+            if (!chunks.TryGetValue(coordinate, out var chunk) || !chunk.complete)
+                frontier = Mathf.Min(frontier, DistanceToChunk(coordinate));
+        }
+        float target = Mathf.Clamp(frontier - 24f, 40f, viewDistance * ChunkSize - 32f);
+        // Close immediately for safety, reveal the skyline gradually.
+        float end = Mathf.Min(target, RenderSettings.fogEndDistance + Time.unscaledDeltaTime * 45f);
+        RenderSettings.fogEndDistance = end;
+        RenderSettings.fogStartDistance = end * .45f;
     }
 
     public Vector2Int ChunkAt(Vector3 position) => new Vector2Int(
@@ -176,34 +293,96 @@ public sealed partial class ProceduralCity : MonoBehaviour
     public District DistrictAt(int blockX, int blockZ) => (District)(
         (uint)CoordinateSeed(Mathf.FloorToInt(blockX / 4f), Mathf.FloorToInt(blockZ / 4f), 13) % 5);
 
-    private void LoadChunk(Vector2Int coordinate)
+    private Chunk EnsureGround(Vector2Int coordinate)
     {
-        if (chunks.ContainsKey(coordinate)) return;
+        if (chunks.TryGetValue(coordinate, out var existing)) return existing;
         var chunk = new Chunk { root = new GameObject("Quartier " + coordinate.x + "," + coordinate.y) };
         chunk.root.transform.SetParent(WorldRoot, false);
         chunk.root.transform.localPosition = new Vector3(coordinate.x * ChunkSize, 0, coordinate.y * ChunkSize);
         chunks.Add(coordinate, chunk);
-        Box("Asphalte", chunk.root.transform, new Vector3(64, -0.15f, 64),
-            new Vector3(128, 0.3f, 128), asphalt, RadarMapElement.Kind.Road);
-        if (FeatureChunk(coordinate) != null) BuildFeatureChunk(chunk, coordinate);
-        else for (int x = 0; x < 2; x++)
-            for (int z = 0; z < 2; z++)
-                BuildBlock(chunk, coordinate.x * 2 + x, coordinate.y * 2 + z,
-                    new Vector3(x * BlockSize + 32, 0, z * BlockSize + 32));
-        BuildRoadRules(chunk, coordinate);
-        geometryChanged = true;
+        Box("Asphalte", chunk.root.transform, new Vector3(64, -.15f, 64),
+            new Vector3(128, .3f, 128), asphalt, RadarMapElement.Kind.Road);
+        return chunk;
+    }
+
+    // Initial neighbourhood only: gameplay starts with its collisions available.
+    private void LoadChunk(Vector2Int coordinate)
+    {
+        if (chunks.TryGetValue(coordinate, out var existing) && existing.complete) return;
+        var steps = BuildChunkSteps(coordinate);
+        while (steps.MoveNext()) { }
+        (steps as IDisposable)?.Dispose();
+    }
+
+    private IEnumerator BuildChunkSteps(Vector2Int coordinate)
+    {
+        Chunk chunk = EnsureGround(coordinate);
+        yield return null;
+        int blocks = FeatureChunk(coordinate) != null ? 1 : 4;
+        for (int i = 0; i < blocks; i++)
+        {
+            deferImports = true;
+            try
+            {
+                if (blocks == 1) BuildFeatureChunk(chunk, coordinate);
+                else BuildBlock(chunk, coordinate.x * 2 + i / 2, coordinate.y * 2 + i % 2,
+                    new Vector3(i / 2 * BlockSize + 32, 0, i % 2 * BlockSize + 32));
+            }
+            finally { deferImports = false; }
+            yield return null;
+            while (importWork.Count > 0)
+            {
+                var work = importWork.Dequeue();
+                AddImported(work.part, work.root, work.offset, work.solid);
+                yield return null;
+            }
+        }
+        var roads = BuildRoadRuleSteps(chunk, coordinate);
+        while (roads.MoveNext()) yield return null;
+        chunk.complete = true;
+        foreach (var address in chunk.addresses) deliveries.RegisterPoint(address);
+        minimap?.AddMapGeometry(chunk.root.transform);
     }
 
     private void UnloadChunk(Vector2Int coordinate)
     {
         Chunk chunk = chunks[coordinate];
         foreach (var point in chunk.addresses) deliveries.UnregisterPoint(point);
+        minimap?.RemoveMapGeometry(chunk.root.transform);
         chunk.root.SetActive(false);
-        Destroy(chunk.root);
+        retiredChunks.Enqueue(chunk);
+        chunks.Remove(coordinate);
+
+    }
+
+    private bool RetireNextMesh()
+    {
+        if (retiringChunk == null)
+        {
+            if (retiredChunks.Count == 0) return false;
+            retiringChunk = retiredChunks.Dequeue();
+            retirementMeshes.Clear();
+            retiringChunk.root.GetComponentsInChildren(true, retirementMeshes);
+            retirementIndex = 0;
+        }
+        if (retirementIndex < retirementMeshes.Count)
+        {
+            var filter = retirementMeshes[retirementIndex++];
+            if (filter != null) Destroy(filter.gameObject);
+        }
+        else
+        {
+            DisposeChunkMeshes(retiringChunk);
+            Destroy(retiringChunk.root);
+            retiringChunk = null;
+        }
+        return true;
+    }
+
+    private static void DisposeChunkMeshes(Chunk chunk)
+    {
         if (chunk.roadMarkings != null) Destroy(chunk.roadMarkings);
         foreach (var mesh in chunk.signMeshes) if (mesh != null) Destroy(mesh);
-        chunks.Remove(coordinate);
-        geometryChanged = true;
     }
 
     private void UpdateShop()
@@ -213,6 +392,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
         foreach (var chunk in chunks.Values)
             foreach (var shop in chunk.shops)
             {
+                if (!chunk.complete) continue;
                 float distance = (shop.transform.position - player.position).sqrMagnitude;
                 if (distance < best) { closest = shop; best = distance; }
             }
@@ -233,6 +413,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
                 foreach (var route in chunk.routes)
                     for (int i = 0; i < 4; i++)
                     {
+                        if (!chunk.complete) continue;
                         float d = (route.transform.GetChild(i).position - player.position).sqrMagnitude;
                         // Spread the cars among nearby circuits instead of stacking at one corner.
                         if (d < 20 * 20 || d >= distance) continue;
@@ -360,12 +541,20 @@ public sealed partial class ProceduralCity : MonoBehaviour
     }
     private void OnDestroy()
     {
-        if (WorldRoot != null) Destroy(WorldRoot.gameObject);
-        foreach (var chunk in chunks.Values)
+        (activeBuild as IDisposable)?.Dispose();
+        importWork.Clear();
+        if (fogConfigured)
         {
-            if (chunk.roadMarkings != null) Destroy(chunk.roadMarkings);
-            foreach (var mesh in chunk.signMeshes) if (mesh != null) Destroy(mesh);
+            RenderSettings.fog = previousFog;
+            RenderSettings.fogMode = previousFogMode;
+            RenderSettings.fogColor = previousFogColor;
+            RenderSettings.fogStartDistance = previousFogStart;
+            RenderSettings.fogEndDistance = previousFogEnd;
         }
+        if (WorldRoot != null) Destroy(WorldRoot.gameObject);
+        foreach (var chunk in chunks.Values) DisposeChunkMeshes(chunk);
+        foreach (var chunk in retiredChunks) DisposeChunkMeshes(chunk);
+        if (retiringChunk != null) DisposeChunkMeshes(retiringChunk);
         foreach (var material in new[] { asphalt, pavement, grass, markings, wood })
             if (material != null) Destroy(material);
         DisposeRoadMaterials();

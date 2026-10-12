@@ -7,18 +7,27 @@ public class BusPropImpact : MonoBehaviour
 {
     internal static readonly HashSet<BusPropImpact> ActiveBuses = new HashSet<BusPropImpact>();
     private Rigidbody body;
+    private Collider[] busColliders;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetRegistry() => ActiveBuses.Clear();
 
-    private void Awake() => body = GetComponent<Rigidbody>();
+    private void Awake()
+    {
+        body = GetComponent<Rigidbody>();
+        busColliders = GetComponentsInChildren<Collider>();
+    }
     private void OnEnable()
     {
         ActiveBuses.Add(this);
         IgnoreActiveProps();
     }
     // Les roues peuvent etre ajoutees pendant l'Awake du controleur du bus.
-    private void Start() => IgnoreActiveProps();
+    private void Start()
+    {
+        busColliders = GetComponentsInChildren<Collider>();
+        IgnoreActiveProps();
+    }
     private void OnDisable() => ActiveBuses.Remove(this);
 
     private void IgnoreActiveProps()
@@ -32,7 +41,7 @@ public class BusPropImpact : MonoBehaviour
 
     internal void IgnorePropCollisions(MapImpactProp prop)
     {
-        Collider[] busColliders = GetComponentsInChildren<Collider>();
+        if (busColliders == null) busColliders = GetComponentsInChildren<Collider>();
         Collider[] propColliders = prop.GetComponentsInChildren<Collider>();
         foreach (Collider busCollider in busColliders)
             foreach (Collider propCollider in propColliders)

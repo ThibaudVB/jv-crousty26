@@ -80,6 +80,7 @@ public class BusController : MonoBehaviour
             rb.constraints &= ~RigidbodyConstraints.FreezeRotationY;
         else
             rb.constraints |= RigidbodyConstraints.FreezeRotationY;
+        if (GetComponent<BusNightLights>() == null) gameObject.AddComponent<BusNightLights>();
     }
 
     private void OnDisable()

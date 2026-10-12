@@ -13,6 +13,8 @@ public sealed class CroustyMenu : MonoBehaviour
     [Header("Panels placés dans la scène")]
     public GameObject mainPanel;
     public GameObject optionsPanel;
+    [Tooltip("Assigné uniquement pour les options du menu pause.")]
+    public CroustyPauseMenu pauseMenu;
     [Tooltip("Commandes, Audio, Vidéo, Crédits")]
     public GameObject[] categoryPanels;
 
@@ -37,6 +39,9 @@ public sealed class CroustyMenu : MonoBehaviour
 
     private bool launching;
     private bool? requestedFullscreen;
+    private bool animationReady;
+    private int selectedCategory = -1;
+    public bool IsOptionsOpen { get; private set; }
 
     private void Awake()
     {
@@ -46,8 +51,11 @@ public sealed class CroustyMenu : MonoBehaviour
             enabled = false;
             return;
         }
-        Cursor.visible = true;
-        Cursor.lockState = CursorLockMode.None;
+        if (pauseMenu == null)
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
         float sensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(SensitivityKey, 0.75f), sensitivitySlider.minValue, sensitivitySlider.maxValue);
         sensitivitySlider.SetValueWithoutNotify(sensitivity);
         sensitivityLabel.text = sensitivity.ToString("0.00");
@@ -58,11 +66,16 @@ public sealed class CroustyMenu : MonoBehaviour
         RefreshFullscreenLabel(Screen.fullScreen);
         SelectCategory(0);
         CloseOptions();
+        if (pauseMenu != null) mainPanel.SetActive(false);
+        CroustyPanelMotion.Prepare(mainPanel);
+        CroustyPanelMotion.Prepare(optionsPanel);
+        foreach (var category in categoryPanels) CroustyPanelMotion.Prepare(category);
+        animationReady = true;
     }
 
     private void Update()
     {
-        if (optionsPanel.activeSelf && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (pauseMenu == null && IsOptionsOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             CloseOptions();
         // Unity applies fullscreen changes at the end of the frame.
         if (requestedFullscreen.HasValue && Screen.fullScreen == requestedFullscreen.Value)
@@ -72,23 +85,37 @@ public sealed class CroustyMenu : MonoBehaviour
 
     public void OpenOptions()
     {
-        mainPanel.SetActive(false);
-        optionsPanel.SetActive(true);
+        if (IsOptionsOpen) return;
+        IsOptionsOpen = true;
+        CroustyPanelMotion.Hide(mainPanel);
+        CroustyPanelMotion.Show(optionsPanel);
+        CroustySoundDesignManager.PlayUI(CroustySound.Paper);
     }
 
     public void CloseOptions()
     {
-        optionsPanel.SetActive(false);
-        mainPanel.SetActive(true);
+        if (animationReady && !IsOptionsOpen) return;
+        IsOptionsOpen = false;
+        if (!animationReady) { optionsPanel.SetActive(false); mainPanel.SetActive(true); return; }
+        CroustyPanelMotion.Hide(optionsPanel);
+        CroustyPanelMotion.Show(mainPanel);
+        CroustySoundDesignManager.PlayUI(CroustySound.Paper);
     }
 
     public void SelectCategory(int index)
     {
         if (index < 0 || index >= categoryPanels.Length) return;
+        bool changed = selectedCategory != index;
+        selectedCategory = index;
         for (int i = 0; i < categoryPanels.Length; i++)
         {
             bool selected = i == index;
-            categoryPanels[i].SetActive(selected);
+            if (animationReady && changed)
+            {
+                if (selected) CroustyPanelMotion.Show(categoryPanels[i]);
+                else CroustyPanelMotion.Hide(categoryPanels[i]);
+            }
+            else if (!animationReady) categoryPanels[i].SetActive(selected);
             tabs[i].highlighted = selected;
             if (tabBackgrounds[i] is Image image && orangeRibbon != null && creamRibbon != null)
                 image.sprite = selected ? orangeRibbon : creamRibbon;
@@ -102,6 +129,9 @@ public sealed class CroustyMenu : MonoBehaviour
     {
         sensitivityLabel.text = value.ToString("0.00");
         PlayerPrefs.SetFloat(SensitivityKey, value);
+        if (pauseMenu != null)
+            foreach (var camera in Object.FindObjectsByType<BusCameraFollow>())
+                camera.mouseSensitivity = Mathf.Clamp(value, 0.2f, 1.5f) * 0.16f;
     }
 
     public void SetVolume(float value)

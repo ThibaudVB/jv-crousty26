@@ -5,11 +5,13 @@ using UnityEngine.Rendering;
 // Dessine uniquement les silhouettes cartographiques, sans modifier les materiaux du monde.
 public sealed class RadarMapRenderer : System.IDisposable
 {
-    private struct Entry { public MeshFilter filter; public int category; }
+    private struct Entry { public MeshFilter filter; public Renderer renderer; public Transform owner; public int category; }
     private readonly List<Entry> entries = new List<Entry>();
     private readonly Material material;
     private readonly MaterialPropertyBlock properties = new MaterialPropertyBlock();
     private readonly CommandBuffer commands = new CommandBuffer { name = "Radar cartographique" };
+    private readonly Plane[] planes = new Plane[6];
+    private readonly List<MeshFilter> filters = new List<MeshFilter>();
     private Transform root;
     public float GroundHeight { get; private set; }
     public int GeometryCount => entries.Count;
@@ -28,7 +30,17 @@ public sealed class RadarMapRenderer : System.IDisposable
         entries.Clear();
         GroundHeight = root != null ? root.position.y : 0f;
         if (root == null) return;
-        foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>())
+        AddGeometry(root);
+    }
+
+    public void AddGeometry(Transform owner)
+    {
+        if (owner == null) return;
+        // The minimap may already have indexed this district during its Awake.
+        RemoveGeometry(owner);
+        filters.Clear();
+        owner.GetComponentsInChildren(false, filters);
+        foreach (MeshFilter filter in filters)
         {
             if (filter.sharedMesh == null) continue;
             string name = filter.name.ToLowerInvariant();
@@ -40,9 +52,16 @@ public sealed class RadarMapRenderer : System.IDisposable
             // Un generateur peut classer explicitement ses meshes sans convention de nommage.
             var element = filter.GetComponent<RadarMapElement>();
             if (element != null) category = (int)element.kind;
-            if (category >= 0) entries.Add(new Entry { filter = filter, category = category });
+            if (category >= 0) entries.Add(new Entry { filter = filter, renderer = filter.GetComponent<Renderer>(), owner = owner, category = category });
         }
         entries.Sort((a,b) => a.category.CompareTo(b.category));
+    }
+
+    public void RemoveGeometry(Transform owner)
+    {
+        for (int i = entries.Count - 1; i >= 0; i--)
+            if (entries[i].filter == null || entries[i].owner == owner || entries[i].filter.transform.IsChildOf(owner))
+                entries.RemoveAt(i);
     }
 
     public void Render(Camera camera, RenderTexture texture)
@@ -54,8 +73,19 @@ public sealed class RadarMapRenderer : System.IDisposable
         // Aucun blit de camera URP ne vient corriger un retournement de RenderTexture.
         commands.SetViewProjectionMatrices(camera.worldToCameraMatrix,
             GL.GetGPUProjectionMatrix(camera.projectionMatrix, false));
+        GeometryUtility.CalculateFrustumPlanes(camera, planes);
         foreach (var entry in entries)
         {
+            if (entry.renderer != null)
+            {
+                // RadarFlat projects every vertex onto the ground plane.
+                Bounds bounds = entry.renderer.bounds;
+                Vector3 center = bounds.center;
+                center.y = GroundHeight;
+                bounds.center = center;
+                bounds.size = new Vector3(bounds.size.x, .1f, bounds.size.z);
+                if (!GeometryUtility.TestPlanesAABB(planes, bounds)) continue;
+            }
             if (entry.filter == null || !entry.filter.gameObject.activeInHierarchy) continue;
             var mesh = entry.filter.sharedMesh;
             if (mesh == null) continue;

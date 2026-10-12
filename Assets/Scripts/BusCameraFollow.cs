@@ -182,7 +182,7 @@ public class BusCameraFollow : MonoBehaviour
         if (chaseManager == null)
         {
             chaseManager =
-                FindFirstObjectByType<PoliceChaseManager>();
+                FindAnyObjectByType<PoliceChaseManager>();
         }
 
         yaw = target.eulerAngles.y;

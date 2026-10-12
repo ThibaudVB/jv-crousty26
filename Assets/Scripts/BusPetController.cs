@@ -71,6 +71,7 @@ public sealed class BusPetController : MonoBehaviour
             UsesRemaining <= 0 || BoostRemaining > 0f || (flight != null && flight.IsAirborne) ||
             GetComponent<Rigidbody>().isKinematic) return false;
         UsesRemaining--;
+        CroustySoundDesignManager.Play(CroustySound.Pet);
         BoostRemaining = Mathf.Max(0.1f, boostDuration);
         if (police != null) police.TryBlindWithPet(GetComponent<Rigidbody>(), blindDuration, cloudRange);
         GetComponent<SceneBaseDriftSmoke>()?.EmitPetCloud();

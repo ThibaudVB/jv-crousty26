@@ -242,6 +242,7 @@ public class BusFlightController : MonoBehaviour
         boostInput = false;
 
         timeRemaining = Mathf.Max(0.1f, flightDuration);
+        CroustySoundDesignManager.Play(CroustySound.Flight);
 
         boostRemaining = boostDuration;
         // Une impulsion unique degage les roues, sans trajectoire ni delai imposes.
