@@ -98,6 +98,11 @@ public class DeliveryManager : MonoBehaviour
         // Compétence riz (touche E) contre la police
         if (playerBus != null && playerBus.GetComponent<BusRiceThrower>() == null)
             playerBus.gameObject.AddComponent<BusRiceThrower>();
+
+        // Ailes animées pendant le vol (touche F)
+        if (playerBus != null && playerBus.GetComponent<BusFlightController>() != null &&
+            playerBus.GetComponent<BusWings>() == null)
+            playerBus.gameObject.AddComponent<BusWings>();
     }
 
     private void OnDestroy()
