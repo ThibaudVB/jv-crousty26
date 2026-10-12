@@ -34,9 +34,24 @@ public class BusDamage : MonoBehaviour
     public Color fireColor = new Color(1f, 0.42f, 0.05f);
     public Color fireCoreColor = new Color(1f, 0.85f, 0.2f);
 
+    [Header("Position du feu")]
+    [Tooltip("Points qui marquent les emplacements du feu. Si vide, les enfants nommés ci-dessous sont recherchés.")]
+    public Transform[] firePoint;
+    public string firePointName = "PointFeu";
+    [Tooltip("Position locale utilisée si aucun point de feu n'est défini.")]
+    public bool useCustomPosition;
+    public Vector3 customFirePosition = new Vector3(0f, 1.5f, 2f);
+
+    private Vector3 defaultEnginePoint;
     public bool IsDamaged { get; private set; }
     // Appelé à chaque choc
     public event System.Action Damaged;
+
+    public void ExtinguishFire()
+    {
+        foreach (Transform effectRoot in effectRoots)
+            if (effectRoot != null) effectRoot.gameObject.SetActive(false);
+    }
 
     private Rigidbody rb;
     private BoxCollider body;
@@ -51,10 +66,12 @@ public class BusDamage : MonoBehaviour
     private readonly List<Paint> paints = new List<Paint>();
     private readonly List<Material> busMaterials = new List<Material>();
 
-    // Point du moteur (repère local du bus) d'où sortent fumée et flammes
-    private Vector3 enginePoint;
-    private Transform fire;
-    private Light fireLight;
+    // Positions locales d'où sortent la fumée et les flammes.
+    private readonly List<Vector3> enginePoints = new List<Vector3>();
+    private readonly List<Transform> firePointSources = new List<Transform>();
+    private readonly List<Transform> fires = new List<Transform>();
+    private readonly List<Transform> effectRoots = new List<Transform>();
+    private readonly List<Light> fireLights = new List<Light>();
     private readonly List<Transform> flames = new List<Transform>();
     private readonly List<Vector3> flameScales = new List<Vector3>();
 
@@ -168,9 +185,11 @@ public class BusDamage : MonoBehaviour
         {
             IsDamaged = true;
             ApplyPaint();
-            if (onFire && fire != null)
-                fire.gameObject.SetActive(true);
         }
+
+        if (onFire)
+            foreach (Transform effectRoot in effectRoots)
+                if (effectRoot != null) effectRoot.gameObject.SetActive(true);
 
         Damaged?.Invoke();
 
@@ -221,15 +240,57 @@ public class BusDamage : MonoBehaviour
             center = body.center;
             size = body.size;
         }
-        enginePoint = center + new Vector3(0f, size.y * 0.5f, size.z * 0.3f);
+        defaultEnginePoint = center + new Vector3(0f, size.y * 0.5f, size.z * 0.3f);
 
+        firePointSources.Clear();
+        if (firePoint != null)
+            foreach (Transform point in firePoint)
+                if (point != null && !firePointSources.Contains(point))
+                    firePointSources.Add(point);
+
+        if (firePointSources.Count == 0 && !string.IsNullOrEmpty(firePointName))
+            firePointSources.AddRange(FindChildrenByName(transform, firePointName));
+        if (firePointSources.Count == 0)
+            firePointSources.Add(null);
+
+        enginePoints.Clear();
+        fires.Clear();
+        effectRoots.Clear();
+        fireLights.Clear();
+        flames.Clear();
+        flameScales.Clear();
+        foreach (Transform point in firePointSources)
+        {
+            Vector3 localPosition = point != null
+                ? transform.InverseTransformPoint(point.position)
+                : useCustomPosition ? customFirePosition : defaultEnginePoint;
+            enginePoints.Add(localPosition);
+            BuildFireEffect(localPosition);
+        }
+
+        // Fumée : quelques sphères réutilisées, dans le monde pour laisser une traînée
+        smokeRoot = new GameObject("Fumee bus").transform;
+        effectRoots.Add(smokeRoot);
+        for (int i = 0; i < 30; i++)
+        {
+            GameObject puff = JojoVisuals.CreateShape(PrimitiveType.Sphere, smokeRoot,
+                i % 2 == 0 ? smokeColor : smokeColor * 0.7f);
+            puff.SetActive(false);
+            puffs.Add(new Puff { t = puff.transform });
+        }
+    }
+
+    private void BuildFireEffect(Vector3 localPosition)
+    {
         // Les flammes suivent le bus. On compense son échelle pour garder des tailles en mètres.
-        fire = new GameObject("Feu bus").transform;
+        Transform fire = new GameObject("Feu bus").transform;
         fire.SetParent(transform, false);
-        fire.localPosition = enginePoint;
+        fire.localPosition = localPosition;
         Vector3 scale = transform.lossyScale;
         fire.localScale = new Vector3(1f / Mathf.Max(0.01f, Mathf.Abs(scale.x)),
             1f / Mathf.Max(0.01f, Mathf.Abs(scale.y)), 1f / Mathf.Max(0.01f, Mathf.Abs(scale.z)));
+        fires.Add(fire);
+        effectRoots.Add(fire);
 
         for (int i = 0; i < 5; i++)
         {
@@ -247,26 +308,24 @@ public class BusDamage : MonoBehaviour
             flameScales.Add(flameScale);
         }
 
-        fireLight = new GameObject("Lumiere feu").AddComponent<Light>();
+        Light fireLight = new GameObject("Lumiere feu").AddComponent<Light>();
         fireLight.transform.SetParent(fire, false);
         fireLight.transform.localPosition = Vector3.up;
         fireLight.type = LightType.Point;
         fireLight.color = fireColor;
         fireLight.range = 10f;
         fireLight.intensity = 4f;
-
+        fireLights.Add(fireLight);
         fire.gameObject.SetActive(false);
+    }
 
-        // Fumée : quelques sphères réutilisées, dans le monde pour laisser une traînée
-        smokeRoot = new GameObject("Fumee bus").transform;
-        effectRoots.Add(smokeRoot);
-        for (int i = 0; i < 30; i++)
-        {
-            GameObject puff = JojoVisuals.CreateShape(PrimitiveType.Sphere, smokeRoot,
-                i % 2 == 0 ? smokeColor : smokeColor * 0.7f);
-            puff.SetActive(false);
-            puffs.Add(new Puff { t = puff.transform });
-        }
+    private static List<Transform> FindChildrenByName(Transform root, string childName)
+    {
+        List<Transform> matches = new List<Transform>();
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            if (child != root && child.name == childName)
+                matches.Add(child);
+        return matches;
     }
 
     private void EmitPuff(Vector3 position, float minSize, float maxSize)
@@ -286,21 +345,52 @@ public class BusDamage : MonoBehaviour
 
     private void Update()
     {
+        for (int i = 0; i < firePointSources.Count; i++)
+        {
+            enginePoints[i] = ComputeEnginePoint(firePointSources[i]);
+            fires[i].localPosition = enginePoints[i];
+        }
+
         UpdateSmoke();
         UpdateFire();
+    }
+
+    private Vector3 ComputeEnginePoint(Transform point)
+    {
+        if (point != null)
+            return transform.InverseTransformPoint(point.position);
+        return useCustomPosition ? customFirePosition : defaultEnginePoint;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(1f, 0.42f, 0.05f);
+        bool hasPoint = false;
+        if (firePoint != null)
+            foreach (Transform point in firePoint)
+                if (point != null)
+                {
+                    Gizmos.DrawWireSphere(point.position, 0.4f);
+                    hasPoint = true;
+                }
+
+        if (!hasPoint && useCustomPosition)
+            Gizmos.DrawWireSphere(transform.TransformPoint(customFirePosition), 0.4f);
+        else if (!hasPoint && Application.isPlaying)
+            Gizmos.DrawWireSphere(transform.TransformPoint(defaultEnginePoint), 0.4f);
     }
 
     private void UpdateSmoke()
     {
         // Le bus abîmé fume en continu
-        if (IsDamaged)
+        if (IsDamaged && smokeRoot != null && smokeRoot.gameObject.activeSelf)
         {
             puffTimer += 7f * Time.deltaTime;
-            Vector3 engine = transform.TransformPoint(enginePoint);
             while (puffTimer >= 1f)
             {
                 puffTimer -= 1f;
-                EmitPuff(engine + Random.insideUnitSphere * 0.4f, 0.5f, 1.1f);
+                foreach (Vector3 enginePoint in enginePoints)
+                    EmitPuff(transform.TransformPoint(enginePoint) + Random.insideUnitSphere * 0.4f, 0.5f, 1.1f);
             }
         }
 
@@ -322,7 +412,14 @@ public class BusDamage : MonoBehaviour
 
     private void UpdateFire()
     {
-        if (fire == null || !fire.gameObject.activeSelf) return;
+        bool anyFireActive = false;
+        foreach (Transform fire in fires)
+            if (fire.gameObject.activeSelf)
+            {
+                anyFireActive = true;
+                break;
+            }
+        if (!anyFireActive) return;
 
         for (int i = 0; i < flames.Count; i++)
         {
@@ -335,6 +432,7 @@ public class BusDamage : MonoBehaviour
             flames[i].localPosition = p;
         }
 
-        fireLight.intensity = 3f + 2f * Mathf.PerlinNoise(Time.time * 9f, 0.5f);
+        for (int i = 0; i < fireLights.Count; i++)
+            fireLights[i].intensity = 3f + 2f * Mathf.PerlinNoise(Time.time * 9f, i * 0.5f);
     }
 }
