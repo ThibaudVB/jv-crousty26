@@ -76,7 +76,7 @@ public class CroustyHUD : MonoBehaviour
         UpdateClock();
         UpdateRunHUD();
 
-        int total = manager.HasStarted ? manager.OrdersTotal : manager.ordersPerRun;
+        int total = manager.HasStarted ? manager.OrdersTotal : manager.NextRunOrders;
         int done = manager.HasStarted ? manager.Delivered : 0;
         if (deliveryValue != null) deliveryValue.text = $"{done}/{total}";
         if (objectiveValue != null)
@@ -134,7 +134,7 @@ public class CroustyHUD : MonoBehaviour
         }
         scorePulse += dt;
         if (timerValue == null) return;
-        int seconds = Mathf.CeilToInt(manager.RunActive ? manager.RunRemaining : manager.HasStarted ? 0 : manager.runTimeLimit);
+        int seconds = Mathf.CeilToInt(manager.RunActive ? manager.RunRemaining : manager.HasStarted ? 0 : manager.RunTimeLimit);
         int state = manager.RunActive ? 1 : manager.AllDelivered ? 2 : manager.HasFailed ? 3 : 0;
         if (seconds != displayedSeconds || state != displayedRunState)
         {

@@ -1,17 +1,20 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-// Gère les commandes : chargement au magasin, livraison avec E, compteur.
+// Gère les commandes : chargement au magasin, livraison automatique, chrono, points.
 // A mettre sur un GameObject vide de la scène (ex : "DeliveryManager").
 public class DeliveryManager : MonoBehaviour
 {
     public static DeliveryManager Instance { get; private set; }
 
     [Header("Commandes")]
-    [Min(1)] public int ordersPerRun = 6;
-    [Min(10f)] public float runTimeLimit = 90f;
+    [Tooltip("Nombre de commandes de la toute première tournée")]
+    [Min(1)] public int firstRunOrders = 3;
+    [Tooltip("Ensuite : 1 x pas, 2 x pas, 3 x pas... (avec 5 : 5, 10, 15...)")]
+    [Min(1)] public int ordersStep = 5;
+    [Tooltip("Temps accordé par commande (3 commandes x 15 s = 45 s)")]
+    [Min(1f)] public float secondsPerOrder = 15f;
     [Min(6)] public int nearbyAddressPool = 8;
     [Min(0)] public int pointsPerDelivery = 100;
     [Min(0)] public int completionBonus = 500;
@@ -23,7 +26,6 @@ public class DeliveryManager : MonoBehaviour
     public List<DeliveryPoint> deliveryPoints = new List<DeliveryPoint>();
 
     [Header("Livraison")]
-    public Key deliverKey = Key.E;
     public float throwDuration = 0.8f;
     public float throwArcHeight = 4f;
     public float throwStartHeight = 2.5f;
@@ -36,11 +38,12 @@ public class DeliveryManager : MonoBehaviour
     public int OrdersTotal { get; private set; }
     public int Delivered { get; private set; }
     public bool HasStarted { get; private set; }
-    public DeliveryPoint PointInRange { get; private set; }
     public bool RunActive { get; private set; }
     public bool HasFailed { get; private set; }
     public float RunElapsed { get; private set; }
-    public float RunRemaining => RunActive ? Mathf.Max(0,runTimeLimit - RunElapsed) : 0;
+    // Durée de la tournée en cours (ou de la prochaine si on n'a pas encore commencé)
+    public float RunTimeLimit => secondsPerOrder * (HasStarted ? OrdersTotal : NextRunOrders);
+    public float RunRemaining => RunActive ? Mathf.Max(0,RunTimeLimit - RunElapsed) : 0;
     public int Score { get; private set; }
     public int LastRunScore { get; private set; }
     public int BestScore => PlayerPrefs.GetInt("Crousty.BestScore",0);
@@ -50,12 +53,19 @@ public class DeliveryManager : MonoBehaviour
 
     public event System.Action<DeliveryPoint> DeliveryCompleted;
 
+    private int runsLoaded;
     private int inFlight;
     private PoliceGameOverManager gameOver;
     private bool alarmPlayed, mustLeaveShop;
 
     public bool AllDelivered =>
         HasStarted && !HasFailed && Delivered == OrdersTotal && CroustyLeft == 0 && inFlight == 0;
+
+    // Il faut passer au magasin : début de partie ou tournée terminée
+    public bool NeedsPickup => !HasFailed && !RunActive && (!HasStarted || AllDelivered);
+
+    // Commandes de la prochaine tournée : 3, puis 5, 10, 15...
+    public int NextRunOrders => OrdersForRun(runsLoaded);
 
     private void Awake()
     {
@@ -104,28 +114,28 @@ public class DeliveryManager : MonoBehaviour
             LoadOrders();
         }
 
-        // LIVRAISON
-        PointInRange = FindDeliverablePoint();
-
-        if (PointInRange != null &&
-            Keyboard.current != null &&
-            Keyboard.current[deliverKey].wasPressedThisFrame)
-        {
-            ThrowCrousty(PointInRange);
-        }
+        // LIVRAISON (automatique en passant à côté d'une adresse)
+        DeliveryPoint target = FindDeliverablePoint();
+        if (target != null)
+            ThrowCrousty(target);
     }
 
     private bool CanLoadOrders()
     {
         // On ne recharge que quand la tournée précédente est terminée
-        return !HasFailed && !RunActive && (!HasStarted || AllDelivered && !mustLeaveShop);
+        return NeedsPickup && !mustLeaveShop;
+    }
+
+    private int OrdersForRun(int run)
+    {
+        return run == 0 ? firstRunOrders : ordersStep * run;
     }
 
     private void AdvanceRun(float seconds)
     {
         if (!RunActive || HasFailed) return;
         RunElapsed += Mathf.Max(0,seconds);
-        if (RunElapsed >= runTimeLimit) { FailRun(true); return; }
+        if (RunElapsed >= RunTimeLimit) { FailRun(true); return; }
         if (!alarmPlayed && RunRemaining <= 15f)
         {
             alarmPlayed = true;
@@ -138,7 +148,6 @@ public class DeliveryManager : MonoBehaviour
         if (HasFailed) return;
         HasFailed = true;
         RunActive = false;
-        PointInRange = null;
         SaveBestScore();
         if (timeout)
         {
@@ -175,24 +184,17 @@ public class DeliveryManager : MonoBehaviour
     {
         if (HasFailed) return;
         deliveryPoints.RemoveAll(point => point == null || !point.isActiveAndEnabled);
-        if (deliveryPoints.Count < ordersPerRun) return;
-        // Désactive les anciens points
-        foreach (DeliveryPoint point in deliveryPoints)
-            point.SetOrderActive(false);
-
         if (deliveryPoints.Count == 0)
         {
             Debug.LogWarning("DeliveryManager : aucun DeliveryPoint dans la scène.");
             return;
         }
 
-        int count = Mathf.Min(ordersPerRun, deliveryPoints.Count);
+        // Désactive les anciens points
+        foreach (DeliveryPoint point in deliveryPoints)
+            point.SetOrderActive(false);
 
-        if (count < ordersPerRun)
-            Debug.LogWarning(
-                $"DeliveryManager : seulement {deliveryPoints.Count} points de livraison " +
-                $"pour {ordersPerRun} commandes, on en prend {count}."
-            );
+        int wanted = NextRunOrders;
 
         // Tirage au hasard des adresses
         var ordered = new List<DeliveryPoint>(deliveryPoints);
@@ -213,9 +215,17 @@ public class DeliveryManager : MonoBehaviour
                 if (!blocks.Add(block)) continue;
             }
             pool.Add(point);
-            if (pool.Count >= Mathf.Max(count,nearbyAddressPool)) break;
+            if (pool.Count >= Mathf.Max(wanted,nearbyAddressPool)) break;
         }
-        if (pool.Count < count) return;
+        if (pool.Count == 0) return;
+
+        int count = Mathf.Min(wanted, pool.Count);
+        if (count < wanted)
+            Debug.LogWarning(
+                $"DeliveryManager : seulement {pool.Count} adresses disponibles " +
+                $"pour {wanted} commandes, on en prend {count}."
+            );
+
         int poolSize = pool.Count;
         for (int i = 0; i < count; i++)
         {
@@ -229,6 +239,7 @@ public class DeliveryManager : MonoBehaviour
         Delivered = 0;
         inFlight = 0;
         HasStarted = true;
+        runsLoaded++;
         RunElapsed = 0;
         RunActive = true;
         LastRunScore = 0;
@@ -303,7 +314,7 @@ public class DeliveryManager : MonoBehaviour
         CroustySoundDesignManager.Play(CroustySound.DeliveryCoin);
         if (Delivered == OrdersTotal)
         {
-            int bonus = completionBonus + Mathf.FloorToInt(Mathf.Max(0,runTimeLimit - RunElapsed)) * pointsPerRemainingSecond;
+            int bonus = completionBonus + Mathf.FloorToInt(Mathf.Max(0,RunTimeLimit - RunElapsed)) * pointsPerRemainingSecond;
             RunActive = false;
             AwardScore(bonus);
             SaveBestScore();
