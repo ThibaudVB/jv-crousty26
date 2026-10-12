@@ -29,12 +29,8 @@ public class GerantDialogue : MonoBehaviour
     public string runCompleteLine = "Nice job! {0} points! Come back to the shop for more orders!";
     [Tooltip("Temps écoulé ou arrêté par la police")]
     public string failedLine = "What a disaster... The customers are still waiting!";
-    [Tooltip("Après un choc. {0} = chances restantes")]
-    public string crashLine = "Hey! Watch my car! {0} chances left!";
-    [Tooltip("Après le choc qui met le feu, quand il ne reste qu'une chance")]
-    public string lastChanceLine = "It's on fire! One more crash and you're done!";
-    [Tooltip("Le bus est cassé")]
-    public string wreckedLine = "My car!! You wrecked it... You're fired!";
+    [Tooltip("Après un choc contre un mur, une voiture ou une grosse chute")]
+    public string crashLine = "Hey! Watch my car!";
     [Tooltip("Durée d'affichage d'une réplique de choc")]
     public float crashLineSeconds = 3f;
     [Tooltip("Secondes restantes à partir desquelles le gérant presse le joueur")]
@@ -162,9 +158,9 @@ public class GerantDialogue : MonoBehaviour
             damage.Damaged -= OnDamaged;
     }
 
-    private void OnDamaged(int chancesLeft)
+    private void OnDamaged()
     {
-        crashMessage = chancesLeft == 1 ? lastChanceLine : string.Format(crashLine, chancesLeft);
+        crashMessage = crashLine;
         crashMessageUntil = Time.time + crashLineSeconds;
     }
 
@@ -180,9 +176,6 @@ public class GerantDialogue : MonoBehaviour
     // Réplique selon l'état de la tournée. null = on garde la réplique actuelle.
     private string GetMessage()
     {
-        if (damage != null && damage.IsBroken)
-            return wreckedLine;
-
         if (manager.HasFailed)
             return failedLine;
 

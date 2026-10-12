@@ -189,6 +189,7 @@ GameObject:
   - component: {fileID: 920000000000000003}
   - component: {fileID: 920000000000000005}
   - component: {fileID: 920000000000000004}
+  - component: {fileID: 920000000000000006}
   m_Layer: 0
   m_Name: CroustyBus
   m_TagString: Untagged
@@ -8671,8 +8672,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96a13ad3c8d75a6479e79d096c50efbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DeliveryManager
-  ordersPerRun: 6
-  runTimeLimit: 90
+  firstRunOrders: 3
+  ordersStep: 5
+  secondsPerOrder: 15
   nearbyAddressPool: 8
   pointsPerDelivery: 100
   completionBonus: 500
@@ -8686,7 +8688,6 @@ MonoBehaviour:
   - {fileID: 1779071070}
   - {fileID: 1345296051}
   - {fileID: 428393979}
-  deliverKey: 19
   throwDuration: 0.8
   throwArcHeight: 4
   throwStartHeight: 2.5
@@ -11737,10 +11738,11 @@ MonoBehaviour:
   landingGraceSeconds: 1
   safeSpeedKmh: 45
   startupGraceSeconds: 3
-  appearanceDistance: 8
-  disappearanceDistance: 18
-  retreatSpeed: 6
-  appearanceSideOffset: 1.4
+  spawnDistance: 40
+  loseDistance: 80
+  catchRange: 3
+  giveUpSeconds: 12
+  respawnDelay: 5
 --- !u!4 &1357885541
 Transform:
   m_ObjectHideFlags: 0
@@ -31206,6 +31208,28 @@ MonoBehaviour:
   startingCharges: 3
   label: {fileID: 1455642115}
   hud: {fileID: 1471320596}
+--- !u!114 &920000000000000006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ccfcce7398938f84ca9b18e32eee6c24, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BusRiceThrower
+  activationKey: 19
+  startingCharges: 3
+  slickRadius: 6
+  slickDuration: 10
+  throwDistance: 6
+  grainsPerThrow: 60
+  slowDuration: 3.5
+  slowFactor: 0.3
+  directHitRange: 25
+  riceColor: {r: 0.98, g: 0.97, b: 0.9, a: 1}
 --- !u!114 &920000000000000010
 MonoBehaviour:
   m_ObjectHideFlags: 0

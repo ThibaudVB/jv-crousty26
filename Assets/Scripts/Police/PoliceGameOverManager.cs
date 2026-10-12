@@ -22,8 +22,6 @@ public class PoliceGameOverManager : MonoBehaviour
         => TriggerGameOver(null);
     public void TriggerTimeoutGameOver()
         => TriggerGameOver("OUT OF TIME!");
-    public void TriggerWreckGameOver()
-        => TriggerGameOver("WRECKED!");
     // title : remplace le titre "POLICE" du panneau (null = garde le titre de la police)
     private void TriggerGameOver(string title)
     {

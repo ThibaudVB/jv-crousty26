@@ -1,21 +1,18 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
-// Dégâts du bus : chaque choc contre un mur, un bâtiment ou une voiture l'abîme.
-// 1er choc : carrosserie noircie + fumée, 2e : il prend feu, 3e : il casse (explosion) et c'est perdu.
+// Dégâts du bus : au premier choc contre un mur, un bâtiment ou une voiture, le bus s'abîme
+// (carrosserie noircie, fumée et flammes sur le capot). C'est purement visuel : on ne perd pas.
 // Une grosse chute (après un vol trop haut, ou en tombant d'un toit) compte aussi comme un choc.
 // Ajouté automatiquement sur le bus par le DeliveryManager, rien à placer dans la scène.
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
 public class BusDamage : MonoBehaviour
 {
-    [Header("Chances")]
-    [Min(1)] public int maxHits = 3;
+    [Header("Chocs")]
     [Tooltip("Vitesse minimale vers l'obstacle (km/h) pour que le choc compte")]
     public float minImpactSpeedKmh = 25f;
-    [Tooltip("Secondes d'invincibilité après un choc")]
+    [Tooltip("Secondes entre deux chocs comptés")]
     public float hitCooldown = 1.5f;
     [Tooltip("Les contacts plus bas que ça (bordures de trottoir) ne comptent pas")]
     public float curbHeight = 0.6f;
@@ -27,36 +24,22 @@ public class BusDamage : MonoBehaviour
     [Header("Vitesse")]
     [Tooltip("Le bus roule un peu moins vite que la vitesse réglée sur le BusController")]
     [Range(0.3f, 1f)] public float speedMultiplier = 0.85f;
-    [Tooltip("Vitesse perdue à chaque choc (0.1 = -10 %)")]
-    [Range(0f, 0.5f)] public float speedLossPerHit = 0.1f;
 
     [Header("Effets")]
-    [Tooltip("Noircissement de la carrosserie quand le bus est cassé")]
-    [Range(0f, 1f)] public float maxDarkening = 0.6f;
+    [Tooltip("Noircissement de la carrosserie une fois abîmé")]
+    [Range(0f, 1f)] public float darkening = 0.45f;
+    [Tooltip("Le bus abîmé a aussi des flammes sur le capot")]
+    public bool onFire = true;
     public Color smokeColor = new Color(0.32f, 0.32f, 0.35f);
     public Color fireColor = new Color(1f, 0.42f, 0.05f);
     public Color fireCoreColor = new Color(1f, 0.85f, 0.2f);
-    [Tooltip("Secondes entre l'explosion et l'écran de défaite")]
-    public float gameOverDelay = 2f;
 
-    [Header("Vies à l'écran (en haut au centre)")]
-    public bool showLives = true;
-    public Vector2 livesOffset = new Vector2(0f, -20f);
-    public float heartSize = 52f;
-    public Color heartColor = new Color32(0xE8, 0x3A, 0x3A, 0xFF);
-    public Color lostHeartColor = new Color(0.15f, 0.15f, 0.18f, 0.6f);
-    public int sortingOrder = 104;
-
-    public int Hits { get; private set; }
-    public int ChancesLeft => Mathf.Max(0, maxHits - Hits);
-    public bool IsBroken => Hits >= maxHits;
-    // Appelé à chaque choc, avec le nombre de chances restantes
-    public event System.Action<int> Damaged;
+    public bool IsDamaged { get; private set; }
+    // Appelé à chaque choc
+    public event System.Action Damaged;
 
     private Rigidbody rb;
-    private BusController bus;
     private BoxCollider body;
-    private float baseMaxSpeed;
     private float lastHitTime = -999f;
     private BusWheelRig wheelRig;
     private BusFlightController flight;
@@ -81,14 +64,9 @@ public class BusDamage : MonoBehaviour
     private int nextPuff;
     private float puffTimer;
 
-    private GameObject livesCanvas;
-    private Image[] hearts;
-    private float heartPop;
-
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        bus = GetComponent<BusController>();
         body = GetComponent<BoxCollider>();
         wheelRig = GetComponent<BusWheelRig>();
         flight = GetComponent<BusFlightController>();
@@ -97,16 +75,13 @@ public class BusDamage : MonoBehaviour
     private void Start()
     {
         // Start : après les Awake qui peuvent encore régler la vitesse du bus
+        BusController bus = GetComponent<BusController>();
         if (bus != null)
-        {
-            baseMaxSpeed = bus.maxSpeedKmh * speedMultiplier;
-            ApplySpeed();
-        }
+            bus.maxSpeedKmh *= speedMultiplier;
 
         fallStartY = rb.position.y;
         CollectPaint();
         BuildEffects();
-        if (showLives) BuildLives();
     }
 
     private void OnDestroy()
@@ -114,7 +89,6 @@ public class BusDamage : MonoBehaviour
         foreach (Material material in busMaterials)
             if (material != null) Destroy(material);
         if (smokeRoot != null) Destroy(smokeRoot.gameObject);
-        if (livesCanvas != null) Destroy(livesCanvas);
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -144,7 +118,7 @@ public class BusDamage : MonoBehaviour
 
     private bool CanTakeHit()
     {
-        return !IsBroken && Time.time - lastHitTime >= hitCooldown &&
+        return Time.time - lastHitTime >= hitCooldown &&
             (DeliveryManager.Instance == null || !DeliveryManager.Instance.HasFailed);
     }
 
@@ -188,58 +162,22 @@ public class BusDamage : MonoBehaviour
 
     private void TakeHit(Vector3 point)
     {
-        Hits++;
         lastHitTime = Time.time;
-        heartPop = 1f;
-        ApplySpeed();
-        ApplyPaint();
 
-        if (Hits >= 2 && fire != null)
-            fire.gameObject.SetActive(true);
-
-        Damaged?.Invoke(ChancesLeft);
-
-        if (IsBroken)
+        if (!IsDamaged)
         {
-            StartCoroutine(BreakRoutine());
-            return;
+            IsDamaged = true;
+            ApplyPaint();
+            if (onFire && fire != null)
+                fire.gameObject.SetActive(true);
         }
+
+        Damaged?.Invoke();
 
         CroustySoundDesignManager.Play(CroustySound.Horn, point);
         // Petite bouffée de fumée à l'endroit du choc
         for (int i = 0; i < 6; i++)
             EmitPuff(point + Random.insideUnitSphere * 0.5f, 0.5f, 0.9f);
-    }
-
-    private IEnumerator BreakRoutine()
-    {
-        CroustySoundDesignManager.Play(CroustySound.Explosion, transform.position);
-        DeliveryManager.Instance?.EndRunOnCapture();
-
-        // Le bus est cassé : plus de conduite
-        if (bus != null) bus.enabled = false;
-        var flight = GetComponent<BusFlightController>();
-        if (flight != null) flight.enabled = false;
-        rb.linearVelocity = Vector3.up * 4f;
-
-        Vector3 origin = transform.TransformPoint(enginePoint);
-        StartCoroutine(DebrisRoutine(origin));
-        for (int i = 0; i < 14; i++)
-            EmitPuff(origin + Random.insideUnitSphere * 1.5f, 1.2f, 2.2f);
-
-        yield return new WaitForSeconds(gameOverDelay);
-
-        var gameOver = FindAnyObjectByType<PoliceGameOverManager>();
-        if (gameOver != null)
-            gameOver.TriggerWreckGameOver();
-        else
-            Time.timeScale = 0f;
-    }
-
-    private void ApplySpeed()
-    {
-        if (bus == null) return;
-        bus.maxSpeedKmh = baseMaxSpeed * Mathf.Max(0.2f, 1f - speedLossPerHit * Hits);
     }
 
     // ---------- Carrosserie ----------
@@ -263,11 +201,10 @@ public class BusDamage : MonoBehaviour
 
     private void ApplyPaint()
     {
-        float t = maxDarkening * Mathf.Clamp01((float)Hits / maxHits);
         Color burnt = new Color(0.08f, 0.07f, 0.07f);
         foreach (Paint paint in paints)
         {
-            Color color = Color.Lerp(paint.color, burnt, t);
+            Color color = Color.Lerp(paint.color, burnt, darkening);
             color.a = paint.color.a;
             paint.material.SetColor(paint.property, color);
         }
@@ -322,7 +259,7 @@ public class BusDamage : MonoBehaviour
 
         // Fumée : quelques sphères réutilisées, dans le monde pour laisser une traînée
         smokeRoot = new GameObject("Fumee bus").transform;
-        for (int i = 0; i < 40; i++)
+        for (int i = 0; i < 30; i++)
         {
             GameObject puff = JojoVisuals.CreateShape(PrimitiveType.Sphere, smokeRoot,
                 i % 2 == 0 ? smokeColor : smokeColor * 0.7f);
@@ -350,21 +287,19 @@ public class BusDamage : MonoBehaviour
     {
         UpdateSmoke();
         UpdateFire();
-        UpdateLives();
     }
 
     private void UpdateSmoke()
     {
-        // Plus le bus est abîmé, plus il fume
-        float rate = Hits == 0 ? 0f : IsBroken ? 14f : Hits == 1 ? 5f : 9f;
-        if (rate > 0f)
+        // Le bus abîmé fume en continu
+        if (IsDamaged)
         {
-            puffTimer += rate * Time.deltaTime;
+            puffTimer += 7f * Time.deltaTime;
             Vector3 engine = transform.TransformPoint(enginePoint);
             while (puffTimer >= 1f)
             {
                 puffTimer -= 1f;
-                EmitPuff(engine + Random.insideUnitSphere * 0.4f, IsBroken ? 1f : 0.5f, IsBroken ? 1.8f : 1f);
+                EmitPuff(engine + Random.insideUnitSphere * 0.4f, 0.5f, 1.1f);
             }
         }
 
@@ -388,11 +323,10 @@ public class BusDamage : MonoBehaviour
     {
         if (fire == null || !fire.gameObject.activeSelf) return;
 
-        float strength = IsBroken ? 1.8f : 1f;
         for (int i = 0; i < flames.Count; i++)
         {
             float flicker = 0.7f + 0.6f * Mathf.PerlinNoise(Time.time * 7f, i * 3.1f);
-            Vector3 s = flameScales[i] * strength;
+            Vector3 s = flameScales[i];
             s.y *= flicker;
             flames[i].localScale = s;
             Vector3 p = flames[i].localPosition;
@@ -400,100 +334,6 @@ public class BusDamage : MonoBehaviour
             flames[i].localPosition = p;
         }
 
-        fireLight.intensity = (3f + 2f * Mathf.PerlinNoise(Time.time * 9f, 0.5f)) * strength;
-    }
-
-    private IEnumerator DebrisRoutine(Vector3 origin)
-    {
-        const int count = 24;
-        var pieces = new Transform[count];
-        var velocities = new Vector3[count];
-        var sizes = new float[count];
-        Color dark = new Color(0.12f, 0.12f, 0.12f);
-
-        for (int i = 0; i < count; i++)
-        {
-            Color color = i % 3 == 0 ? fireCoreColor : i % 3 == 1 ? fireColor : dark;
-            pieces[i] = JojoVisuals.CreateShape(PrimitiveType.Cube, null, color).transform;
-            pieces[i].name = "Debris bus";
-            pieces[i].position = origin;
-            pieces[i].rotation = Random.rotation;
-            sizes[i] = Random.Range(0.3f, 0.8f);
-            Vector3 velocity = Random.onUnitSphere * Random.Range(6f, 14f);
-            velocity.y = Mathf.Abs(velocity.y) + 4f;
-            velocities[i] = velocity;
-        }
-
-        const float duration = 1.6f;
-        for (float t = 0f; t < duration; t += Time.deltaTime)
-        {
-            float shrink = Mathf.Clamp01((duration - t) / 0.5f);
-            for (int i = 0; i < count; i++)
-            {
-                velocities[i] += Physics.gravity * Time.deltaTime;
-                pieces[i].position += velocities[i] * Time.deltaTime;
-                pieces[i].Rotate(400f * Time.deltaTime, 250f * Time.deltaTime, 0f);
-                pieces[i].localScale = Vector3.one * (sizes[i] * shrink);
-            }
-            yield return null;
-        }
-
-        foreach (Transform piece in pieces)
-        {
-            Destroy(piece.GetComponent<Renderer>().sharedMaterial);
-            Destroy(piece.gameObject);
-        }
-    }
-
-    // ---------- Vies à l'écran ----------
-
-    private void BuildLives()
-    {
-        livesCanvas = new GameObject("Canvas Vies bus", typeof(Canvas), typeof(CanvasScaler));
-        Canvas canvas = livesCanvas.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = sortingOrder;
-
-        CanvasScaler scaler = livesCanvas.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-
-        hearts = new Image[maxHits];
-        for (int i = 0; i < maxHits; i++)
-        {
-            GameObject heartObject = new GameObject("Vie " + (i + 1), typeof(RectTransform), typeof(Image), typeof(Outline));
-            heartObject.transform.SetParent(canvas.transform, false);
-
-            RectTransform rect = heartObject.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.sizeDelta = Vector2.one * heartSize;
-            rect.anchoredPosition = livesOffset + Vector2.right * ((i - (maxHits - 1) * 0.5f) * (heartSize + 12f));
-
-            Image image = heartObject.GetComponent<Image>();
-            image.sprite = JojoVisuals.HeartSprite;
-            image.raycastTarget = false;
-
-            Outline outline = heartObject.GetComponent<Outline>();
-            outline.effectColor = new Color(0.15f, 0.15f, 0.19f, 1f);
-            outline.effectDistance = new Vector2(3f, -3f);
-
-            hearts[i] = image;
-        }
-    }
-
-    private void UpdateLives()
-    {
-        if (hearts == null) return;
-
-        heartPop = Mathf.MoveTowards(heartPop, 0f, Time.unscaledDeltaTime * 2.5f);
-        for (int i = 0; i < hearts.Length; i++)
-        {
-            bool alive = i < ChancesLeft;
-            hearts[i].color = alive ? heartColor : lostHeartColor;
-            // Le coeur qui vient d'être perdu grossit un instant
-            float pop = i == ChancesLeft ? heartPop * 0.6f : 0f;
-            hearts[i].rectTransform.localScale = Vector3.one * (1f + pop);
-        }
+        fireLight.intensity = 3f + 2f * Mathf.PerlinNoise(Time.time * 9f, 0.5f);
     }
 }
