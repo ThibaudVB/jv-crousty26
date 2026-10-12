@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 // Dégâts du bus : chaque choc contre un mur, un bâtiment ou une voiture l'abîme.
 // 1er choc : carrosserie noircie + fumée, 2e : il prend feu, 3e : il casse (explosion) et c'est perdu.
+// Une grosse chute (après un vol trop haut, ou en tombant d'un toit) compte aussi comme un choc.
 // Ajouté automatiquement sur le bus par le DeliveryManager, rien à placer dans la scène.
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
@@ -18,6 +19,10 @@ public class BusDamage : MonoBehaviour
     public float hitCooldown = 1.5f;
     [Tooltip("Les contacts plus bas que ça (bordures de trottoir) ne comptent pas")]
     public float curbHeight = 0.6f;
+
+    [Header("Chute")]
+    [Tooltip("Hauteur de chute (m) à partir de laquelle l'atterrissage abîme le bus")]
+    public float fallDamageHeight = 15f;
 
     [Header("Vitesse")]
     [Tooltip("Le bus roule un peu moins vite que la vitesse réglée sur le BusController")]
@@ -53,6 +58,10 @@ public class BusDamage : MonoBehaviour
     private BoxCollider body;
     private float baseMaxSpeed;
     private float lastHitTime = -999f;
+    private BusWheelRig wheelRig;
+    private BusFlightController flight;
+    private float fallStartY;
+    private bool wasGrounded = true;
 
     // Carrosserie : matériaux du bus et leur couleur d'origine
     private class Paint { public Material material; public string property; public Color color; }
@@ -81,6 +90,8 @@ public class BusDamage : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         bus = GetComponent<BusController>();
         body = GetComponent<BoxCollider>();
+        wheelRig = GetComponent<BusWheelRig>();
+        flight = GetComponent<BusFlightController>();
     }
 
     private void Start()
@@ -92,6 +103,7 @@ public class BusDamage : MonoBehaviour
             ApplySpeed();
         }
 
+        fallStartY = rb.position.y;
         CollectPaint();
         BuildEffects();
         if (showLives) BuildLives();
@@ -107,9 +119,7 @@ public class BusDamage : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (IsBroken || Time.time - lastHitTime < hitCooldown) return;
-        if (collision.transform.IsChildOf(transform)) return;
-        if (DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed) return;
+        if (!CanTakeHit() || collision.transform.IsChildOf(transform)) return;
 
         float floor = (body != null ? body.bounds.min.y : rb.position.y) + curbHeight;
         float impact = 0f;
@@ -130,6 +140,50 @@ public class BusDamage : MonoBehaviour
 
         if (impact * 3.6f >= minImpactSpeedKmh)
             TakeHit(point);
+    }
+
+    private bool CanTakeHit()
+    {
+        return !IsBroken && Time.time - lastHitTime >= hitCooldown &&
+            (DeliveryManager.Instance == null || !DeliveryManager.Instance.HasFailed);
+    }
+
+    // ---------- Chute ----------
+
+    private void FixedUpdate()
+    {
+        float y = rb.position.y;
+        bool grounded = IsGrounded();
+
+        // Pendant le vol piloté, la chute ne commence qu'à la fin du vol (quand le bus retombe)
+        if (flight != null && flight.isActiveAndEnabled && flight.CurrentMode == BusFlightController.FlightMode.Flying)
+            fallStartY = y;
+        else if (!grounded)
+            fallStartY = Mathf.Max(fallStartY, y);
+        else
+        {
+            // Atterrissage : on compare avec le point le plus haut atteint en l'air
+            if (!wasGrounded && fallStartY - y >= fallDamageHeight && CanTakeHit())
+                TakeHit(transform.position);
+            fallStartY = y;
+        }
+
+        wasGrounded = grounded;
+    }
+
+    private bool IsGrounded()
+    {
+        if (wheelRig != null && wheelRig.IsReady && wheelRig.IsGrounded)
+            return true;
+
+        // Rayon vers le bas depuis le centre du bus jusqu'un peu sous le bas de la carrosserie
+        Vector3 origin = body != null ? body.bounds.center : rb.position + Vector3.up;
+        float distance = (body != null ? origin.y - body.bounds.min.y : 1f) + 0.5f;
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, distance, ~0, QueryTriggerInteraction.Ignore);
+        foreach (RaycastHit hit in hits)
+            if (!hit.collider.transform.IsChildOf(transform) && hit.normal.y > 0.5f)
+                return true;
+        return false;
     }
 
     private void TakeHit(Vector3 point)
