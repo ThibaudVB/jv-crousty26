@@ -19,7 +19,7 @@ public class BusWings : MonoBehaviour
     [Tooltip("Position le long du bus (0 = milieu, 0.5 = avant, -0.5 = arrière)")]
     [Range(-0.5f, 0.5f)] public float alongBus = 0.1f;
     [Tooltip("Hauteur de la charnière (0 = milieu du bus, 0.5 = toit)")]
-    [Range(-0.5f, 0.5f)] public float height = 0.35f;
+    [Range(-1.5f, 1.5f)] public float height = -0.15f;
     [Tooltip("Inclinaison des ailes vers l'arrière (degrés)")]
     public float sweepAngle = 15f;
     public Color wingColor = new Color(1f, 0.98f, 0.92f);
