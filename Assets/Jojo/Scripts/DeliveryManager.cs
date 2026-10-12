@@ -94,6 +94,10 @@ public class DeliveryManager : MonoBehaviour
         BusController playerBus = player != null ? player.GetComponentInParent<BusController>() : null;
         if (playerBus != null && playerBus.GetComponent<BusDamage>() == null)
             playerBus.gameObject.AddComponent<BusDamage>();
+
+        // Compétence riz (touche E) contre la police
+        if (playerBus != null && playerBus.GetComponent<BusRiceThrower>() == null)
+            playerBus.gameObject.AddComponent<BusRiceThrower>();
     }
 
     private void OnDestroy()

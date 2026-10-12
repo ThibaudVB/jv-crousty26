@@ -53,7 +53,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
                 card.nameText.text = language == BonusLanguage.English ? card.englishName : card.frenchName;
     }
 
-    // Ready for the rice mechanic when it is implemented.
+    // Called by BusRiceThrower when the rice charges change.
     public void SetRiceCharges(int count)
     {
         riceCharges = Mathf.Clamp(count, 0, 3);

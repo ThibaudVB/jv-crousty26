@@ -1,5 +1,9 @@
+using System.Collections.Generic;
 using UnityEngine;
 
+// Poursuite : la police apparait derriere le bus quand il traine, roule sur le meme chemin que lui
+// et l'arrete s'il reste trop lent pendant qu'elle le colle. Rouler vite longtemps la fait abandonner,
+// le riz la ralentit, le PET l'aveugle et le vol la seme.
 public class PoliceChaseManager : MonoBehaviour
 {
     [Header("References")]
@@ -7,49 +11,41 @@ public class PoliceChaseManager : MonoBehaviour
     [SerializeField] private GameObject policePrefab;
     [SerializeField] private PoliceCatchZone catchZone;
 
-    // ==========================================
-    // MODE AVION
-    // ==========================================
-
     [Header("Bus Fighter")]
-    [SerializeField]
-    private BusFlightController flightController;
-
-    [SerializeField, Min(0f)]
-    private float landingGraceSeconds = 1f;
-
-    // ==========================================
-    // PARAMETRES POLICE
-    // ==========================================
+    [SerializeField] private BusFlightController flightController;
+    [SerializeField, Min(0f)] private float landingGraceSeconds = 1f;
 
     [Header("Allure du bus")]
+    [Tooltip("En dessous de cette vitesse, la police arrive et peut arreter le bus")]
+    [SerializeField, Min(1f)] private float safeSpeedKmh = 100f;
+    [SerializeField, Min(0f)] private float startupGraceSeconds = 3f;
 
-    [SerializeField, Min(1f)]
-    private float safeSpeedKmh = 100f;
-
-    [SerializeField, Min(0f)]
-    private float startupGraceSeconds = 3f;
-
-    [Header("Distance derriere le bus (metres)")]
-
-    [SerializeField, Min(1f)]
-    private float appearanceDistance = 8f;
-
-    [SerializeField, Min(1f)]
-    private float disappearanceDistance = 18f;
-
-    [SerializeField, Min(0.1f)]
-    private float retreatSpeed = 6f;
-
-    [SerializeField]
-    private float appearanceSideOffset = 1.4f;
-
-    // ==========================================
-    // VARIABLES INTERNES
-    // ==========================================
+    [Header("Poursuite (metres)")]
+    [Tooltip("Distance derriere le bus (sur son chemin) ou la police apparait")]
+    [SerializeField, Min(5f)] private float spawnDistance = 40f;
+    [Tooltip("Au-dela de cette distance, la police a perdu le bus")]
+    [SerializeField, Min(10f)] private float loseDistance = 80f;
+    [Tooltip("La police arrete le bus quand elle est a moins de cette distance de son pare-chocs")]
+    [SerializeField, Min(0f)] private float catchRange = 3f;
+    [Tooltip("Secondes au-dessus de la vitesse de securite avant que la police abandonne")]
+    [SerializeField, Min(1f)] private float giveUpSeconds = 12f;
+    [Tooltip("Secondes avant qu'une nouvelle voiture puisse apparaitre")]
+    [SerializeField, Min(0f)] private float respawnDelay = 5f;
 
     public float BlindRemaining { get; private set; }
     public bool IsBlinded => BlindRemaining > 0f;
+    public bool ChaseStarted => ActivePolice != null;
+    public PoliceCarAI ActivePolice { get; private set; }
+    public float PoliceDistance => ActivePolice != null ? ActivePolice.DistanceToTarget : loseDistance;
+
+    // Chemin parcouru par le bus, du plus ancien au plus recent
+    private readonly List<Vector3> trail = new List<Vector3>(512);
+    private const float TrailSpacing = 1.5f;
+    private const int MaxTrailPoints = 300;
+
+    private float graceRemaining;
+    private float respawnRemaining;
+    private float fastSeconds;
 
     public bool TryBlindWithPet(Rigidbody source, float duration, float range)
     {
@@ -57,372 +53,183 @@ public class PoliceChaseManager : MonoBehaviour
             ActivePolice == null || catchZone == null || catchZone.IsCaught) return false;
         Vector3 offset = ActivePolice.transform.position - source.position;
         if (Vector3.Dot(offset, source.rotation * Vector3.forward) > 0f ||
-            distance > Mathf.Max(0f, range)) return false;
+            PoliceDistance > Mathf.Max(0f, range)) return false;
         BlindRemaining = Mathf.Clamp(duration, 0f, 5f);
         if (!IsBlinded) return false;
         catchZone.AdvanceCapture(false, 0f);
-        approachProgress = captureAlignment = 0f;
         return true;
     }
 
-    private float distance;
-    private float approachStartDistance;
-    private float approachProgress;
-    private float graceRemaining;
-    private float captureAlignment;
-
-    public bool ChaseStarted => ActivePolice != null;
-
-    public PoliceCarAI ActivePolice { get; private set; }
-
-    public float PoliceDistance =>
-        ActivePolice != null
-            ? distance
-            : disappearanceDistance;
-
-    // ==========================================
-    // INITIALISATION
-    // ==========================================
-
     private void Awake()
     {
-        if (busRigidbody == null ||
-            policePrefab == null ||
-            policePrefab.GetComponent<PoliceCarAI>() == null)
+        if (busRigidbody == null || policePrefab == null || policePrefab.GetComponent<PoliceCarAI>() == null)
         {
-            Debug.LogError(
-                "Police : renseigner le bus et le prefab de voiture.",
-                this
-            );
-
+            Debug.LogError("Police : renseigner le bus et le prefab de voiture.", this);
             enabled = false;
             return;
         }
 
         if (catchZone == null)
-        {
-            catchZone =
-                busRigidbody.GetComponentInChildren<PoliceCatchZone>();
-        }
+            catchZone = busRigidbody.GetComponentInChildren<PoliceCatchZone>();
 
         if (catchZone == null)
         {
-            Debug.LogError(
-                "Police : zone de capture et evenement de defaite manquants.",
-                this
-            );
-
+            Debug.LogError("Police : zone de capture et evenement de defaite manquants.", this);
             enabled = false;
             return;
         }
 
         // Recuperation automatique du mode avion.
         if (flightController == null)
-        {
-            flightController =
-                busRigidbody.GetComponent<BusFlightController>();
-        }
+            flightController = busRigidbody.GetComponent<BusFlightController>();
 
         graceRemaining = startupGraceSeconds;
     }
 
-    // ==========================================
-    // VITESSE DU BUS
-    // ==========================================
-
     private float ForwardSpeed()
     {
-        Vector3 forward = Vector3.ProjectOnPlane(
-            busRigidbody.rotation * Vector3.forward,
-            Vector3.up
-        ).normalized;
-
-        return Mathf.Max(
-            0f,
-            Vector3.Dot(
-                busRigidbody.linearVelocity,
-                forward
-            )
-        ) * 3.6f;
+        Vector3 forward = Vector3.ProjectOnPlane(busRigidbody.rotation * Vector3.forward, Vector3.up).normalized;
+        return Mathf.Max(0f, Vector3.Dot(busRigidbody.linearVelocity, forward)) * 3.6f;
     }
-
-    // ==========================================
-    // POURSUITE
-    // ==========================================
 
     private void FixedUpdate()
     {
-        if (busRigidbody == null ||
-            catchZone == null ||
-            catchZone.IsCaught ||
-            Time.timeScale <= 0f)
-        {
+        if (busRigidbody == null || catchZone == null || catchZone.IsCaught || Time.timeScale <= 0f)
             return;
-        }
 
         float dt = Time.fixedDeltaTime;
 
-        // ======================================
-        // BONUS BUS FIGHTER
-        // ======================================
-
-        if (flightController != null &&
-            flightController.IsAirborne)
+        // Bus Fighter : la police perd la trace pendant le vol.
+        if (flightController != null && flightController.IsAirborne)
         {
-            // Annule la progression de capture.
             catchZone.AdvanceCapture(false, dt);
-
-            // La police disparait pendant le vol.
             RemovePolice();
+            trail.Clear();
+            graceRemaining = Mathf.Max(graceRemaining, landingGraceSeconds);
+            return;
+        }
 
-            // Protection apres l'atterrissage.
-            graceRemaining = Mathf.Max(
-                graceRemaining,
-                landingGraceSeconds
-            );
+        RecordTrail();
 
+        if (graceRemaining > 0f)
+        {
+            graceRemaining = Mathf.Max(0f, graceRemaining - dt);
+            catchZone.AdvanceCapture(false, dt);
+            return;
+        }
+
+        float speed = ForwardSpeed();
+        bool slow = speed < safeSpeedKmh;
+
+        // Apparition : quand le bus traine
+        if (ActivePolice == null)
+        {
+            catchZone.AdvanceCapture(false, dt);
+            respawnRemaining = Mathf.Max(0f, respawnRemaining - dt);
+            if (slow && respawnRemaining <= 0f)
+                SpawnPolice(speed);
             return;
         }
 
         if (IsBlinded)
-        {
             BlindRemaining = Mathf.Max(0f, BlindRemaining - dt);
-            catchZone.AdvanceCapture(false, dt);
-            approachProgress = captureAlignment = 0f;
-            if (ActivePolice != null)
-            {
-                distance = Mathf.MoveTowards(distance, Mathf.Max(disappearanceDistance + 8f,
-                    appearanceDistance + 8f), retreatSpeed * dt);
-                ActivePolice.SetFollowingDistance(distance, appearanceSideOffset, 0f);
-                ActivePolice.UpdateFollowingPose(dt);
-            }
-            return;
-        }
 
-        // ======================================
-        // COMPORTEMENT NORMAL
-        // ======================================
+        // Rouler vite longtemps fait abandonner la police
+        fastSeconds = slow ? 0f : fastSeconds + dt;
+        bool givingUp = fastSeconds >= giveUpSeconds;
 
-        float speed = ForwardSpeed();
+        float speedFactor = IsBlinded ? 0.4f : givingUp ? 0.6f : 1f;
+        ActivePolice.Drive(dt, speedFactor);
 
-        bool recovering = speed >= safeSpeedKmh;
+        // Capture : bus trop lent, police collee a lui et en etat de conduire
+        bool close = ActivePolice.DistanceToTarget <= ActivePolice.FollowDistance + catchRange ||
+            ActivePolice.IsTouchingCaptureZone(catchZone.CaptureCollider);
+        bool canCatch = slow && close && !IsBlinded && !ActivePolice.IsSlowed;
+        catchZone.AdvanceCapture(canCatch, dt, canCatch);
 
-        // Periode de securite.
-        if (graceRemaining > 0f)
-        {
-            graceRemaining = Mathf.Max(
-                0f,
-                graceRemaining - dt
-            );
-
-            catchZone.AdvanceCapture(false, dt);
-
-            return;
-        }
-
-        // ======================================
-        // APPARITION DE LA POLICE
-        // ======================================
-
-        if (ActivePolice == null)
-        {
-            catchZone.AdvanceCapture(false, dt);
-
-            // Pas de police si le bus est assez rapide.
-            if (recovering)
-                return;
-
-            var instance = Instantiate(policePrefab);
-
-            instance.SetActive(false);
-
-            ActivePolice =
-                instance.GetComponent<PoliceCarAI>();
-
-            ActivePolice.SetTarget(
-                busRigidbody.transform,
-                busRigidbody
-            );
-
-            // Initialise la geometrie.
-            ActivePolice.InitializeBody();
-
-            distance = Mathf.Max(
-                ActivePolice.GetCaptureGap(
-                    catchZone.CaptureCollider
-                ) + 1f,
-                appearanceDistance
-            );
-
-            approachStartDistance = distance;
-            approachProgress = 0f;
-            captureAlignment = 0f;
-
-            ActivePolice.SetFollowingDistance(
-                distance,
-                appearanceSideOffset
-            );
-
-            ActivePolice.UpdateFollowingPose(dt);
-
-            instance.SetActive(true);
-
-            // Le compteur commence apres l'apparition.
-            return;
-        }
-
-        // ======================================
-        // DISTANCES DE POURSUITE
-        // ======================================
-
-        float captureGap =
-            ActivePolice.GetCaptureGap(
-                catchZone.CaptureCollider
-            );
-
-        float farDistance = Mathf.Max(
-            disappearanceDistance,
-            appearanceDistance + 1f,
-            captureGap + 1f
-        );
-
-        // ======================================
-        // BUS ASSEZ RAPIDE
-        // ======================================
-
-        if (recovering)
-        {
-            // Arrete la capture.
-            catchZone.AdvanceCapture(false, dt);
-
-            approachProgress = 0f;
-
-            distance = Mathf.MoveTowards(
-                distance,
-                farDistance,
-                retreatSpeed * dt
-            );
-
-            captureAlignment = Mathf.MoveTowards(
-                captureAlignment,
-                0f,
-                dt
-            );
-        }
-
-        // ======================================
-        // BUS TROP LENT
-        // ======================================
-
-        else
-        {
-            if (catchZone.CatchProgress01 <= 0f)
-            {
-                approachStartDistance = distance;
-            }
-
-            float clock = Mathf.Clamp01(
-                catchZone.CatchProgress01 +
-                dt / catchZone.CaptureDurationSeconds
-            );
-
-            // Plus le bus est lent,
-            // plus la police gagne rapidement du terrain.
-            float curve = Mathf.Lerp(
-                0.7f,
-                1.4f,
-                Mathf.Clamp01(speed / safeSpeedKmh)
-            );
-
-            approachProgress = Mathf.Max(
-                approachProgress,
-                Mathf.Pow(clock, curve)
-            );
-
-            distance = Mathf.Lerp(
-                approachStartDistance,
-                captureGap,
-                approachProgress
-            );
-
-            // Alignement progressif pour la capture.
-            captureAlignment = Mathf.SmoothStep(
-                0f,
-                1f,
-                approachProgress
-            );
-        }
-
-        // ======================================
-        // POSITIONNEMENT POLICE
-        // ======================================
-
-        float sideOffset =
-            appearanceSideOffset *
-            (1f - approachProgress);
-
-        ActivePolice.SetFollowingDistance(
-            distance,
-            sideOffset,
-            captureAlignment
-        );
-
-        ActivePolice.UpdateFollowingPose(dt);
-
-        // ======================================
-        // CAPTURE
-        // ======================================
-
-        if (!recovering)
-        {
-            catchZone.AdvanceCapture(
-                true,
-                dt,
-                ActivePolice.IsTouchingCaptureZone(
-                    catchZone.CaptureCollider
-                )
-            );
-        }
-
-        // ======================================
-        // DISPARITION DE LA POLICE
-        // ======================================
-
-        if (recovering &&
-            distance >= farDistance - 0.001f)
+        // Semee
+        if (ActivePolice.DistanceToTarget > loseDistance ||
+            (givingUp && ActivePolice.DistanceToTarget > spawnDistance))
         {
             RemovePolice();
+            respawnRemaining = respawnDelay;
         }
     }
 
-    // ==========================================
-    // SUPPRESSION POLICE
-    // ==========================================
+    private void RecordTrail()
+    {
+        Vector3 position = busRigidbody.position;
+        if (trail.Count > 0)
+        {
+            float moved = Vector3.ProjectOnPlane(position - trail[trail.Count - 1], Vector3.up).magnitude;
+            // Teleportation (reset du bus...) : on repart de zero
+            if (moved > 20f)
+            {
+                trail.Clear();
+                RemovePolice();
+            }
+            else if (moved < TrailSpacing)
+                return;
+        }
+
+        trail.Add(position);
+        if (trail.Count > MaxTrailPoints) trail.RemoveAt(0);
+        if (ActivePolice != null) ActivePolice.AddWaypoint(position);
+    }
+
+    private void SpawnPolice(float busSpeedKmh)
+    {
+        // On remonte le chemin du bus pour trouver le point d'apparition
+        int index = trail.Count - 1;
+        float walked = 0f;
+        while (index > 0 && walked < spawnDistance)
+        {
+            walked += Vector3.Distance(trail[index], trail[index - 1]);
+            index--;
+        }
+
+        Vector3 position;
+        Vector3 forward;
+        if (index < 0 || walked < 10f)
+        {
+            // Pas assez de chemin connu : juste derriere le bus
+            forward = Vector3.ProjectOnPlane(busRigidbody.rotation * Vector3.forward, Vector3.up).normalized;
+            position = busRigidbody.position - forward * spawnDistance * 0.5f;
+            index = trail.Count;
+        }
+        else
+        {
+            position = trail[index];
+            forward = trail[Mathf.Min(index + 1, trail.Count - 1)] - position;
+            index++;
+        }
+
+        GameObject instance = Instantiate(policePrefab);
+        instance.SetActive(false);
+        ActivePolice = instance.GetComponent<PoliceCarAI>();
+        ActivePolice.SetTarget(busRigidbody.transform, busRigidbody);
+        ActivePolice.InitializeBody();
+        ActivePolice.Spawn(position, forward, trail.GetRange(index, trail.Count - index), busSpeedKmh);
+        instance.SetActive(true);
+        fastSeconds = 0f;
+    }
 
     private void RemovePolice()
     {
         BlindRemaining = 0f;
+        fastSeconds = 0f;
         if (ActivePolice == null)
             return;
 
         ActivePolice.gameObject.SetActive(false);
-
         Destroy(ActivePolice.gameObject);
-
         ActivePolice = null;
     }
-
-    // ==========================================
-    // DESACTIVATION
-    // ==========================================
 
     private void OnDisable()
     {
         RemovePolice();
-
         if (catchZone != null)
-        {
             catchZone.AdvanceCapture(false, 0f);
-        }
     }
 }

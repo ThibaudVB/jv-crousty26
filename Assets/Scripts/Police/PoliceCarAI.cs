@@ -1,27 +1,55 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-// Le manager controle le delai; ce composant place la voiture et verifie le contact.
+// Voiture de police qui conduit vraiment : elle suit le chemin pris par le bus (les memes rues),
+// accelere, ralentit dans les virages et fonce droit sur le bus quand elle le voit de pres.
+// Le manager decide quand elle apparait, abandonne ou capture.
 [DefaultExecutionOrder(-20)]
 [RequireComponent(typeof(Rigidbody), typeof(BoxCollider))]
 public class PoliceCarAI : MonoBehaviour
 {
     [SerializeField] private Transform target;
     [SerializeField] private Rigidbody targetRigidbody;
-    [SerializeField, Min(0f)] private float rearGap = 8f;
     [SerializeField] private LayerMask groundLayers = ~0;
+    [Tooltip("Vitesse de rotation du volant (degres par seconde)")]
+    [SerializeField, Min(30f)] private float turningSpeed = 160f;
+
+    [Header("Conduite")]
+    [SerializeField, Min(1f)] private float maxSpeedKmh = 82f;
+    [SerializeField, Min(1f)] private float acceleration = 16f;
+    [SerializeField, Min(1f)] private float brakeDeceleration = 30f;
+    [Tooltip("Vitesse maximale dans un virage a angle droit")]
+    [SerializeField, Min(1f)] private float cornerSpeedKmh = 35f;
+    [Tooltip("La voiture vise un point du chemin a cette distance devant elle")]
+    [SerializeField, Min(1f)] private float lookAhead = 7f;
+    [Tooltip("En dessous de cette distance, si rien ne gene, elle fonce droit sur le bus")]
+    [SerializeField, Min(1f)] private float directChaseDistance = 25f;
+    [Tooltip("Ecart garde entre son pare-chocs et l'arriere du bus")]
+    [SerializeField, Min(0f)] private float bumperGap = 1f;
+
     private readonly RaycastHit[] groundHits = new RaycastHit[32];
+    private readonly List<Vector3> path = new List<Vector3>(512);
+    private Rigidbody rb;
     private BoxCollider body;
     private BoxCollider busBox;
     private float bottomOffset;
     private float frontOffset;
-    private float sideOffset;
     private bool initialized;
-    [SerializeField, Min(30f)] private float turningSpeed = 160f;
-    private readonly List<Vector3> trail = new List<Vector3>(256);
-    private float captureAlignment;
-    private bool hasPose;
-    public float FollowingDistance => rearGap;
+    private float speed;
+    private float yaw;
+    private float slowRemaining;
+    private float slowFactor = 1f;
+    private float wobbleTime;
+
+    public float SpeedKmh => speed * 3.6f;
+    public bool IsSlowed => slowRemaining > 0f;
+    // Distance a plat entre le centre de la voiture et celui du bus
+    public float DistanceToTarget { get; private set; }
+    // Distance a laquelle elle colle le bus
+    public float FollowDistance => BusHalfLength + frontOffset + bumperGap;
+
+    private float BusHalfLength => busBox != null
+        ? busBox.size.z * Mathf.Abs(busBox.transform.lossyScale.z) * 0.5f : 3f;
 
     private void Awake() => InitializeBody();
 
@@ -29,11 +57,11 @@ public class PoliceCarAI : MonoBehaviour
     {
         if (initialized) return;
         initialized = true;
-        var rb = GetComponent<Rigidbody>();
+        rb = GetComponent<Rigidbody>();
         rb.isKinematic = true;
         rb.useGravity = false;
         rb.detectCollisions = true;
-        rb.interpolation = RigidbodyInterpolation.None;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
         body = GetComponent<BoxCollider>();
         Bounds localBounds = new Bounds(body.center, body.size);
@@ -65,115 +93,150 @@ public class PoliceCarAI : MonoBehaviour
     public void SetTarget(Transform newTarget, Rigidbody newTargetRigidbody)
     {
         target = newTarget;
-        trail.Clear();
-        hasPose = false;
         targetRigidbody = newTargetRigidbody;
         busBox = targetRigidbody != null ? targetRigidbody.GetComponent<BoxCollider>() : null;
     }
 
-    public void SetFollowingDistance(float distance, float lateralOffset = 0f, float alignment = 0f)
+    // Place la voiture sur le chemin du bus. route = points du chemin a suivre ensuite (du plus ancien au plus recent).
+    public void Spawn(Vector3 position, Vector3 forward, IEnumerable<Vector3> route, float startSpeedKmh)
     {
-        rearGap = Mathf.Max(0f, distance);
-        sideOffset = lateralOffset;
-        captureAlignment = Mathf.Clamp01(alignment);
+        InitializeBody();
+        path.Clear();
+        path.AddRange(route);
+        forward = Vector3.ProjectOnPlane(forward, Vector3.up);
+        if (forward.sqrMagnitude < 0.01f) forward = target != null ? target.forward : Vector3.forward;
+        yaw = Quaternion.LookRotation(forward, Vector3.up).eulerAngles.y;
+        speed = Mathf.Min(startSpeedKmh, maxSpeedKmh) / 3.6f;
+        slowRemaining = 0f;
+        position.y = GroundHeight(position, position.y + 1f) + bottomOffset + 0.03f;
+        Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
+        transform.SetPositionAndRotation(position, rotation);
+        rb.position = position;
+        rb.rotation = rotation;
+        DistanceToTarget = target != null ? Flat(target.position - position).magnitude : 0f;
+    }
+
+    // Nouveau point du chemin du bus, enregistre par le manager.
+    public void AddWaypoint(Vector3 point) => path.Add(point);
+
+    // Riz : la voiture glisse et roule au ralenti pendant quelques secondes.
+    public void Slow(float duration, float factor)
+    {
+        if (!IsSlowed) speed *= 0.5f;
+        slowRemaining = Mathf.Max(slowRemaining, duration);
+        slowFactor = Mathf.Clamp01(factor);
+    }
+
+    // Un pas de conduite. speedFactor < 1 : la voiture roule moins vite (aveuglee, abandon...).
+    public void Drive(float dt, float speedFactor = 1f)
+    {
+        if (target == null || targetRigidbody == null || dt <= 0f) return;
+        InitializeBody();
+
+        Vector3 position = rb.position;
+        Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+        Vector3 busCenter = busBox != null ? busBox.transform.TransformPoint(busBox.center) : target.position;
+        Vector3 busForward = Vector3.ProjectOnPlane(target.forward, Vector3.up).normalized;
+        float busSpeed = Mathf.Max(0f, Vector3.Dot(targetRigidbody.linearVelocity, busForward));
+        DistanceToTarget = Flat(busCenter - position).magnitude;
+
+        // Oublie les points deja depasses
+        while (path.Count > 0)
+        {
+            Vector3 toPoint = Flat(path[0] - position);
+            if (toPoint.magnitude > 3f && Vector3.Dot(toPoint, forward) > 0f) break;
+            path.RemoveAt(0);
+        }
+
+        // Cible : de pres et sans obstacle, droit derriere le bus. Sinon, un point du chemin.
+        Vector3 chasePoint = busCenter - busForward * FollowDistance;
+        bool direct = path.Count == 0 ||
+            (DistanceToTarget < directChaseDistance && CanSee(position, busCenter));
+        Vector3 aim = direct ? chasePoint : PointAhead(position, lookAhead);
+
+        // Vitesse voulue : plein gaz, moins dans les virages, et on cale sa vitesse sur celle du bus de pres
+        Vector3 toAim = Flat(aim - position);
+        float turnAngle = toAim.sqrMagnitude > 0.01f ? Vector3.Angle(forward, toAim) : 0f;
+        float maxSpeed = maxSpeedKmh / 3.6f * speedFactor * (IsSlowed ? slowFactor : 1f);
+        float desired = Mathf.Min(maxSpeed, Mathf.Lerp(maxSpeed, cornerSpeedKmh / 3.6f, turnAngle / 90f));
+        float gap = DistanceToTarget - FollowDistance;
+        if (gap < 15f)
+            desired = Mathf.Min(desired, busSpeed + gap * 1.5f);
+        desired = Mathf.Max(0f, desired);
+        speed = Mathf.MoveTowards(speed, desired, (desired > speed ? acceleration : brakeDeceleration) * dt);
+
+        // Volant : on tourne vers la cible, d'autant moins qu'on roule doucement
+        if (toAim.sqrMagnitude > 0.01f)
+        {
+            float aimYaw = Quaternion.LookRotation(toAim, Vector3.up).eulerAngles.y;
+            yaw = Mathf.MoveTowardsAngle(yaw, aimYaw, turningSpeed * Mathf.Clamp01(speed / 4f) * dt);
+        }
+        forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+
+        position += forward * speed * dt;
+        float reference = path.Count > 0 ? Mathf.Max(position.y - bottomOffset, path[0].y) : target.position.y;
+        position.y = GroundHeight(position, reference + 0.8f) + bottomOffset + 0.03f;
+
+        // Sur le riz, la voiture zigzague
+        float wobble = 0f;
+        if (IsSlowed)
+        {
+            slowRemaining = Mathf.Max(0f, slowRemaining - dt);
+            wobbleTime += dt;
+            wobble = Mathf.Sin(wobbleTime * 14f) * 25f * Mathf.Clamp01(slowRemaining);
+        }
+
+        rb.MovePosition(position);
+        rb.MoveRotation(Quaternion.Euler(0f, yaw + wobble, 0f));
     }
 
     public bool IsChasingTarget(Rigidbody candidate)
         => isActiveAndEnabled && target != null && targetRigidbody == candidate;
 
-    public float GetCaptureGap(BoxCollider captureZone)
-    {
-        if (target == null || busBox == null || captureZone == null) return 0f;
-        Vector3 forward = target.forward;
-        Vector3 rear = busBox.transform.TransformPoint(busBox.center - Vector3.forward * busBox.size.z * 0.5f);
-        Vector3 zoneRear = captureZone.transform.TransformPoint(captureZone.center - Vector3.forward * captureZone.size.z * 0.5f);
-        // Un leger chevauchement donne un contact geometrique fiable a la fin du delai.
-        return Mathf.Max(0f, Vector3.Dot(rear - zoneRear, forward) - 0.03f);
-    }
-
     public bool IsTouchingCaptureZone(BoxCollider captureZone)
     {
         return body != null && captureZone != null && Physics.ComputePenetration(
-            body, transform.position, transform.rotation,
+            body, rb.position, rb.rotation,
             captureZone, captureZone.transform.position, captureZone.transform.rotation,
             out _, out _);
     }
 
-    // La rotation avance au pas physique; ici on actualise seulement la position visuelle.
-    private void LateUpdate() => UpdateFollowingPose();
-
-    public void UpdateFollowingPose(float deltaTime = 0f)
+    // Rien entre la voiture et le bus (murs, batiments) ?
+    private bool CanSee(Vector3 from, Vector3 to)
     {
-        if (target == null || targetRigidbody == null) return;
-        InitializeBody();
-        Vector3 forward = Vector3.ProjectOnPlane(target.forward, Vector3.up).normalized;
-        if (forward.sqrMagnitude < 0.01f) return;
-        Vector3 center = busBox != null ? busBox.transform.TransformPoint(busBox.center) : target.position;
-        float busLength = busBox != null ? busBox.size.z * Mathf.Abs(busBox.transform.lossyScale.z) * 0.5f : 3f;
-        float followingLength = busLength + frontOffset + rearGap;
-        RecordTrail(center, forward);
-        Vector3 pathPosition = SampleTrail(center, followingLength);
-        // Regarde quelques metres plus loin sur la trajectoire pour arrondir les virages.
-        Vector3 pathForward = Vector3.ProjectOnPlane(
-            SampleTrail(center, Mathf.Max(0f, followingLength - 2f)) -
-            SampleTrail(center, followingLength + 2f), Vector3.up).normalized;
-        if (pathForward.sqrMagnitude < 0.01f) pathForward = forward;
-        Vector3 capturePosition = center - forward * followingLength;
-        Vector3 position = Vector3.Lerp(pathPosition, capturePosition, captureAlignment);
-        Vector3 facing = Vector3.Slerp(pathForward, forward, captureAlignment).normalized;
-        position += Vector3.Cross(Vector3.up, facing) * sideOffset;
-        position.y = target.position.y;
-        float ground = target.position.y;
-        int count = Physics.RaycastNonAlloc(position + Vector3.up * 4f, Vector3.down,
+        from.y += 1f;
+        to.y = Mathf.Max(to.y, from.y);
+        if (!Physics.Linecast(from, to, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore)) return true;
+        return hit.rigidbody == targetRigidbody;
+    }
+
+    // Point du chemin a "distance" metres devant la voiture
+    private Vector3 PointAhead(Vector3 position, float distance)
+    {
+        Vector3 previous = position;
+        foreach (Vector3 point in path)
+        {
+            float length = Flat(point - previous).magnitude;
+            if (distance <= length)
+                return Vector3.Lerp(previous, point, length > 0.001f ? distance / length : 1f);
+            distance -= length;
+            previous = point;
+        }
+        return previous;
+    }
+
+    // Sol le plus haut sous la voiture, sans monter sur les toits
+    private float GroundHeight(Vector3 position, float maxHeight)
+    {
+        int count = Physics.RaycastNonAlloc(new Vector3(position.x, maxHeight + 3f, position.z), Vector3.down,
             groundHits, 12f, groundLayers, QueryTriggerInteraction.Ignore);
         float highest = float.NegativeInfinity;
         for (int i = 0; i < count; i++)
             if (groundHits[i].rigidbody == null && groundHits[i].normal.y > 0.65f &&
-                groundHits[i].point.y <= target.position.y + 0.75f)
+                groundHits[i].point.y <= maxHeight)
                 highest = Mathf.Max(highest, groundHits[i].point.y);
-        if (!float.IsNegativeInfinity(highest)) ground = highest;
-        position.y = ground + bottomOffset + 0.03f;
-        Quaternion desiredRotation = Quaternion.LookRotation(facing, Vector3.up);
-        Quaternion rotation = !hasPose || captureAlignment >= 0.9999f
-            ? desiredRotation
-            : Quaternion.RotateTowards(transform.rotation, desiredRotation, turningSpeed * deltaTime);
-        transform.SetPositionAndRotation(position, rotation);
-        hasPose = true;
+        return float.IsNegativeInfinity(highest) ? position.y - bottomOffset - 0.03f : highest;
     }
 
-    private void RecordTrail(Vector3 center, Vector3 forward)
-    {
-        // Apres un reset ou une teleportation, repartir de la nouvelle route.
-        if (trail.Count == 0 || Vector3.Distance(center, trail[0]) > 40f)
-        {
-            trail.Clear();
-            trail.Add(center);
-            trail.Add(center - forward * 80f);
-            return;
-        }
-        if (Vector3.Distance(center, trail[0]) < 0.2f) return;
-        trail.Insert(0, center);
-        float length = 0f;
-        for (int i = 1; i < trail.Count; i++)
-        {
-            length += Vector3.Distance(trail[i - 1], trail[i]);
-            if (length < 80f && i < 511) continue;
-            if (i + 1 < trail.Count) trail.RemoveRange(i + 1, trail.Count - i - 1);
-            break;
-        }
-    }
-
-    private Vector3 SampleTrail(Vector3 center, float distance)
-    {
-        Vector3 newer = center;
-        foreach (Vector3 older in trail)
-        {
-            float length = Vector3.Distance(newer, older);
-            if (length > 0.001f && distance <= length)
-                return Vector3.Lerp(newer, older, distance / length);
-            distance -= length;
-            newer = older;
-        }
-        return newer - target.forward * Mathf.Max(0f, distance);
-    }
+    private static Vector3 Flat(Vector3 v) => Vector3.ProjectOnPlane(v, Vector3.up);
 }
