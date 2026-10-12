@@ -47,11 +47,11 @@ public class BusDamage : MonoBehaviour
     public bool IsDamaged { get; private set; }
     // Appelé à chaque choc
     public event System.Action Damaged;
-    // Éteint les flammes de tous les points de feu (carrosserie noircie et fumée restent)
+    // Éteint les flammes et la fumée sans restaurer la carrosserie.
     public void ExtinguishFire()
     {
-        foreach (Transform fire in fires)
-            if (fire != null) fire.gameObject.SetActive(false);
+        foreach (Transform effectRoot in effectRoots)
+            if (effectRoot != null) effectRoot.gameObject.SetActive(false);
     }
 
     private Rigidbody rb;
@@ -71,6 +71,7 @@ public class BusDamage : MonoBehaviour
     private readonly List<Vector3> enginePoints = new List<Vector3>();
     private readonly List<Transform> firePointSources = new List<Transform>();
     private readonly List<Transform> fires = new List<Transform>();
+    private readonly List<Transform> effectRoots = new List<Transform>();
     private readonly List<Light> fireLights = new List<Light>();
     private readonly List<Transform> flames = new List<Transform>();
     private readonly List<Vector3> flameScales = new List<Vector3>();
@@ -189,8 +190,8 @@ public class BusDamage : MonoBehaviour
 
         // Les flammes (re)démarrent à chaque choc, y compris après un passage au garage
         if (onFire)
-            foreach (Transform fire in fires)
-                fire.gameObject.SetActive(true);
+            foreach (Transform effectRoot in effectRoots)
+                effectRoot.gameObject.SetActive(true);
 
         Damaged?.Invoke();
 
@@ -256,6 +257,7 @@ public class BusDamage : MonoBehaviour
             firePointSources.Add(null);
 
         enginePoints.Clear();
+        effectRoots.Clear();
         foreach (Transform point in firePointSources)
         {
             enginePoints.Add(ComputeEnginePoint(point));
@@ -264,6 +266,7 @@ public class BusDamage : MonoBehaviour
 
         // Fumée : quelques sphères réutilisées, dans le monde pour laisser une traînée
         smokeRoot = new GameObject("Fumee bus").transform;
+        effectRoots.Add(smokeRoot);
         for (int i = 0; i < 30; i++)
         {
             GameObject puff = JojoVisuals.CreateShape(PrimitiveType.Sphere, smokeRoot,
@@ -311,6 +314,7 @@ public class BusDamage : MonoBehaviour
         fire.localScale = new Vector3(1f / Mathf.Max(0.01f, Mathf.Abs(scale.x)),
             1f / Mathf.Max(0.01f, Mathf.Abs(scale.y)), 1f / Mathf.Max(0.01f, Mathf.Abs(scale.z)));
         fires.Add(fire);
+        effectRoots.Add(fire);
 
         for (int i = 0; i < 5; i++)
         {
