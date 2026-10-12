@@ -259,6 +259,7 @@ public class BusDamage : MonoBehaviour
 
         // Fumée : quelques sphères réutilisées, dans le monde pour laisser une traînée
         smokeRoot = new GameObject("Fumee bus").transform;
+        effectRoots.Add(smokeRoot);
         for (int i = 0; i < 30; i++)
         {
             GameObject puff = JojoVisuals.CreateShape(PrimitiveType.Sphere, smokeRoot,
