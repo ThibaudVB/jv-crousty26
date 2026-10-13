@@ -407,6 +407,7 @@ GameObject:
   - component: {fileID: 920000000000000005}
   - component: {fileID: 920000000000000004}
   - component: {fileID: 920000000000000056}
+  - component: {fileID: 920000000000000057}
   m_Layer: 0
   m_Name: CroustyBus
   m_TagString: Untagged
@@ -168924,6 +168925,32 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -2755416681815037225, guid: e6b822218407b3a439a39bc3c3197ee9, type: 3}
+--- !u!114 &920000000000000057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 549dfe6d0ecd3c542afee0c93dcdb39b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BusWings
+  wingModel: {fileID: 919132149155446097, guid: abe4f761cd0498146a2b47c9902c3bcb, type: 3}
+  modelRotation: {x: 90, y: 0, z: 0}
+  wingColor: {r: 1, g: 0.98, b: 0.92, a: 1}
+  wingSize: 0.4
+  alongBus: 0.05
+  height: 0.25
+  sweepAngle: 15
+  flapSpeed: 2.2
+  flapAmplitude: 35
+  restAngle: 10
+  foldedAngle: -80
+  climbFlapMultiplier: 1.6
+  fallFlapMultiplier: 2.6
+  deploySeconds: 0.45
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

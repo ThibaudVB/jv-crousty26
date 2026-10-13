@@ -8,9 +8,9 @@ public sealed class BusGPS : MonoBehaviour
     public DeliveryManager deliveries;
     [Tooltip("Racine des routes et obstacles. A renseigner apres generation procedurale.")]
     public Transform navigationRoot;
-    [Range(0, 3)] public int startingCharges = 0;
+    [Range(0, 1)] public int startingCharges = 0;
     public int Charges { get; private set; }
-    public bool CanReceiveCharges => Charges < 3 &&
+    public bool CanReceiveCharges => Charges < 1 &&
         (Inventory == null || Inventory.CanAddPower(PowerUpInventory.PowerUpType.GPS));
     public bool BonusEquipped { get; set; } = true;
     public DeliveryPoint Target { get; private set; }
@@ -30,7 +30,10 @@ public sealed class BusGPS : MonoBehaviour
         get
         {
             if (inventory == null && deliveries != null && deliveries.player != null)
-                inventory = PowerUpInventory.EnsureFor(deliveries.player.gameObject);
+            {
+                var bus = deliveries.player.GetComponentInParent<BusController>();
+                if (bus != null) inventory = PowerUpInventory.EnsureFor(bus.gameObject);
+            }
             return inventory;
         }
     }
@@ -38,7 +41,7 @@ public sealed class BusGPS : MonoBehaviour
     private void Awake()
     {
         path = new NavMeshPath();
-        Charges = startingCharges;
+        Charges = Mathf.Clamp(startingCharges, 0, 1);
         if (deliveries == null) deliveries = GetComponent<DeliveryManager>();
         if (Inventory != null && Charges > 0)
             Inventory.TryAddPower(PowerUpInventory.PowerUpType.GPS, Charges);
@@ -51,11 +54,10 @@ public sealed class BusGPS : MonoBehaviour
         Target = null;
         Route.Clear();
     }
-    // Appel par un futur pickup : un bonus recharge jusqu'a trois livraisons.
-    public void GrantBonus() { Charges = 3; Status = "[E] GPS"; }
+    public void GrantBonus() => AddCharges(1, 1);
     public bool AddCharges(int amount, int max)
     {
-        int addedAmount = Mathf.Min(amount, max - Charges);
+        int addedAmount = Mathf.Min(amount, Mathf.Min(max, 1) - Charges);
         if (addedAmount <= 0) return false;
         if (Inventory != null && !Inventory.TryAddPower(PowerUpInventory.PowerUpType.GPS, addedAmount))
             return false;
@@ -131,11 +133,16 @@ public sealed class BusGPS : MonoBehaviour
             (Inventory != null && Inventory.PrimaryPower != PowerUpInventory.PowerUpType.GPS) ||
             deliveries == null) return false;
         if (Target != null && !Target.IsWaiting) return false; // Colis en vol.
-        if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         var candidates = new List<DeliveryPoint>();
         foreach (var point in deliveries.deliveryPoints)
             if (point != null && point.IsWaiting) candidates.Add(point);
         if (deliveries.player == null) return false;
+        if (candidates.Count == 0)
+        {
+            Status = "GPS : prends des commandes";
+            return false;
+        }
+        if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         candidates.Sort((a,b) => (a.transform.position-deliveries.player.position).sqrMagnitude
             .CompareTo((b.transform.position-deliveries.player.position).sqrMagnitude));
         int index = candidates.IndexOf(Target);
@@ -169,7 +176,7 @@ public sealed class BusGPS : MonoBehaviour
         else Route.AddRange(path.corners);
         float distance = 0;
         for (int i=1; i<Route.Count; i++) distance += Vector3.Distance(Route[i-1], Route[i]);
-        Status = $"GPS : {distance:0} m  [G] changer";
+        Status = $"GPS : {distance:0} m";
     }
     private void OnDelivered(DeliveryPoint point)
     {

@@ -75,7 +75,7 @@ public sealed class BusPetController : MonoBehaviour
 
     public bool TryActivate()
     {
-        if (!isActiveAndEnabled || Time.timeScale <= 0f || drive == null || !drive.enabled ||
+        if (!isActiveAndEnabled || Time.timeScale <= 0f || UsesRemaining <= 0 || drive == null || !drive.enabled ||
             (inventory != null ? inventory.PrimaryPower != PowerUpInventory.PowerUpType.Pet : UsesRemaining <= 0) ||
             GetComponent<Rigidbody>().isKinematic) return false;
         usesRemaining--;
@@ -100,7 +100,7 @@ public sealed class BusPetController : MonoBehaviour
 
     public bool AddCharges(int amount, int max)
     {
-        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        int addedAmount = Mathf.Min(amount, Mathf.Min(max, PowerUpInventory.ChargeCapacity(PowerUpInventory.PowerUpType.Pet)) - UsesRemaining);
         if (addedAmount <= 0) return false;
         if (inventory != null && !inventory.TryAddPower(PowerUpInventory.PowerUpType.Pet, addedAmount))
             return false;

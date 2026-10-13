@@ -70,7 +70,7 @@ public class BusRiceThrower : MonoBehaviour
         if (bonusHud == null)
             bonusHud = FindAnyObjectByType<CroustyBonusHUD>();
 
-        UsesRemaining = startingCharges;
+        UsesRemaining = Mathf.Clamp(startingCharges, 0, PowerUpInventory.ChargeCapacity(PowerUpInventory.PowerUpType.Rice));
         if (inventory != null && UsesRemaining > 0)
             inventory.TryAddPower(PowerUpInventory.PowerUpType.Rice, UsesRemaining);
         RefreshHud();
@@ -141,7 +141,7 @@ public class BusRiceThrower : MonoBehaviour
 
     public bool AddCharges(int amount, int max)
     {
-        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        int addedAmount = Mathf.Min(amount, Mathf.Min(max, PowerUpInventory.ChargeCapacity(PowerUpInventory.PowerUpType.Rice)) - UsesRemaining);
         if (addedAmount <= 0) return false;
         if (inventory != null && !inventory.TryAddPower(PowerUpInventory.PowerUpType.Rice, addedAmount))
             return false;

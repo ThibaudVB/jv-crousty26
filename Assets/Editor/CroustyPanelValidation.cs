@@ -48,7 +48,10 @@ public static class CroustyPanelValidation
                         Require(menu.GetComponentsInChildren<Transform>(true).Length == count, "La navigation a créé des objets.");
                         var buttonRoot = menu.pauseMenu != null ? menu.optionsPanel.transform : menu.transform;
                         foreach (var button in buttonRoot.GetComponentsInChildren<Button>(true))
-                            Require(button.onClick.GetPersistentEventCount() > 0 && button.onClick.GetPersistentTarget(0) == menu, "Bouton non relié : " + button.name);
+                            Require(button.onClick.GetPersistentEventCount() > 0 &&
+                                (button.onClick.GetPersistentTarget(0) == menu ||
+                                 menu.nameEntry != null && button.onClick.GetPersistentTarget(0) == menu.nameEntry),
+                                "Bouton non relié : " + button.name);
                         menu.mainPanel.SetActive(mainWasActive);
                     }
                     foreach (var hud in root.GetComponentsInChildren<CroustyHUD>(true)) CheckHud(hud);
@@ -112,6 +115,13 @@ public static class CroustyPanelValidation
                 FindHomeButton(menu, "JOUER").onClick.Invoke();
                 stage = 6; ready = EditorApplication.timeSinceStartup + 1; return;
             }
+            if (stage == 6 && menu != null && menu.IsNameEntryOpen)
+            {
+                menu.nameEntry.nameInput.text = "Testeur";
+                menu.nameEntry.ConfirmPlay();
+                stage = 7; ready = EditorApplication.timeSinceStartup + 2; return;
+            }
+            if (stage == 7 && SceneManager.GetActiveScene().name != "SceneBase") return;
             EditorApplication.update -= verify;
             Require(SceneManager.GetActiveScene().name == "SceneBase", "Le bouton Jouer n'a pas chargé SceneBase.");
             var map = UnityEngine.Object.FindAnyObjectByType<BusMinimap>();

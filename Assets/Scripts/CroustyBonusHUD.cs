@@ -17,7 +17,16 @@ public sealed class CroustyBonusHUD : MonoBehaviour
     public void SelectBonus(SelectedBonus value) { selectedBonus = value; Refresh(); }
     public string SelectedKeyLabel => "E";
     public bool HasSelectedBonus => Inventory != null && Inventory.HasCharge;
-    public void CycleBonus(int direction) => SelectBonus((SelectedBonus)(((int)selectedBonus + direction + 4) % 4));
+    public void CycleBonus(int direction)
+    {
+        if (direction == 0) return;
+        if (Inventory != null)
+        {
+            Inventory.SwapSlots();
+            Refresh();
+        }
+        else SelectBonus((SelectedBonus)(((int)selectedBonus + direction + 4) % 4));
+    }
     public void ActivateSelected()
     {
         Inventory?.TryActivatePrimary();

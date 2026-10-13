@@ -15,6 +15,7 @@ public sealed class CroustyMenu : MonoBehaviour
     public GameObject mainPanel;
     public GameObject optionsPanel;
     public GameObject leaderboardPanel;
+    public CroustyNameEntry nameEntry;
     public CroustyMenuPages homePages;
     [Tooltip("Assigné uniquement pour les options du menu pause.")]
     public CroustyPauseMenu pauseMenu;
@@ -46,6 +47,7 @@ public sealed class CroustyMenu : MonoBehaviour
     private int selectedCategory = -1;
     public bool IsOptionsOpen { get; private set; }
     public bool IsLeaderboardOpen { get; private set; }
+    public bool IsNameEntryOpen { get; private set; }
 
     private void Awake()
     {
@@ -71,6 +73,7 @@ public sealed class CroustyMenu : MonoBehaviour
         SelectCategory(0);
         CloseOptions();
         if (leaderboardPanel != null) leaderboardPanel.SetActive(false);
+        if (nameEntry != null) nameEntry.gameObject.SetActive(false);
         if (pauseMenu != null) mainPanel.SetActive(false);
         CroustyPanelMotion.Prepare(mainPanel);
         CroustyPanelMotion.Prepare(optionsPanel);
@@ -81,12 +84,14 @@ public sealed class CroustyMenu : MonoBehaviour
     private void Update()
     {
         if (pauseMenu == null || IsOptionsOpen)
-            EnsureControllerSelection(IsOptionsOpen ? optionsPanel : IsLeaderboardOpen ? leaderboardPanel : mainPanel);
+            EnsureControllerSelection(IsOptionsOpen ? optionsPanel : IsLeaderboardOpen ? leaderboardPanel :
+                IsNameEntryOpen ? nameEntry.gameObject : mainPanel);
         bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) ||
             (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
         if (pauseMenu == null && back)
         {
-            if (IsOptionsOpen) CloseOptions();
+            if (IsNameEntryOpen) nameEntry.Back();
+            else if (IsOptionsOpen) CloseOptions();
             else if (IsLeaderboardOpen) CloseLeaderboard();
             else if (homePages != null && homePages.IsExpanded) homePages.SetExpanded(false);
         }
@@ -222,6 +227,30 @@ public sealed class CroustyMenu : MonoBehaviour
     private void OnDisable() => PlayerPrefs.Save();
 
     public void Play()
+    {
+        if (launching) return;
+        if (nameEntry != null)
+        {
+            if (IsNameEntryOpen) return;
+            IsNameEntryOpen = true;
+            CroustyPanelMotion.Hide(mainPanel);
+            CroustyPanelMotion.Show(nameEntry.gameObject);
+            CroustySoundDesignManager.PlayUI(CroustySound.Paper);
+            return;
+        }
+        LaunchGame();
+    }
+
+    public void CloseNameEntry()
+    {
+        if (!IsNameEntryOpen || nameEntry.IsLaunching) return;
+        IsNameEntryOpen = false;
+        CroustyPanelMotion.Hide(nameEntry.gameObject);
+        CroustyPanelMotion.Show(mainPanel);
+        CroustySoundDesignManager.PlayUI(CroustySound.Paper);
+    }
+
+    private void LaunchGame()
     {
         if (launching) return;
         if (!Application.CanStreamedLevelBeLoaded("SceneBase"))

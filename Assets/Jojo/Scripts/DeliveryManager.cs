@@ -89,8 +89,9 @@ public class DeliveryManager : MonoBehaviour
     public bool HasFailed { get; private set; }    // partie perdue (chrono ou police)
     public float RunElapsed { get; private set; }  // secondes écoulées dans la tournée
     public int Score { get; private set; }
+    public string PlayerName { get; private set; }
     public int LastRunScore { get; private set; }  // points gagnés pendant la tournée en cours
-    public int BestScore => PlayerPrefs.GetInt(BestScoreKey, 0);
+    public int BestScore { get; private set; }
 
     // Durée de la tournée en cours (ou de la prochaine si on n'a pas encore commencé)
     public float RunTimeLimit => secondsPerOrder * (HasStarted ? OrdersTotal : NextRunOrders);
@@ -124,6 +125,8 @@ public class DeliveryManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        PlayerName = CroustyPlayerProfile.PlayerName;
+        BestScore = CroustyLeaderboardScores.BestForPlayer(PlayerName);
         gameOver = FindAnyObjectByType<PoliceGameOverManager>();
 
         // Si une référence n'est pas remplie dans l'Inspector, on la cherche dans la scène
@@ -247,6 +250,12 @@ public class DeliveryManager : MonoBehaviour
     private void SaveBestScore()
     {
         if (Score > BestScore)
+        {
+            BestScore = Score;
+            CroustyLeaderboardScores.Record(Score, PlayerName);
+        }
+        // Preserve the old overall statistic for compatible tools and older scenes.
+        if (Score > PlayerPrefs.GetInt(BestScoreKey, 0))
         {
             PlayerPrefs.SetInt(BestScoreKey, Score);
             PlayerPrefs.Save();
