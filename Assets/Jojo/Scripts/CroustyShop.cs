@@ -1,21 +1,28 @@
 using UnityEngine;
 
-// Magasin Crousty : les commandes sont chargées automatiquement
-// quand le bus entre dans le rayon. Le faisceau n'apparaît que quand il faut y aller.
+// Magasin Crousty : le bus vient y charger ses commandes.
+// Le chargement est fait par le DeliveryManager quand le bus est assez près.
+// Un faisceau lumineux jaune montre le magasin, seulement quand il faut y retourner.
+//
+// A placer sur le magasin. (La ville procédurale en ajoute aussi un toute seule.)
 public class CroustyShop : MonoBehaviour
 {
+    [Header("Zone de chargement")]
+    [Tooltip("Distance (m) à laquelle le bus charge les commandes")]
     public float pickupRadius = 8f;
-    [Tooltip("Écart vertical maximal pour charger les commandes devant le magasin.")]
+    [Tooltip("Écart de hauteur maximal (m) : évite de charger depuis un toit ou un pont")]
     [Min(0f)] public float maxHeightDifference = 6f;
 
     [Header("Marqueur")]
-    [Tooltip("Optionnel : objet affiché au-dessus du magasin. Si vide, un faisceau lumineux jaune est créé.")]
+    [Tooltip("Optionnel : objet affiché au-dessus du magasin. Si vide, un faisceau lumineux est créé.")]
     public GameObject marker;
     public Color markerColor = new Color(1f, 0.85f, 0.1f);
+    [Tooltip("Hauteur du faisceau (m)")]
     public float beamHeight = 150f;
+    [Tooltip("Largeur du faisceau (m)")]
     public float beamWidth = 3f;
 
-    [Tooltip("Icône sur l'écran, visible à travers les bâtiments")]
+    [Tooltip("Nom affiché sur le repère à l'écran")]
     public string screenLabel = "Crousty";
 
     private void Start()
@@ -24,27 +31,21 @@ public class CroustyShop : MonoBehaviour
             marker = JojoVisuals.CreateBeacon(transform, markerColor, beamHeight, beamWidth);
     }
 
-    // Le faisceau disparaît pendant la tournée et revient quand tout est livré
     private void Update()
     {
+        // Le faisceau n'est visible que quand il faut venir chercher des commandes
         DeliveryManager manager = DeliveryManager.Instance;
         if (marker != null && manager != null)
             marker.SetActive(manager.NeedsPickup);
     }
 
+    // Vrai si la position est assez près du magasin
     public bool IsInRange(Vector3 position)
     {
-        return Mathf.Abs(position.y - transform.position.y) <= maxHeightDifference &&
-            FlatDistance(position, transform.position) <= pickupRadius;
+        return JojoVisuals.IsClose(transform.position, position, pickupRadius, maxHeightDifference);
     }
 
-    private static float FlatDistance(Vector3 a, Vector3 b)
-    {
-        a.y = 0f;
-        b.y = 0f;
-        return Vector3.Distance(a, b);
-    }
-
+    // Dessine la zone dans la vue Scene
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.yellow;

@@ -2,42 +2,68 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// Compétence RIZ : le bus jette une poignée de riz derrière lui.
+// Compétence RIZ (touche E) : le bus jette une poignée de riz derrière lui.
 // Le riz reste sur la route un moment : la police qui roule dessus glisse et ralentit.
-// Si la police colle le bus au moment du jet, elle se le prend en pleine face et ralentit tout de suite.
-// Ajouté automatiquement sur le bus par le DeliveryManager.
+// Si la police est collée au bus au moment du jet, elle est ralentie tout de suite.
+//
+// A placer à la main sur le bus (le GameObject qui a le BusController et le Rigidbody).
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
 public class BusRiceThrower : MonoBehaviour
 {
+    [Header("Touche et charges")]
     public Key activationKey = Key.E;
+    [Tooltip("Nombre d'utilisations au début de la partie")]
     [Range(0, 3)] public int startingCharges = 3;
-    public int UsesRemaining { get; private set; }
 
     [Header("Riz sur la route")]
     [Tooltip("Rayon de la flaque de riz (m)")]
     public float slickRadius = 6f;
-    [Tooltip("Durée pendant laquelle le riz reste sur la route")]
+    [Tooltip("Durée pendant laquelle le riz reste sur la route (s)")]
     public float slickDuration = 10f;
-    [Tooltip("Distance derrière le bus où le riz retombe")]
+    [Tooltip("Distance derrière le bus où le riz retombe (m)")]
     public float throwDistance = 6f;
+    [Tooltip("Hauteur de la courbe des grains (m)")]
+    public float grainArcHeight = 2f;
     [Min(4)] public int grainsPerThrow = 60;
+    public Vector3 grainSize = new Vector3(0.12f, 0.12f, 0.28f);
+    public Color riceColor = new Color(0.98f, 0.97f, 0.9f);
 
     [Header("Effet sur la police")]
-    [Tooltip("Secondes de glissade")]
+    [Tooltip("Durée de la glissade (s)")]
     public float slowDuration = 3.5f;
     [Tooltip("Vitesse de la police sur le riz (0.3 = 30 %)")]
     [Range(0.05f, 1f)] public float slowFactor = 0.3f;
-    [Tooltip("La police à moins de cette distance derrière le bus est touchée directement")]
+    [Tooltip("La police à moins de cette distance derrière le bus est touchée directement (m)")]
     public float directHitRange = 25f;
 
-    public Color riceColor = new Color(0.98f, 0.97f, 0.9f);
+    [Header("Références (cherchées automatiquement si vides)")]
+    [Tooltip("Gère la poursuite de la police")]
+    public PoliceChaseManager police;
+    [Tooltip("Affiche les charges restantes")]
+    public CroustyBonusHUD bonusHud;
 
-    private class Grain { public Transform t; public Vector3 start, end; public float age, flight; public Slick slick; }
-    private class Slick { public Vector3 center; public float remaining; }
+    // Charges restantes (lu par le HUD)
+    public int UsesRemaining { get; private set; }
 
-    private readonly List<Grain> grains = new List<Grain>();
+    // Une flaque de riz posée sur la route
+    private class Slick
+    {
+        public Vector3 center;
+        public float timeLeft;
+    }
+
+    // Un grain de riz (un petit cube)
+    private class Grain
+    {
+        public Transform transform;
+        public Vector3 start, end;
+        public float age, flightTime;
+        public Slick slick; // la flaque où il est tombé
+    }
+
     private readonly List<Slick> slicks = new List<Slick>();
+    private readonly List<Grain> grains = new List<Grain>();
     private Transform grainRoot;
     private int nextGrain;
 
@@ -45,8 +71,6 @@ public class BusRiceThrower : MonoBehaviour
     private BusController drive;
     private BusFlightController flight;
     private BoxCollider body;
-    private PoliceChaseManager police;
-    private CroustyBonusHUD bonusHud;
 
     private void Awake()
     {
@@ -58,95 +82,127 @@ public class BusRiceThrower : MonoBehaviour
 
     private void Start()
     {
-        UsesRemaining = startingCharges;
-        police = FindAnyObjectByType<PoliceChaseManager>();
-        bonusHud = FindAnyObjectByType<CroustyBonusHUD>();
-        if (bonusHud != null) bonusHud.SetRiceCharges(UsesRemaining);
+        if (police == null)
+            police = FindAnyObjectByType<PoliceChaseManager>();
+        if (bonusHud == null)
+            bonusHud = FindAnyObjectByType<CroustyBonusHUD>();
 
+        UsesRemaining = startingCharges;
+        RefreshHud();
+
+        // On crée les grains une seule fois, puis on les réutilise (2 jets à l'écran en même temps)
         grainRoot = new GameObject("Riz").transform;
         for (int i = 0; i < grainsPerThrow * 2; i++)
         {
-            GameObject grain = JojoVisuals.CreateShape(PrimitiveType.Cube, grainRoot,
-                i % 3 == 0 ? riceColor * 0.85f : riceColor);
+            Color color = i % 3 == 0 ? riceColor * 0.85f : riceColor;
+            GameObject grain = JojoVisuals.CreateShape(PrimitiveType.Cube, grainRoot, color);
             grain.SetActive(false);
-            grains.Add(new Grain { t = grain.transform });
+            grains.Add(new Grain { transform = grain.transform });
         }
     }
 
     private void OnDestroy()
     {
-        if (grainRoot != null) Destroy(grainRoot.gameObject);
+        if (grainRoot != null)
+            Destroy(grainRoot.gameObject);
     }
 
     private void Update()
     {
-        if (Time.timeScale <= 0f) return;
+        if (Time.timeScale <= 0f)
+            return;
+
         if (Keyboard.current != null && Keyboard.current[activationKey].wasPressedThisFrame)
             TryActivate();
 
         UpdateGrains();
     }
 
+    // Lance le riz. Renvoie faux si ce n'est pas possible (plus de charges, bus en vol...).
     public bool TryActivate()
     {
-        if (!isActiveAndEnabled || Time.timeScale <= 0f || UsesRemaining <= 0 ||
-            drive == null || !drive.enabled || (flight != null && flight.IsAirborne) || rb.isKinematic)
+        bool busCanThrow = drive != null && drive.enabled && !rb.isKinematic;
+        bool busIsFlying = flight != null && flight.IsAirborne;
+        if (!isActiveAndEnabled || Time.timeScale <= 0f || UsesRemaining <= 0 || !busCanThrow || busIsFlying)
             return false;
 
         UsesRemaining--;
-        if (bonusHud != null) bonusHud.SetRiceCharges(UsesRemaining);
+        RefreshHud();
         CroustySoundDesignManager.Play(CroustySound.Paper, transform.position);
 
+        // Direction "derrière le bus", à plat
         Vector3 back = -Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
         float halfLength = body != null ? body.size.z * Mathf.Abs(transform.lossyScale.z) * 0.5f : 3f;
-        Vector3 rear = (body != null ? body.bounds.center : rb.position) + back * halfLength;
+        Vector3 center = body != null ? body.bounds.center : rb.position;
+        Vector3 rear = center + back * halfLength;
 
-        var slick = new Slick { remaining = slickDuration };
+        // Nouvelle flaque sur la route
+        Slick slick = new Slick();
         slick.center = GroundPoint(rear + back * throwDistance);
+        slick.timeLeft = slickDuration;
         slicks.Add(slick);
 
-        // Les grains partent de l'arrière du bus et retombent en tas sur la route
+        // Les grains partent de l'arrière du bus et retombent dans la flaque
         for (int i = 0; i < grainsPerThrow; i++)
         {
             Grain grain = grains[nextGrain];
             nextGrain = (nextGrain + 1) % grains.Count;
+
             Vector2 spot = Random.insideUnitCircle * slickRadius;
             grain.start = rear + Vector3.up * 1.5f + Random.insideUnitSphere * 0.4f;
             grain.end = GroundPoint(slick.center + new Vector3(spot.x, 0f, spot.y)) + Vector3.up * 0.06f;
             grain.age = 0f;
-            grain.flight = Random.Range(0.35f, 0.7f);
+            grain.flightTime = Random.Range(0.35f, 0.7f);
             grain.slick = slick;
-            grain.t.position = grain.start;
-            grain.t.rotation = Random.rotation;
-            grain.t.localScale = new Vector3(0.12f, 0.12f, 0.28f);
-            grain.t.gameObject.SetActive(true);
+
+            grain.transform.position = grain.start;
+            grain.transform.rotation = Random.rotation;
+            grain.transform.localScale = grainSize;
+            grain.transform.gameObject.SetActive(true);
         }
 
         // Police juste derrière : riz en pleine face
         PoliceCarAI car = police != null ? police.ActivePolice : null;
-        if (car != null && car.DistanceToTarget <= directHitRange &&
-            Vector3.Dot(car.transform.position - transform.position, back) > 0f)
-            car.Slow(slowDuration, slowFactor);
+        if (car != null && car.DistanceToTarget <= directHitRange)
+        {
+            bool carIsBehind = Vector3.Dot(car.transform.position - transform.position, back) > 0f;
+            if (carIsBehind)
+                car.Slow(slowDuration, slowFactor);
+        }
 
         return true;
     }
 
+    private void RefreshHud()
+    {
+        if (bonusHud != null)
+            bonusHud.SetRiceCharges(UsesRemaining);
+    }
+
+    // FixedUpdate : en même temps que la physique de la voiture de police
     private void FixedUpdate()
     {
         PoliceCarAI car = police != null ? police.ActivePolice : null;
+
+        // On parcourt la liste à l'envers pour pouvoir retirer des éléments
         for (int i = slicks.Count - 1; i >= 0; i--)
         {
             Slick slick = slicks[i];
-            slick.remaining -= Time.fixedDeltaTime;
-            if (slick.remaining <= 0f)
+            slick.timeLeft -= Time.fixedDeltaTime;
+            if (slick.timeLeft <= 0f)
             {
                 slicks.RemoveAt(i);
                 continue;
             }
 
-            // La police roule sur le riz
-            if (car != null && Vector3.ProjectOnPlane(car.transform.position - slick.center, Vector3.up).magnitude <= slickRadius)
-                car.Slow(slowDuration, slowFactor);
+            // La police roule sur le riz ?
+            if (car != null)
+            {
+                Vector3 offset = car.transform.position - slick.center;
+                offset.y = 0f;
+                if (offset.magnitude <= slickRadius)
+                    car.Slow(slowDuration, slowFactor);
+            }
         }
     }
 
@@ -154,40 +210,51 @@ public class BusRiceThrower : MonoBehaviour
     {
         foreach (Grain grain in grains)
         {
-            if (!grain.t.gameObject.activeSelf) continue;
+            if (!grain.transform.gameObject.activeSelf)
+                continue;
+
             grain.age += Time.deltaTime;
 
-            if (grain.age < grain.flight)
+            // En vol : trajectoire en cloche
+            if (grain.age < grain.flightTime)
             {
-                // Vol en cloche
-                float t = grain.age / grain.flight;
+                float t = grain.age / grain.flightTime;
                 Vector3 position = Vector3.Lerp(grain.start, grain.end, t);
-                position.y += Mathf.Sin(t * Mathf.PI) * 2f;
-                grain.t.position = position;
-                grain.t.Rotate(720f * Time.deltaTime, 360f * Time.deltaTime, 0f);
+                position.y += Mathf.Sin(t * Mathf.PI) * grainArcHeight;
+                grain.transform.position = position;
+                grain.transform.Rotate(720f * Time.deltaTime, 360f * Time.deltaTime, 0f);
                 continue;
             }
 
-            grain.t.position = grain.end;
-            // Le riz disparaît en rétrécissant avec sa flaque
-            float remaining = grain.slick.remaining;
-            if (remaining <= 0f)
-                grain.t.gameObject.SetActive(false);
-            else if (remaining < 1f)
-                grain.t.localScale = new Vector3(0.12f, 0.12f, 0.28f) * remaining;
+            // Au sol : le grain disparaît en rétrécissant avec sa flaque
+            grain.transform.position = grain.end;
+            float timeLeft = grain.slick.timeLeft;
+            if (timeLeft <= 0f)
+                grain.transform.gameObject.SetActive(false);
+            else if (timeLeft < 1f)
+                grain.transform.localScale = grainSize * timeLeft;
         }
     }
 
-    // Point du sol sous une position (ignore le bus)
+    // Trouve le sol sous une position (en ignorant le bus et les objets qui bougent)
     private Vector3 GroundPoint(Vector3 position)
     {
         RaycastHit[] hits = Physics.RaycastAll(position + Vector3.up * 4f, Vector3.down, 12f, ~0, QueryTriggerInteraction.Ignore);
         float highest = float.NegativeInfinity;
+
         foreach (RaycastHit hit in hits)
-            if (!hit.collider.transform.IsChildOf(transform) && hit.rigidbody == null &&
-                hit.normal.y > 0.65f && hit.point.y <= position.y + 2f)
+        {
+            bool isBus = hit.collider.transform.IsChildOf(transform);
+            bool isMoving = hit.rigidbody != null;
+            bool isFlat = hit.normal.y > 0.65f;
+            bool notTooHigh = hit.point.y <= position.y + 2f;
+
+            if (!isBus && !isMoving && isFlat && notTooHigh)
                 highest = Mathf.Max(highest, hit.point.y);
-        if (!float.IsNegativeInfinity(highest)) position.y = highest;
+        }
+
+        if (!float.IsNegativeInfinity(highest))
+            position.y = highest;
         return position;
     }
 }

@@ -1,17 +1,20 @@
 using UnityEngine;
 
-// Ailes du bus pendant le superpouvoir de vol (touche F) :
+// Ailes du bus pendant le vol (touche F, BusFlightController) :
 // elles se déplient au décollage, battent pendant le vol (plus vite en montée,
 // en panique quand le bus retombe) et se replient à l'atterrissage.
-// Le modèle contient une seule aile (Resources/bus/CroustyAile) : elle est dupliquée en miroir pour l'autre côté.
-// Ajouté automatiquement sur le bus par le DeliveryManager.
+//
+// A placer à la main sur le bus (le GameObject qui a le BusFlightController).
+// Glisser le modèle d'UNE aile dans "Wing Model" : il est copié en miroir pour l'autre côté.
 [DisallowMultipleComponent]
 public class BusWings : MonoBehaviour
 {
-    [Tooltip("Modèle d'une aile. Si vide : Resources/bus/CroustyAile")]
+    [Header("Modèle")]
+    [Tooltip("Modèle 3D d'une aile (obligatoire)")]
     public GameObject wingModel;
-    [Tooltip("Rotation de correction du modèle si l'aile n'est pas dans le bon sens")]
+    [Tooltip("Rotation de correction si l'aile n'est pas dans le bon sens")]
     public Vector3 modelRotation = Vector3.zero;
+    public Color wingColor = new Color(1f, 0.98f, 0.92f);
 
     [Header("Placement")]
     [Tooltip("Longueur d'une aile par rapport à la longueur du bus")]
@@ -22,7 +25,6 @@ public class BusWings : MonoBehaviour
     [Range(-1.5f, 1.5f)] public float height = -0.15f;
     [Tooltip("Inclinaison des ailes vers l'arrière (degrés)")]
     public float sweepAngle = 15f;
-    public Color wingColor = new Color(1f, 0.98f, 0.92f);
 
     [Header("Battement")]
     [Tooltip("Battements par seconde")]
@@ -31,107 +33,120 @@ public class BusWings : MonoBehaviour
     public float flapAmplitude = 35f;
     [Tooltip("Angle moyen des ailes (0 = à plat, 90 = vers le haut)")]
     public float restAngle = 10f;
+    [Tooltip("Angle des ailes repliées (degrés)")]
+    public float foldedAngle = -80f;
     [Tooltip("Les ailes battent plus vite quand le bus monte")]
     public float climbFlapMultiplier = 1.6f;
     [Tooltip("Battement en panique quand le vol est fini et que le bus retombe")]
     public float fallFlapMultiplier = 2.6f;
-    [Tooltip("Durée du dépliage / repliage")]
+    [Tooltip("Durée du dépliage / repliage (s)")]
     public float deploySeconds = 0.45f;
 
     private BusFlightController flight;
     private Rigidbody rb;
-    private Transform root;
-    private readonly Transform[] hinges = new Transform[2];
+    private Transform wingsRoot;
+    private Transform[] hinges = new Transform[2]; // les charnières qui tournent (droite, gauche)
     private Material material;
-    private float deploy;
-    private float flapPhase;
+
+    private float deploy;              // 0 = repliées, 1 = dépliées
+    private float flapPhase;           // avancement du battement
     private float flapMultiplier = 1f;
 
     private void Start()
     {
         flight = GetComponent<BusFlightController>();
         rb = GetComponent<Rigidbody>();
-        if (flight == null || !Build())
+
+        if (flight == null)
+        {
+            Debug.LogWarning("BusWings : il faut un BusFlightController sur le même objet.", this);
             enabled = false;
+            return;
+        }
+
+        MeshFilter source = wingModel != null ? wingModel.GetComponentInChildren<MeshFilter>(true) : null;
+        if (source == null || source.sharedMesh == null)
+        {
+            Debug.LogWarning("BusWings : glisser un modèle d'aile dans \"Wing Model\".", this);
+            enabled = false;
+            return;
+        }
+
+        CreateWings(source.sharedMesh);
     }
 
     private void OnDestroy()
     {
-        if (material != null) Destroy(material);
+        if (material != null)
+            Destroy(material);
     }
 
-    private bool Build()
-    {
-        if (wingModel == null) wingModel = Resources.Load<GameObject>("bus/CroustyAile");
-        MeshFilter source = wingModel != null ? wingModel.GetComponentInChildren<MeshFilter>(true) : null;
-        if (source == null || source.sharedMesh == null)
-        {
-            Debug.LogWarning("BusWings : modèle d'aile introuvable (Resources/bus/CroustyAile).", this);
-            return false;
-        }
+    // ---------- CREATION ----------
 
-        Mesh mesh = source.sharedMesh;
-        MeshRenderer sourceRenderer = source.GetComponent<MeshRenderer>();
-        Material[] materials = BuildMaterials(sourceRenderer, mesh.subMeshCount);
+    private void CreateWings(Mesh mesh)
+    {
+        material = CreateWingMaterial();
 
         // Taille du bus en mètres, d'après sa boîte de collision
         BoxCollider body = GetComponent<BoxCollider>();
-        Vector3 lossy = transform.lossyScale;
-        lossy = new Vector3(Mathf.Max(0.01f, Mathf.Abs(lossy.x)), Mathf.Max(0.01f, Mathf.Abs(lossy.y)), Mathf.Max(0.01f, Mathf.Abs(lossy.z)));
-        Vector3 center = body != null ? body.center : Vector3.Scale(Vector3.up * 1.5f, new Vector3(1f / lossy.x, 1f / lossy.y, 1f / lossy.z));
-        Vector3 size = body != null ? Vector3.Scale(body.size, lossy) : new Vector3(2.5f, 3f, 10f);
+        Vector3 busScale = transform.lossyScale;
+        busScale = new Vector3(Mathf.Max(0.01f, Mathf.Abs(busScale.x)), Mathf.Max(0.01f, Mathf.Abs(busScale.y)), Mathf.Max(0.01f, Mathf.Abs(busScale.z)));
+        Vector3 busSize = body != null ? Vector3.Scale(body.size, busScale) : new Vector3(2.5f, 3f, 10f);
+        Vector3 busCenter = body != null ? body.center : Vector3.zero;
 
-        // Racine en mètres : on compense l'échelle du bus
-        root = new GameObject("Ailes").transform;
-        root.SetParent(transform, false);
-        root.localPosition = center;
-        root.localScale = new Vector3(1f / lossy.x, 1f / lossy.y, 1f / lossy.z);
+        // Objet racine qui annule l'échelle du bus : à l'intérieur, on travaille en mètres
+        wingsRoot = new GameObject("Ailes").transform;
+        wingsRoot.SetParent(transform, false);
+        wingsRoot.localPosition = busCenter;
+        wingsRoot.localScale = new Vector3(1f / busScale.x, 1f / busScale.y, 1f / busScale.z);
 
-        // L'aile s'étend le long de X dans le modèle, la charnière est à l'extrémité la plus proche de 0
+        // Dans le modèle, l'aile s'étend le long de X. La charnière est le bout le plus proche de 0.
         Bounds bounds = mesh.bounds;
-        float spanSign = bounds.center.x >= 0f ? 1f : -1f;
-        float scale = wingSize * size.z / Mathf.Max(0.01f, bounds.size.x);
-        Vector3 hingePoint = new Vector3(spanSign > 0f ? bounds.min.x : bounds.max.x, bounds.min.y, bounds.center.z);
-        Vector3 wingScale = new Vector3(scale * spanSign, scale, scale);
+        float direction = bounds.center.x >= 0f ? 1f : -1f;
+        float scale = wingSize * busSize.z / Mathf.Max(0.01f, bounds.size.x);
+        Vector3 hingePoint = new Vector3(direction > 0f ? bounds.min.x : bounds.max.x, bounds.min.y, bounds.center.z);
+        Vector3 wingScale = new Vector3(scale * direction, scale, scale);
         Quaternion wingRotation = Quaternion.Euler(modelRotation);
 
         for (int i = 0; i < 2; i++)
         {
+            // i = 0 : droite, i = 1 : gauche (une échelle X négative fait un miroir)
             float side = i == 0 ? 1f : -1f;
 
-            // Côté gauche = miroir du côté droit
             Transform sideRoot = new GameObject(i == 0 ? "Aile droite" : "Aile gauche").transform;
-            sideRoot.SetParent(root, false);
-            sideRoot.localPosition = new Vector3(side * size.x * 0.45f, size.y * height, size.z * alongBus);
+            sideRoot.SetParent(wingsRoot, false);
+            sideRoot.localPosition = new Vector3(side * busSize.x * 0.45f, busSize.y * height, busSize.z * alongBus);
             sideRoot.localScale = new Vector3(side, 1f, 1f);
 
             Transform hinge = new GameObject("Charniere").transform;
             hinge.SetParent(sideRoot, false);
+            hinges[i] = hinge;
 
             GameObject wing = new GameObject("Aile", typeof(MeshFilter), typeof(MeshRenderer));
             wing.transform.SetParent(hinge, false);
             wing.transform.localRotation = wingRotation;
             wing.transform.localScale = wingScale;
-            // La charnière du modèle tombe pile sur le point de rotation
+            // On décale l'aile pour que sa charnière tombe pile sur le point de rotation
             wing.transform.localPosition = -(wingRotation * Vector3.Scale(wingScale, hingePoint));
             wing.GetComponent<MeshFilter>().sharedMesh = mesh;
-            wing.GetComponent<MeshRenderer>().sharedMaterials = materials;
 
-            hinges[i] = hinge;
+            Material[] materials = new Material[Mathf.Max(1, mesh.subMeshCount)];
+            for (int m = 0; m < materials.Length; m++)
+                materials[m] = material;
+            wing.GetComponent<MeshRenderer>().sharedMaterials = materials;
         }
 
-        root.gameObject.SetActive(false);
-        return true;
+        wingsRoot.gameObject.SetActive(false);
     }
 
-    // Matériau éclairé comme le bus, de la couleur des ailes, visible des deux côtés
-    private Material[] BuildMaterials(MeshRenderer sourceRenderer, int count)
+    // Copie un matériau opaque du bus (même éclairage) avec la couleur des ailes
+    private Material CreateWingMaterial()
     {
         Material template = null;
         foreach (MeshRenderer renderer in GetComponentsInChildren<MeshRenderer>())
         {
             Material candidate = renderer.sharedMaterial;
-            // Pas de vitre ni de matériau transparent
+            // On évite les vitres (matériaux transparents)
             if (candidate != null && candidate.HasProperty("_BaseColor") && candidate.renderQueue < 2450)
             {
                 template = candidate;
@@ -139,50 +154,47 @@ public class BusWings : MonoBehaviour
             }
         }
 
-        if (template == null)
-            return sourceRenderer != null ? sourceRenderer.sharedMaterials : new Material[0];
-
-        material = new Material(template) { name = "Ailes bus" };
-        if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", null);
-        if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", null);
-        material.SetColor("_BaseColor", wingColor);
-        if (material.HasProperty("_Color")) material.SetColor("_Color", wingColor);
-        if (material.HasProperty("_EmissionColor"))
-        {
-            material.DisableKeyword("_EMISSION");
-            material.SetColor("_EmissionColor", Color.black);
-        }
-        if (material.HasProperty("_Cull")) material.SetFloat("_Cull", 0f);
-        material.doubleSidedGI = true;
-
-        var materials = new Material[Mathf.Max(1, count)];
-        for (int i = 0; i < materials.Length; i++) materials[i] = material;
-        return materials;
+        Material result = template != null ? new Material(template) : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        result.name = "Ailes bus";
+        if (result.HasProperty("_BaseMap")) result.SetTexture("_BaseMap", null);
+        result.SetColor("_BaseColor", wingColor);
+        result.DisableKeyword("_EMISSION");
+        if (result.HasProperty("_Cull")) result.SetFloat("_Cull", 0f); // visible des deux côtés
+        return result;
     }
 
+    // ---------- ANIMATION ----------
+
+    // LateUpdate : après le mouvement du bus
     private void LateUpdate()
     {
-        if (root == null) return;
-
         bool airborne = flight.isActiveAndEnabled && flight.IsAirborne;
-        deploy = Mathf.MoveTowards(deploy, airborne ? 1f : 0f, Time.deltaTime / Mathf.Max(0.05f, deploySeconds));
+
+        // deploy va doucement vers 1 en vol, vers 0 au sol
+        float target = airborne ? 1f : 0f;
+        deploy = Mathf.MoveTowards(deploy, target, Time.deltaTime / Mathf.Max(0.05f, deploySeconds));
+
         if (deploy <= 0f)
         {
-            if (root.gameObject.activeSelf) root.gameObject.SetActive(false);
+            wingsRoot.gameObject.SetActive(false);
             return;
         }
-        if (!root.gameObject.activeSelf) root.gameObject.SetActive(true);
+        wingsRoot.gameObject.SetActive(true);
 
-        // Battement : plus rapide en montée, en panique pendant la chute
-        float target = flight.IsFalling ? fallFlapMultiplier
-            : rb != null && rb.linearVelocity.y > 1f ? climbFlapMultiplier : 1f;
-        flapMultiplier = Mathf.MoveTowards(flapMultiplier, target, Time.deltaTime * 3f);
+        // Vitesse du battement : normal, en montée, ou en panique pendant la chute
+        float wantedMultiplier = 1f;
+        if (flight.IsFalling)
+            wantedMultiplier = fallFlapMultiplier;
+        else if (rb != null && rb.linearVelocity.y > 1f)
+            wantedMultiplier = climbFlapMultiplier;
+        flapMultiplier = Mathf.MoveTowards(flapMultiplier, wantedMultiplier, Time.deltaTime * 3f);
+
         flapPhase += Time.deltaTime * flapSpeed * flapMultiplier * Mathf.PI * 2f;
         float flap = Mathf.Sin(flapPhase) * flapAmplitude;
 
-        // Dépliage : les ailes sortent repliées le long du bus puis s'ouvrent avec un petit rebond
+        // Dépliage avec un petit rebond à la fin
         float open = EaseOutBack(deploy);
-        float angle = Mathf.LerpUnclamped(-80f, restAngle + flap, open);
+        float angle = Mathf.LerpUnclamped(foldedAngle, restAngle + flap, open);
         float grow = Mathf.Clamp01(deploy * 2f);
 
         foreach (Transform hinge in hinges)
@@ -192,6 +204,7 @@ public class BusWings : MonoBehaviour
         }
     }
 
+    // Courbe qui dépasse un peu 1 avant d'y revenir (effet de rebond)
     private static float EaseOutBack(float t)
     {
         const float c1 = 1.70158f;

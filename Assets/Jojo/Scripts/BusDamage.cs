@@ -1,20 +1,22 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Dégâts du bus : au premier choc contre un mur, un bâtiment ou une voiture, le bus s'abîme
-// (carrosserie noircie, fumée et flammes sur le capot). C'est purement visuel : on ne perd pas.
-// Une grosse chute (après un vol trop haut, ou en tombant d'un toit) compte aussi comme un choc.
-// Ajouté automatiquement sur le bus par le DeliveryManager, rien à placer dans la scène.
+// Dégâts du bus : au premier gros choc (mur, bâtiment, voiture ou grosse chute),
+// le bus s'abîme : carrosserie noircie, fumée et flammes. C'est seulement visuel, on ne perd pas.
+// Le garage (BusGarageRepair) éteint le feu.
+//
+// A placer à la main sur le bus (le GameObject qui a le BusController et le Rigidbody).
+// Pour choisir où sort le feu : créer des objets vides enfants du bus et les glisser dans "Fire Point".
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
 public class BusDamage : MonoBehaviour
 {
     [Header("Chocs")]
-    [Tooltip("Vitesse minimale vers l'obstacle (km/h) pour que le choc compte")]
+    [Tooltip("Vitesse minimale contre l'obstacle (km/h) pour que le choc compte")]
     public float minImpactSpeedKmh = 25f;
-    [Tooltip("Secondes entre deux chocs comptés")]
+    [Tooltip("Secondes minimum entre deux chocs comptés")]
     public float hitCooldown = 1.5f;
-    [Tooltip("Les contacts plus bas que ça (bordures de trottoir) ne comptent pas")]
+    [Tooltip("Les contacts plus bas que ça (bordures de trottoir) ne comptent pas (m)")]
     public float curbHeight = 0.6f;
 
     [Header("Chute")]
@@ -22,64 +24,71 @@ public class BusDamage : MonoBehaviour
     public float fallDamageHeight = 15f;
 
     [Header("Vitesse")]
-    [Tooltip("Le bus roule un peu moins vite que la vitesse réglée sur le BusController")]
+    [Tooltip("Multiplie la vitesse max du BusController au lancement (0.85 = 15 % moins vite)")]
     [Range(0.3f, 1f)] public float speedMultiplier = 0.85f;
 
-    [Header("Effets")]
-    [Tooltip("Noircissement de la carrosserie une fois abîmé")]
+    [Header("Carrosserie")]
+    [Tooltip("Noircissement de la carrosserie une fois abîmé (0 = rien, 1 = tout noir)")]
     [Range(0f, 1f)] public float darkening = 0.45f;
-    [Tooltip("Le bus abîmé a aussi des flammes sur le capot")]
+    public Color burntColor = new Color(0.08f, 0.07f, 0.07f);
+
+    [Header("Feu")]
+    [Tooltip("Le bus abîmé prend feu")]
     public bool onFire = true;
-    public Color smokeColor = new Color(0.32f, 0.32f, 0.35f);
+    [Tooltip("Objets enfants du bus qui marquent où sort le feu. Si vide : position ci-dessous.")]
+    public Transform[] firePoint;
+    [Tooltip("Position du feu par rapport au bus, si Fire Point est vide")]
+    public Vector3 customFirePosition = new Vector3(0f, 1.5f, 2f);
     public Color fireColor = new Color(1f, 0.42f, 0.05f);
     public Color fireCoreColor = new Color(1f, 0.85f, 0.2f);
+    public float fireLightIntensity = 4f;
+    public float fireLightRange = 10f;
 
-    [Header("Position du feu")]
-    [Tooltip("Points qui marquent les emplacements du feu. Si vide, les enfants nommés ci-dessous sont recherchés.")]
-    public Transform[] firePoint;
-    public string firePointName = "PointFeu";
-    [Tooltip("Position locale utilisée si aucun point de feu n'est défini.")]
-    public bool useCustomPosition;
-    public Vector3 customFirePosition = new Vector3(0f, 1.5f, 2f);
+    [Header("Fumée")]
+    public Color smokeColor = new Color(0.32f, 0.32f, 0.35f);
+    [Tooltip("Bouffées de fumée par seconde quand le bus est abîmé")]
+    public float smokePerSecond = 7f;
+    [Tooltip("Nombre de bouffées créées au départ et réutilisées")]
+    [Min(1)] public int smokePuffCount = 30;
 
-    private Vector3 defaultEnginePoint;
+    // Infos pour les autres scripts
     public bool IsDamaged { get; private set; }
-    // Appelé à chaque choc
-    public event System.Action Damaged;
+    public event System.Action Damaged; // appelé à chaque choc (le gérant réagit)
 
-    public void ExtinguishFire()
-    {
-        foreach (Transform effectRoot in effectRoots)
-            if (effectRoot != null) effectRoot.gameObject.SetActive(false);
-    }
-
+    // Composants du bus
     private Rigidbody rb;
     private BoxCollider body;
-    private float lastHitTime = -999f;
     private BusWheelRig wheelRig;
     private BusFlightController flight;
-    private float fallStartY;
+
+    // Chocs et chute
+    private float lastHitTime = -999f;
+    private float highestY;
     private bool wasGrounded = true;
 
-    // Carrosserie : matériaux du bus et leur couleur d'origine
-    private class Paint { public Material material; public string property; public Color color; }
-    private readonly List<Paint> paints = new List<Paint>();
-    private readonly List<Material> busMaterials = new List<Material>();
+    // Couleurs d'origine de la carrosserie
+    private readonly List<Material> materials = new List<Material>();
+    private readonly List<Color> originalColors = new List<Color>();
 
-    // Positions locales d'où sortent la fumée et les flammes.
-    private readonly List<Vector3> enginePoints = new List<Vector3>();
-    private readonly List<Transform> firePointSources = new List<Transform>();
-    private readonly List<Transform> fires = new List<Transform>();
-    private readonly List<Transform> effectRoots = new List<Transform>();
-    private readonly List<Light> fireLights = new List<Light>();
+    // Feu : un groupe de flammes par emplacement
+    private readonly List<GameObject> fires = new List<GameObject>();
     private readonly List<Transform> flames = new List<Transform>();
     private readonly List<Vector3> flameScales = new List<Vector3>();
+    private readonly List<Light> fireLights = new List<Light>();
 
-    private class Puff { public Transform t; public Vector3 velocity; public float age, life, size; }
+    // Fumée : des sphères réutilisées (plus rapide que d'en créer sans arrêt)
+    private class Puff
+    {
+        public Transform transform;
+        public Vector3 velocity;
+        public float age, life, size;
+    }
     private readonly List<Puff> puffs = new List<Puff>();
     private Transform smokeRoot;
     private int nextPuff;
     private float puffTimer;
+    private bool firesVisible;
+    private bool extinguished; // éteint par le garage
 
     private void Awake()
     {
@@ -91,72 +100,129 @@ public class BusDamage : MonoBehaviour
 
     private void Start()
     {
-        // Start : après les Awake qui peuvent encore régler la vitesse du bus
         BusController bus = GetComponent<BusController>();
         if (bus != null)
             bus.maxSpeedKmh *= speedMultiplier;
 
-        fallStartY = rb.position.y;
-        CollectPaint();
-        BuildEffects();
+        highestY = rb.position.y;
+        SaveOriginalColors();
+        CreateFires();
+        CreateSmoke();
     }
 
     private void OnDestroy()
     {
-        foreach (Material material in busMaterials)
+        foreach (Material material in materials)
             if (material != null) Destroy(material);
-        if (smokeRoot != null) Destroy(smokeRoot.gameObject);
+        if (smokeRoot != null)
+            Destroy(smokeRoot.gameObject);
     }
+
+    private void Update()
+    {
+        UpdateSmoke();
+        UpdateFlames();
+    }
+
+    // Appelé par le garage
+    public void ExtinguishFire()
+    {
+        extinguished = true;
+        ShowFires(false);
+        foreach (Puff puff in puffs)
+            puff.transform.gameObject.SetActive(false);
+    }
+
+    // ---------- CHOCS ----------
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (!CanTakeHit() || collision.transform.IsChildOf(transform)) return;
+        if (!CanTakeHit() || collision.transform.IsChildOf(transform))
+            return;
 
-        float floor = (body != null ? body.bounds.min.y : rb.position.y) + curbHeight;
-        float impact = 0f;
-        Vector3 point = transform.position;
+        float floorY = (body != null ? body.bounds.min.y : rb.position.y) + curbHeight;
+        float strongestImpact = 0f;
+        Vector3 impactPoint = transform.position;
+
         for (int i = 0; i < collision.contactCount; i++)
         {
             ContactPoint contact = collision.GetContact(i);
-            // Sol, toit ou bordure : pas un choc
-            if (Mathf.Abs(contact.normal.y) > 0.6f || contact.point.y < floor) continue;
 
-            float speed = Mathf.Abs(Vector3.Dot(collision.relativeVelocity, contact.normal));
-            if (speed > impact)
+            // Sol, toit ou bordure de trottoir : ce n'est pas un choc
+            bool isFloorOrRoof = Mathf.Abs(contact.normal.y) > 0.6f;
+            bool isCurb = contact.point.y < floorY;
+            if (isFloorOrRoof || isCurb)
+                continue;
+
+            // Vitesse vers l'obstacle (m/s)
+            float impact = Mathf.Abs(Vector3.Dot(collision.relativeVelocity, contact.normal));
+            if (impact > strongestImpact)
             {
-                impact = speed;
-                point = contact.point;
+                strongestImpact = impact;
+                impactPoint = contact.point;
             }
         }
 
-        if (impact * 3.6f >= minImpactSpeedKmh)
-            TakeHit(point);
+        // m/s -> km/h : x 3.6
+        if (strongestImpact * 3.6f >= minImpactSpeedKmh)
+            TakeHit(impactPoint);
     }
 
     private bool CanTakeHit()
     {
-        return Time.time - lastHitTime >= hitCooldown &&
-            (DeliveryManager.Instance == null || !DeliveryManager.Instance.HasFailed);
+        bool cooldownOver = Time.time - lastHitTime >= hitCooldown;
+        bool gameLost = DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed;
+        return cooldownOver && !gameLost;
     }
 
-    // ---------- Chute ----------
+    private void TakeHit(Vector3 point)
+    {
+        lastHitTime = Time.time;
+
+        if (!IsDamaged)
+        {
+            IsDamaged = true;
+            DarkenBody();
+        }
+
+        extinguished = false;
+        if (onFire)
+            ShowFires(true);
+
+        Damaged?.Invoke();
+        CroustySoundDesignManager.Play(CroustySound.Horn, point);
+
+        // Petite bouffée de fumée à l'endroit du choc
+        for (int i = 0; i < 6; i++)
+            EmitPuff(point + Random.insideUnitSphere * 0.5f, 0.5f, 0.9f);
+    }
+
+    // ---------- CHUTE ----------
 
     private void FixedUpdate()
     {
         float y = rb.position.y;
         bool grounded = IsGrounded();
+        bool flying = flight != null && flight.isActiveAndEnabled &&
+            flight.CurrentMode == BusFlightController.FlightMode.Flying;
 
-        // Pendant le vol piloté, la chute ne commence qu'à la fin du vol (quand le bus retombe)
-        if (flight != null && flight.isActiveAndEnabled && flight.CurrentMode == BusFlightController.FlightMode.Flying)
-            fallStartY = y;
+        if (flying)
+        {
+            // Pendant le vol piloté, la chute ne compte qu'à partir de la fin du vol
+            highestY = y;
+        }
         else if (!grounded)
-            fallStartY = Mathf.Max(fallStartY, y);
+        {
+            // En l'air : on retient le point le plus haut
+            highestY = Mathf.Max(highestY, y);
+        }
         else
         {
-            // Atterrissage : on compare avec le point le plus haut atteint en l'air
-            if (!wasGrounded && fallStartY - y >= fallDamageHeight && CanTakeHit())
+            // On vient d'atterrir : la chute était-elle trop haute ?
+            bool justLanded = !wasGrounded;
+            if (justLanded && highestY - y >= fallDamageHeight && CanTakeHit())
                 TakeHit(transform.position);
-            fallStartY = y;
+            highestY = y;
         }
 
         wasGrounded = grounded;
@@ -167,272 +233,237 @@ public class BusDamage : MonoBehaviour
         if (wheelRig != null && wheelRig.IsReady && wheelRig.IsGrounded)
             return true;
 
-        // Rayon vers le bas depuis le centre du bus jusqu'un peu sous le bas de la carrosserie
+        // Rayon vers le bas depuis le centre du bus, jusqu'un peu sous la carrosserie
         Vector3 origin = body != null ? body.bounds.center : rb.position + Vector3.up;
-        float distance = (body != null ? origin.y - body.bounds.min.y : 1f) + 0.5f;
-        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, distance, ~0, QueryTriggerInteraction.Ignore);
+        float length = (body != null ? origin.y - body.bounds.min.y : 1f) + 0.5f;
+
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, length, ~0, QueryTriggerInteraction.Ignore);
         foreach (RaycastHit hit in hits)
-            if (!hit.collider.transform.IsChildOf(transform) && hit.normal.y > 0.5f)
+        {
+            bool isBus = hit.collider.transform.IsChildOf(transform);
+            bool isFloor = hit.normal.y > 0.5f;
+            if (!isBus && isFloor)
                 return true;
+        }
         return false;
     }
 
-    private void TakeHit(Vector3 point)
-    {
-        lastHitTime = Time.time;
+    // ---------- CARROSSERIE ----------
 
-        if (!IsDamaged)
-        {
-            IsDamaged = true;
-            ApplyPaint();
-        }
-
-        if (onFire)
-            foreach (Transform effectRoot in effectRoots)
-                if (effectRoot != null) effectRoot.gameObject.SetActive(true);
-
-        Damaged?.Invoke();
-
-        CroustySoundDesignManager.Play(CroustySound.Horn, point);
-        // Petite bouffée de fumée à l'endroit du choc
-        for (int i = 0; i < 6; i++)
-            EmitPuff(point + Random.insideUnitSphere * 0.5f, 0.5f, 0.9f);
-    }
-
-    // ---------- Carrosserie ----------
-
-    private void CollectPaint()
+    private void SaveOriginalColors()
     {
         foreach (Renderer renderer in GetComponentsInChildren<Renderer>())
         {
-            if (!(renderer is MeshRenderer || renderer is SkinnedMeshRenderer)) continue;
+            if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer))
+                continue;
 
+            // renderer.materials crée une copie propre au bus : on peut la modifier sans toucher aux autres objets
             foreach (Material material in renderer.materials)
             {
-                busMaterials.Add(material);
-                string property = material.HasProperty("_BaseColor") ? "_BaseColor"
-                    : material.HasProperty("_Color") ? "_Color" : null;
-                if (property != null)
-                    paints.Add(new Paint { material = material, property = property, color = material.GetColor(property) });
+                if (material.HasProperty("_BaseColor"))
+                {
+                    materials.Add(material);
+                    originalColors.Add(material.GetColor("_BaseColor"));
+                }
             }
         }
     }
 
-    private void ApplyPaint()
+    private void DarkenBody()
     {
-        Color burnt = new Color(0.08f, 0.07f, 0.07f);
-        foreach (Paint paint in paints)
+        for (int i = 0; i < materials.Count; i++)
         {
-            Color color = Color.Lerp(paint.color, burnt, darkening);
-            color.a = paint.color.a;
-            paint.material.SetColor(paint.property, color);
+            Color color = Color.Lerp(originalColors[i], burntColor, darkening);
+            color.a = originalColors[i].a; // garde la transparence (vitres)
+            materials[i].SetColor("_BaseColor", color);
         }
     }
 
-    // ---------- Fumée et flammes ----------
+    // ---------- FEU ----------
 
-    private void BuildEffects()
+    private void CreateFires()
     {
-        // Sur le capot, à l'avant du bus (le bus avance vers +Z)
-        Vector3 center = Vector3.up, size = new Vector3(2f, 2f, 6f);
-        if (body != null)
-        {
-            center = body.center;
-            size = body.size;
-        }
-        defaultEnginePoint = center + new Vector3(0f, size.y * 0.5f, size.z * 0.3f);
-
-        firePointSources.Clear();
+        bool hasPoint = false;
         if (firePoint != null)
+        {
             foreach (Transform point in firePoint)
-                if (point != null && !firePointSources.Contains(point))
-                    firePointSources.Add(point);
-
-        if (firePointSources.Count == 0 && !string.IsNullOrEmpty(firePointName))
-            firePointSources.AddRange(FindChildrenByName(transform, firePointName));
-        if (firePointSources.Count == 0)
-            firePointSources.Add(null);
-
-        enginePoints.Clear();
-        fires.Clear();
-        effectRoots.Clear();
-        fireLights.Clear();
-        flames.Clear();
-        flameScales.Clear();
-        foreach (Transform point in firePointSources)
-        {
-            Vector3 localPosition = point != null
-                ? transform.InverseTransformPoint(point.position)
-                : useCustomPosition ? customFirePosition : defaultEnginePoint;
-            enginePoints.Add(localPosition);
-            BuildFireEffect(localPosition);
+            {
+                if (point != null)
+                {
+                    CreateFire(point, Vector3.zero);
+                    hasPoint = true;
+                }
+            }
         }
 
-        // Fumée : quelques sphères réutilisées, dans le monde pour laisser une traînée
-        smokeRoot = new GameObject("Fumee bus").transform;
-        effectRoots.Add(smokeRoot);
-        for (int i = 0; i < 30; i++)
-        {
-            GameObject puff = JojoVisuals.CreateShape(PrimitiveType.Sphere, smokeRoot,
-                i % 2 == 0 ? smokeColor : smokeColor * 0.7f);
-            puff.SetActive(false);
-            puffs.Add(new Puff { t = puff.transform });
-        }
+        if (!hasPoint)
+            CreateFire(transform, customFirePosition);
     }
 
-    private void BuildFireEffect(Vector3 localPosition)
+    private void CreateFire(Transform parent, Vector3 localPosition)
     {
-        // Les flammes suivent le bus. On compense son échelle pour garder des tailles en mètres.
-        Transform fire = new GameObject("Feu bus").transform;
-        fire.SetParent(transform, false);
-        fire.localPosition = localPosition;
-        Vector3 scale = transform.lossyScale;
-        fire.localScale = new Vector3(1f / Mathf.Max(0.01f, Mathf.Abs(scale.x)),
-            1f / Mathf.Max(0.01f, Mathf.Abs(scale.y)), 1f / Mathf.Max(0.01f, Mathf.Abs(scale.z)));
-        fires.Add(fire);
-        effectRoots.Add(fire);
+        GameObject fire = new GameObject("Feu bus");
+        fire.transform.SetParent(parent, false);
+        fire.transform.localPosition = localPosition;
 
+        // Compense l'échelle du parent pour que les flammes gardent leur taille en mètres
+        Vector3 parentScale = parent.lossyScale;
+        fire.transform.localScale = new Vector3(
+            1f / Mathf.Max(0.01f, Mathf.Abs(parentScale.x)),
+            1f / Mathf.Max(0.01f, Mathf.Abs(parentScale.y)),
+            1f / Mathf.Max(0.01f, Mathf.Abs(parentScale.z)));
+
+        // 3 grandes flammes orange autour, 2 petites jaunes au centre
         for (int i = 0; i < 5; i++)
         {
-            bool core = i >= 3;
-            GameObject flame = JojoVisuals.CreateShape(PrimitiveType.Cube, fire, core ? fireCoreColor : fireColor);
+            bool isCore = i >= 3;
+            Color color = isCore ? fireCoreColor : fireColor;
+            GameObject flame = JojoVisuals.CreateShape(PrimitiveType.Cube, fire.transform, color);
             flame.name = "Flamme";
+
             float angle = i * 2.4f;
-            flame.transform.localPosition = core
-                ? new Vector3((i - 3.5f) * 0.3f, 0.3f, 0f)
-                : new Vector3(Mathf.Cos(angle) * 0.5f, 0.4f, Mathf.Sin(angle) * 0.4f);
+            if (isCore)
+                flame.transform.localPosition = new Vector3((i - 3.5f) * 0.3f, 0.3f, 0f);
+            else
+                flame.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.5f, 0.4f, Mathf.Sin(angle) * 0.4f);
+
             flame.transform.localRotation = Quaternion.Euler(0f, 45f + i * 20f, 0f);
-            Vector3 flameScale = core ? new Vector3(0.35f, 0.9f, 0.35f) : new Vector3(0.6f, 1.3f, 0.6f);
-            flame.transform.localScale = flameScale;
+            Vector3 scale = isCore ? new Vector3(0.35f, 0.9f, 0.35f) : new Vector3(0.6f, 1.3f, 0.6f);
+            flame.transform.localScale = scale;
+
             flames.Add(flame.transform);
-            flameScales.Add(flameScale);
+            flameScales.Add(scale);
         }
 
-        Light fireLight = new GameObject("Lumiere feu").AddComponent<Light>();
-        fireLight.transform.SetParent(fire, false);
-        fireLight.transform.localPosition = Vector3.up;
+        GameObject lightObject = new GameObject("Lumiere feu");
+        lightObject.transform.SetParent(fire.transform, false);
+        lightObject.transform.localPosition = Vector3.up;
+        Light fireLight = lightObject.AddComponent<Light>();
         fireLight.type = LightType.Point;
         fireLight.color = fireColor;
-        fireLight.range = 10f;
-        fireLight.intensity = 4f;
+        fireLight.range = fireLightRange;
+        fireLight.intensity = fireLightIntensity;
         fireLights.Add(fireLight);
-        fire.gameObject.SetActive(false);
+
+        fire.SetActive(false);
+        fires.Add(fire);
     }
 
-    private static List<Transform> FindChildrenByName(Transform root, string childName)
+    private void UpdateFlames()
     {
-        List<Transform> matches = new List<Transform>();
-        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
-            if (child != root && child.name == childName)
-                matches.Add(child);
-        return matches;
+        if (!firesVisible)
+            return;
+
+        // Les flammes grandissent et rétrécissent au hasard (bruit de Perlin = hasard "doux")
+        for (int i = 0; i < flames.Count; i++)
+        {
+            float flicker = 0.7f + 0.6f * Mathf.PerlinNoise(Time.time * 7f, i * 3.1f);
+            Vector3 scale = flameScales[i];
+            scale.y *= flicker;
+            flames[i].localScale = scale;
+
+            // Garde le bas de la flamme posé au même endroit
+            Vector3 position = flames[i].localPosition;
+            position.y = scale.y * 0.5f;
+            flames[i].localPosition = position;
+        }
+
+        for (int i = 0; i < fireLights.Count; i++)
+        {
+            float flicker = 0.75f + 0.5f * Mathf.PerlinNoise(Time.time * 9f, i * 0.5f);
+            fireLights[i].intensity = fireLightIntensity * flicker;
+        }
     }
 
+    private void ShowFires(bool visible)
+    {
+        firesVisible = visible;
+        foreach (GameObject fire in fires)
+            fire.SetActive(visible);
+    }
+
+    // ---------- FUMEE ----------
+
+    private void CreateSmoke()
+    {
+        // Les bouffées ne sont pas enfants du bus : elles restent sur place et font une traînée
+        smokeRoot = new GameObject("Fumee bus").transform;
+
+        for (int i = 0; i < smokePuffCount; i++)
+        {
+            Color color = i % 2 == 0 ? smokeColor : smokeColor * 0.7f;
+            GameObject puff = JojoVisuals.CreateShape(PrimitiveType.Sphere, smokeRoot, color);
+            puff.SetActive(false);
+            puffs.Add(new Puff { transform = puff.transform });
+        }
+    }
+
+    // Lance une bouffée (on réutilise la plus ancienne)
     private void EmitPuff(Vector3 position, float minSize, float maxSize)
     {
-        if (puffs.Count == 0) return;
         Puff puff = puffs[nextPuff];
         nextPuff = (nextPuff + 1) % puffs.Count;
 
-        puff.t.position = position;
+        puff.transform.position = position;
+        puff.transform.localScale = Vector3.zero;
         puff.velocity = Vector3.up * Random.Range(1.5f, 2.8f) + Random.insideUnitSphere * 0.5f;
         puff.age = 0f;
         puff.life = Random.Range(1.3f, 2f);
         puff.size = Random.Range(minSize, maxSize);
-        puff.t.localScale = Vector3.zero;
-        puff.t.gameObject.SetActive(true);
+        puff.transform.gameObject.SetActive(true);
     }
 
-    private void Update()
+    private void UpdateSmoke()
     {
-        for (int i = 0; i < firePointSources.Count; i++)
+        // Le bus abîmé fume en continu depuis chaque emplacement du feu
+        if (IsDamaged && !extinguished)
         {
-            enginePoints[i] = ComputeEnginePoint(firePointSources[i]);
-            fires[i].localPosition = enginePoints[i];
+            puffTimer += smokePerSecond * Time.deltaTime;
+            while (puffTimer >= 1f)
+            {
+                puffTimer -= 1f;
+                foreach (GameObject fire in fires)
+                    EmitPuff(fire.transform.position + Random.insideUnitSphere * 0.4f, 0.5f, 1.1f);
+            }
         }
 
-        UpdateSmoke();
-        UpdateFire();
+        // Chaque bouffée monte, grossit puis disparaît
+        foreach (Puff puff in puffs)
+        {
+            if (!puff.transform.gameObject.activeSelf)
+                continue;
+
+            puff.age += Time.deltaTime;
+            float progress = puff.age / puff.life; // 0 = naissance, 1 = fin
+            if (progress >= 1f)
+            {
+                puff.transform.gameObject.SetActive(false);
+                continue;
+            }
+
+            puff.transform.position += puff.velocity * Time.deltaTime;
+            puff.transform.localScale = Vector3.one * (puff.size * Mathf.Sin(Mathf.PI * Mathf.Lerp(0.15f, 1f, progress)));
+        }
     }
 
-    private Vector3 ComputeEnginePoint(Transform point)
-    {
-        if (point != null)
-            return transform.InverseTransformPoint(point.position);
-        return useCustomPosition ? customFirePosition : defaultEnginePoint;
-    }
-
+    // Montre les emplacements du feu dans la vue Scene quand le bus est sélectionné
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = new Color(1f, 0.42f, 0.05f);
+        Gizmos.color = fireColor;
         bool hasPoint = false;
         if (firePoint != null)
+        {
             foreach (Transform point in firePoint)
+            {
                 if (point != null)
                 {
                     Gizmos.DrawWireSphere(point.position, 0.4f);
                     hasPoint = true;
                 }
+            }
+        }
 
-        if (!hasPoint && useCustomPosition)
+        if (!hasPoint)
             Gizmos.DrawWireSphere(transform.TransformPoint(customFirePosition), 0.4f);
-        else if (!hasPoint && Application.isPlaying)
-            Gizmos.DrawWireSphere(transform.TransformPoint(defaultEnginePoint), 0.4f);
-    }
-
-    private void UpdateSmoke()
-    {
-        // Le bus abîmé fume en continu
-        if (IsDamaged && smokeRoot != null && smokeRoot.gameObject.activeSelf)
-        {
-            puffTimer += 7f * Time.deltaTime;
-            while (puffTimer >= 1f)
-            {
-                puffTimer -= 1f;
-                foreach (Vector3 enginePoint in enginePoints)
-                    EmitPuff(transform.TransformPoint(enginePoint) + Random.insideUnitSphere * 0.4f, 0.5f, 1.1f);
-            }
-        }
-
-        foreach (Puff puff in puffs)
-        {
-            if (!puff.t.gameObject.activeSelf) continue;
-            puff.age += Time.deltaTime;
-            float a = puff.age / puff.life;
-            if (a >= 1f)
-            {
-                puff.t.gameObject.SetActive(false);
-                continue;
-            }
-            puff.t.position += puff.velocity * Time.deltaTime;
-            // Grossit puis disparaît
-            puff.t.localScale = Vector3.one * (puff.size * Mathf.Sin(Mathf.PI * Mathf.Lerp(0.15f, 1f, a)));
-        }
-    }
-
-    private void UpdateFire()
-    {
-        bool anyFireActive = false;
-        foreach (Transform fire in fires)
-            if (fire.gameObject.activeSelf)
-            {
-                anyFireActive = true;
-                break;
-            }
-        if (!anyFireActive) return;
-
-        for (int i = 0; i < flames.Count; i++)
-        {
-            float flicker = 0.7f + 0.6f * Mathf.PerlinNoise(Time.time * 7f, i * 3.1f);
-            Vector3 s = flameScales[i];
-            s.y *= flicker;
-            flames[i].localScale = s;
-            Vector3 p = flames[i].localPosition;
-            p.y = s.y * 0.5f;
-            flames[i].localPosition = p;
-        }
-
-        for (int i = 0; i < fireLights.Count; i++)
-            fireLights[i].intensity = 3f + 2f * Mathf.PerlinNoise(Time.time * 9f, i * 0.5f);
     }
 }

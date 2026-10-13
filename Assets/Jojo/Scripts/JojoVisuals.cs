@@ -1,51 +1,65 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
-// Petits outils pour créer des marqueurs visibles sans préparer de matériau.
+// Boîte à outils partagée par les scripts Jojo (ce n'est pas un composant : rien à placer).
+// - IsClose : test de distance "à plat"
+// - CreateShape / CreateBeacon / SetColor : petits objets visuels créés par code
+// - CircleSprite / ArrowSprite : images simples pour le HUD
 public static class JojoVisuals
 {
+    // ---------- DISTANCE ----------
+
+    // Vrai si "position" est à moins de "radius" mètres de "center" (sans compter la hauteur)
+    // et que l'écart de hauteur ne dépasse pas "maxHeight".
+    public static bool IsClose(Vector3 center, Vector3 position, float radius, float maxHeight)
+    {
+        if (Mathf.Abs(position.y - center.y) > maxHeight)
+            return false;
+
+        center.y = 0f;
+        position.y = 0f;
+        return Vector3.Distance(center, position) <= radius;
+    }
+
+    // ---------- OBJETS 3D ----------
+
+    // Le matériau de base est rangé dans Resources/Crousty/WorldMarker
     private static Material markerMaterial;
-    private static bool reportedMissingMaterial;
+    private static bool missingMaterialReported;
+
+    // Change la couleur d'un objet (avec un matériau qui ne réagit pas à la lumière)
     public static void SetColor(GameObject target, Color color)
     {
         Renderer renderer = target.GetComponent<Renderer>();
-        if (renderer == null)
-            return;
-
-        var material = CreateUnlitMaterial(color, false);
-        if (material != null) renderer.sharedMaterial = material;
+        Material material = CreateMaterial(color, false);
+        if (renderer != null && material != null)
+            renderer.sharedMaterial = material;
     }
 
-    // Forme simple sans collision ni ombre (flammes, fumée, débris)
+    // Forme simple (cube, sphère...) sans collision ni ombre. Sert aux flammes, à la fumée, au riz.
     public static GameObject CreateShape(PrimitiveType type, Transform parent, Color color)
     {
         GameObject shape = GameObject.CreatePrimitive(type);
-        var collider = shape.GetComponent<Collider>();
-        collider.enabled = false;
-        Object.Destroy(collider);
-
+        RemoveCollider(shape);
         shape.transform.SetParent(parent, false);
-
-        Renderer renderer = shape.GetComponent<Renderer>();
-        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        renderer.receiveShadows = false;
-
+        TurnOffShadows(shape);
         SetColor(shape, color);
         return shape;
     }
 
-    // Faisceau lumineux vertical, visible au-dessus des bâtiments (sans collision)
+    // Faisceau lumineux vertical, visible de loin au-dessus des bâtiments
     public static GameObject CreateBeacon(Transform parent, Color color, float height, float width)
     {
         GameObject beacon = new GameObject("Faisceau");
-        beacon.SetActive(false);
         beacon.transform.SetParent(parent, false);
 
-        // Coeur du faisceau : fin et très lumineux
+        // Coeur : fin et très lumineux
         CreateBeamPart(beacon.transform, "Coeur", Color.Lerp(color, Color.white, 0.5f), height, width * 0.35f, 0.9f);
 
-        // Halo : plus large et transparent, il pulse
+        // Halo : plus large, transparent, et il pulse
         GameObject halo = CreateBeamPart(beacon.transform, "Halo", color, height, width, 0.35f);
-        if (halo != null) halo.AddComponent<BeaconPulse>();
+        if (halo != null)
+            halo.AddComponent<BeaconPulse>();
 
         // Lumière au sol
         GameObject lightObject = new GameObject("Lumiere");
@@ -58,67 +72,110 @@ public static class JojoVisuals
         light.range = 15f;
         light.intensity = 8f;
 
-        beacon.SetActive(true);
         return beacon;
     }
 
     private static GameObject CreateBeamPart(Transform parent, string name, Color color, float height, float width, float alpha)
     {
         color.a = alpha;
-        var material = CreateUnlitMaterial(color, true);
-        if (material == null) return null;
+        Material material = CreateMaterial(color, true);
+        if (material == null)
+            return null;
+
         GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         part.name = name;
-        var collider = part.GetComponent<Collider>();
-        collider.enabled = false;
-        Object.Destroy(collider);
-
+        RemoveCollider(part);
         part.transform.SetParent(parent, false);
+
+        // Le cylindre de Unity fait 2 m de haut : on le pose sur le sol et on l'étire
         part.transform.localPosition = Vector3.up * (height * 0.5f);
-        // Le cylindre de base fait 2 de haut
         part.transform.localScale = new Vector3(width, height * 0.5f, width);
 
-        Renderer renderer = part.GetComponent<Renderer>();
-        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        renderer.receiveShadows = false;
-
-        renderer.sharedMaterial = material;
-
+        TurnOffShadows(part);
+        part.GetComponent<Renderer>().sharedMaterial = material;
         return part;
     }
 
-    private static Material CreateUnlitMaterial(Color color, bool additive)
+    private static void RemoveCollider(GameObject target)
     {
-        // The Resources material references its shader, so player builds retain it.
-        // No runtime-only Shader.Find or transparent keyword variant is needed.
-        if (markerMaterial == null) markerMaterial = Resources.Load<Material>("Crousty/WorldMarker");
+        Collider collider = target.GetComponent<Collider>();
+        collider.enabled = false; // désactivé tout de suite, Destroy n'agit qu'à la fin de la frame
+        Object.Destroy(collider);
+    }
+
+    private static void TurnOffShadows(GameObject target)
+    {
+        Renderer renderer = target.GetComponent<Renderer>();
+        renderer.shadowCastingMode = ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+    }
+
+    // Copie le matériau de base avec une couleur.
+    // transparent = vrai : la couleur s'ajoute à ce qu'il y a derrière (effet lumineux du faisceau).
+    private static Material CreateMaterial(Color color, bool transparent)
+    {
+        if (markerMaterial == null)
+            markerMaterial = Resources.Load<Material>("Crousty/WorldMarker");
+
         if (markerMaterial == null || markerMaterial.shader == null || !markerMaterial.shader.isSupported)
         {
-            if (!reportedMissingMaterial)
-                Debug.LogError("Matériau de repère Crousty/WorldMarker absent ou non compatible. Les livraisons restent disponibles.");
-            reportedMissingMaterial = true;
+            if (!missingMaterialReported)
+                Debug.LogError("Matériau Resources/Crousty/WorldMarker absent ou incompatible : les faisceaux ne s'afficheront pas.");
+            missingMaterialReported = true;
             return null;
         }
+
         Material material = new Material(markerMaterial);
         material.SetColor("_BaseColor", color);
-        material.SetFloat("_SrcBlend", additive ? (float)UnityEngine.Rendering.BlendMode.SrcAlpha : (float)UnityEngine.Rendering.BlendMode.One);
-        material.SetFloat("_DstBlend", additive ? (float)UnityEngine.Rendering.BlendMode.One : (float)UnityEngine.Rendering.BlendMode.Zero);
-        material.SetFloat("_ZWrite", additive ? 0f : 1f);
-        material.SetOverrideTag("RenderType", additive ? "Transparent" : "Opaque");
-        material.renderQueue = additive ? (int)UnityEngine.Rendering.RenderQueue.Transparent : (int)UnityEngine.Rendering.RenderQueue.Geometry;
+
+        if (transparent)
+        {
+            material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)BlendMode.One);
+            material.SetFloat("_ZWrite", 0f);
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.renderQueue = (int)RenderQueue.Transparent;
+        }
+        else
+        {
+            material.SetFloat("_SrcBlend", (float)BlendMode.One);
+            material.SetFloat("_DstBlend", (float)BlendMode.Zero);
+            material.SetFloat("_ZWrite", 1f);
+            material.SetOverrideTag("RenderType", "Opaque");
+            material.renderQueue = (int)RenderQueue.Geometry;
+        }
         return material;
     }
 
-    // Petits sprites générés pour le HUD
+    // ---------- IMAGES POUR LE HUD ----------
+
     private static Sprite circleSprite;
     private static Sprite arrowSprite;
 
-    public static Sprite CircleSprite =>
-        circleSprite != null ? circleSprite : circleSprite = CreateSprite(IsInCircle);
+    // Rond blanc (créé une seule fois)
+    public static Sprite CircleSprite
+    {
+        get
+        {
+            if (circleSprite == null)
+                circleSprite = CreateSprite(true);
+            return circleSprite;
+        }
+    }
 
-    public static Sprite ArrowSprite =>
-        arrowSprite != null ? arrowSprite : arrowSprite = CreateSprite(IsInArrow);
-    private static Sprite CreateSprite(System.Func<float, float, float> shape)
+    // Triangle blanc qui pointe vers le haut (créé une seule fois)
+    public static Sprite ArrowSprite
+    {
+        get
+        {
+            if (arrowSprite == null)
+                arrowSprite = CreateSprite(false);
+            return arrowSprite;
+        }
+    }
+
+    // Dessine l'image pixel par pixel dans une texture 64 x 64
+    private static Sprite CreateSprite(bool circle)
     {
         const int size = 64;
         Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -128,10 +185,11 @@ public static class JojoVisuals
         {
             for (int x = 0; x < size; x++)
             {
-                // Coordonnées entre -1 et 1
+                // Coordonnées du pixel entre -1 et 1 (0 = centre de l'image)
                 float u = (x + 0.5f) / size * 2f - 1f;
                 float v = (y + 0.5f) / size * 2f - 1f;
-                texture.SetPixel(x, y, new Color(1f, 1f, 1f, shape(u, v)));
+                float alpha = circle ? CircleAlpha(u, v) : ArrowAlpha(u, v);
+                texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
             }
         }
 
@@ -139,14 +197,15 @@ public static class JojoVisuals
         return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
     }
 
-    private static float IsInCircle(float u, float v)
+    // 1 dans le cercle, 0 dehors, avec un bord adouci
+    private static float CircleAlpha(float u, float v)
     {
         float distance = Mathf.Sqrt(u * u + v * v);
         return Mathf.Clamp01((1f - distance) * 16f);
     }
 
-    // Triangle qui pointe vers le haut
-    private static float IsInArrow(float u, float v)
+    // 1 dans le triangle, 0 dehors
+    private static float ArrowAlpha(float u, float v)
     {
         float halfWidth = (1f - v) * 0.5f;
         bool inside = v > -0.9f && v < 1f && Mathf.Abs(u) < halfWidth;

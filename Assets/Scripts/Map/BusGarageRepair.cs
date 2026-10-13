@@ -39,7 +39,7 @@ public class BusGarageRepair : MonoBehaviour
 
     private void Repair()
     {
-        // BusDamage est ajouté au runtime par le DeliveryManager : on le cherche à la demande
+        // BusDamage est placé sur le bus dans la scène
         if (damage == null) damage = GetComponent<BusDamage>();
         if (damage != null) damage.ExtinguishFire();
     }

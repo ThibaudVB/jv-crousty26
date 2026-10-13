@@ -1,31 +1,43 @@
 using UnityEngine;
 
-// Adresse de livraison. Le DeliveryManager en choisit certaines au hasard.
-// Seules les adresses avec une commande en attente affichent leur marqueur.
+// Adresse de livraison. Au début de chaque tournée, le DeliveryManager
+// en choisit quelques-unes au hasard : elles attendent alors une commande.
+// Une adresse qui attend affiche un faisceau lumineux vert.
+//
+// A placer sur un GameObject devant une maison. (La ville procédurale en ajoute aussi toute seule.)
 public class DeliveryPoint : MonoBehaviour
 {
+    [Header("Zone de livraison")]
+    [Tooltip("Distance (m) à laquelle le bus lance le crousty")]
     public float deliveryRadius = 10f;
-    [Tooltip("Écart vertical maximal pour livrer depuis la rue, sans atteindre un autre étage.")]
+    [Tooltip("Écart de hauteur maximal (m) : évite de livrer depuis un autre étage")]
     [Min(0f)] public float maxHeightDifference = 6f;
 
-    [Tooltip("Optionnel : endroit où le crousty atterrit (porte, boîte aux lettres...). Sinon, ce point.")]
+    [Tooltip("Optionnel : endroit où le crousty atterrit (porte, boîte aux lettres...). Si vide : ce point.")]
     public Transform dropTarget;
 
     [Header("Marqueur")]
-    [Tooltip("Optionnel : objet affiché quand une commande attend ici. Si vide, un faisceau lumineux vert est créé.")]
+    [Tooltip("Optionnel : objet affiché quand une commande attend ici. Si vide, un faisceau lumineux est créé.")]
     public GameObject marker;
     public Color markerColor = new Color(0.2f, 1f, 0.3f);
+    [Tooltip("Hauteur du faisceau (m)")]
     public float beamHeight = 150f;
+    [Tooltip("Largeur du faisceau (m)")]
     public float beamWidth = 2.5f;
 
+    // Les étapes d'une adresse :
+    // Inactive  -> pas de commande ici
+    // Waiting   -> une commande attend, le bus doit passer
+    // Pending   -> le crousty est en l'air vers l'adresse
+    // Delivered -> livré !
     private enum State { Inactive, Waiting, Pending, Delivered }
     private State state = State.Inactive;
 
     public bool IsWaiting => state == State.Waiting;
     public bool HasOpenOrder => state == State.Waiting || state == State.Pending;
 
-    public Vector3 DropPosition =>
-        dropTarget != null ? dropTarget.position : transform.position;
+    // Point d'arrivée du crousty
+    public Vector3 DropPosition => dropTarget != null ? dropTarget.position : transform.position;
 
     private void Awake()
     {
@@ -41,7 +53,6 @@ public class DeliveryPoint : MonoBehaviour
         RefreshMarker();
     }
 
-    // Le crousty est en l'air vers ce point
     public void MarkPending()
     {
         state = State.Pending;
@@ -54,22 +65,20 @@ public class DeliveryPoint : MonoBehaviour
         RefreshMarker();
     }
 
+    // Vrai si la position est assez près de l'adresse
     public bool IsInRange(Vector3 position)
     {
-        if (Mathf.Abs(position.y - transform.position.y) > maxHeightDifference)
-            return false;
-        position.y = 0f;
-        Vector3 here = transform.position;
-        here.y = 0f;
-        return Vector3.Distance(position, here) <= deliveryRadius;
+        return JojoVisuals.IsClose(transform.position, position, deliveryRadius, maxHeightDifference);
     }
 
+    // Le faisceau n'est visible que quand une commande attend
     private void RefreshMarker()
     {
         if (marker != null)
             marker.SetActive(state == State.Waiting);
     }
 
+    // Dessine la zone dans la vue Scene
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.green;

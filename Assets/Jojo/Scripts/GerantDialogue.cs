@@ -2,15 +2,21 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // Boîte de dialogue du gérant en bas à gauche de l'écran :
-// portrait + étiquette "GÉRANT" + bandeau papier avec le texte qui s'écrit.
-// A mettre sur un GameObject de la scène : la boîte crée son propre Canvas au lancement
-// et le gérant commente la tournée en lisant le DeliveryManager.
-// Les images sont chargées depuis Resources/Gerant si les champs sont vides.
+// portrait + étiquette "GÉRANT" + bandeau papier avec le texte qui s'écrit lettre par lettre.
+// Le gérant commente la tournée en lisant le DeliveryManager, et râle quand le bus se cogne.
+//
+// A placer à la main sur un GameObject vide de la scène (ex : "Gerant").
+// Glisser les images du dossier Jojo/Resources/Gerant dans les champs "Images".
+// La boîte crée son propre Canvas au lancement.
 public class GerantDialogue : MonoBehaviour
 {
+    [Header("Références")]
+    [Tooltip("Si vide : le DeliveryManager de la scène")]
     public DeliveryManager manager;
+    [Tooltip("Optionnel : le BusDamage du bus, pour que le gérant réagisse aux chocs")]
+    public BusDamage busDamage;
 
-    [Header("Images (auto depuis Resources/Gerant si vides)")]
+    [Header("Images (portrait, bandeau, etiquette, titre)")]
     public Sprite portrait;
     [Tooltip("Bandeau papier derrière le texte")]
     public Sprite banner;
@@ -44,6 +50,8 @@ public class GerantDialogue : MonoBehaviour
     public Color textColor = new Color32(0x26, 0x26, 0x31, 0xFF);
     [Tooltip("Lettres par seconde. 0 = texte affiché d'un coup.")]
     public float lettersPerSecond = 45f;
+    [Tooltip("Hauteur du petit sautillement du triangle \"suite\"")]
+    public float arrowBounce = 5f;
 
     [Header("Position (depuis le coin bas-gauche)")]
     public float scale = 1f;
@@ -60,10 +68,8 @@ public class GerantDialogue : MonoBehaviour
     private Text messageText;
     private RectTransform arrow;
     private string currentMessage = "";
-    private float shownLetters;
-    private BusDamage damage;
-    private string crashMessage;
-    private float crashMessageUntil;
+    private float shownLetters;         // nombre de lettres déjà écrites
+    private float crashMessageUntil;    // la réplique de choc reste affichée jusqu'à ce moment
 
     // Taille de la boîte, d'après la maquette
     private static readonly Vector2 BoxSize = new Vector2(740f, 410f);
@@ -71,26 +77,31 @@ public class GerantDialogue : MonoBehaviour
     private void Start()
     {
         if (manager == null)
-            manager = DeliveryManager.Instance != null
-                ? DeliveryManager.Instance
-                : FindAnyObjectByType<DeliveryManager>();
+            manager = DeliveryManager.Instance;
 
-        damage = FindAnyObjectByType<BusDamage>();
-        if (damage != null)
-            damage.Damaged += OnDamaged;
+        // On s'abonne à l'événement : OnDamaged sera appelé à chaque choc du bus
+        if (busDamage != null)
+            busDamage.Damaged += OnDamaged;
 
         Build();
     }
 
+    private void OnDestroy()
+    {
+        if (busDamage != null)
+            busDamage.Damaged -= OnDamaged;
+    }
+
+    private void OnDamaged()
+    {
+        crashMessageUntil = Time.time + crashLineSeconds;
+    }
+
+    // Crée tous les éléments de la boîte
     private void Build()
     {
         if (font == null)
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
-        if (portrait == null) portrait = Resources.Load<Sprite>("Gerant/portrait");
-        if (banner == null) banner = Resources.Load<Sprite>("Gerant/bandeau");
-        if (nameTag == null) nameTag = Resources.Load<Sprite>("Gerant/etiquette");
-        if (nameTitle == null) nameTitle = Resources.Load<Sprite>("Gerant/titre");
 
         // Canvas à part pour ne pas toucher au HUD enregistré dans la scène
         GameObject canvasObject = new GameObject("Canvas Gerant", typeof(Canvas), typeof(CanvasScaler));
@@ -152,18 +163,7 @@ public class GerantDialogue : MonoBehaviour
         arrow.localRotation = Quaternion.Euler(0f, 0f, 180f);
     }
 
-    private void OnDestroy()
-    {
-        if (damage != null)
-            damage.Damaged -= OnDamaged;
-    }
-
-    private void OnDamaged()
-    {
-        crashMessage = crashLine;
-        crashMessageUntil = Time.time + crashLineSeconds;
-    }
-
+    // Affiche une nouvelle réplique (elle s'écrit lettre par lettre)
     public void SetMessage(string message)
     {
         if (messageText == null || message == null || message == currentMessage)
@@ -180,7 +180,7 @@ public class GerantDialogue : MonoBehaviour
             return failedLine;
 
         if (Time.time < crashMessageUntil)
-            return crashMessage;
+            return crashLine;
 
         if (!manager.HasStarted)
             return startLine;
@@ -191,10 +191,11 @@ public class GerantDialogue : MonoBehaviour
         if (manager.RunActive && manager.RunRemaining <= hurrySeconds)
             return hurryLine;
 
-        if (manager.CroustyLeft > 0)
-            return manager.CroustyLeft == 1
-                ? lastOrderLine
-                : string.Format(ordersLeftLine, manager.CroustyLeft);
+        if (manager.CroustyLeft == 1)
+            return lastOrderLine;
+
+        if (manager.CroustyLeft > 1)
+            return string.Format(ordersLeftLine, manager.CroustyLeft);
 
         return null;
     }
@@ -218,7 +219,7 @@ public class GerantDialogue : MonoBehaviour
         bool finished = count >= currentMessage.Length;
         arrow.gameObject.SetActive(finished && currentMessage.Length > 0);
         arrow.anchoredPosition = new Vector2(arrow.anchoredPosition.x,
-            38f + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) * 5f);
+            38f + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) * arrowBounce);
     }
 
     private static Image CreateImage(Transform parent, string name, Sprite sprite, Color fallbackColor,
