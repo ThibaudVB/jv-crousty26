@@ -29,17 +29,17 @@ public sealed class CroustyLeaderboard : MonoBehaviour
         for (int i = 0; i < podiums.Length; i++) Fill(podiums[i], i, board);
         for (int i = 0; i < rows.Length; i++) Fill(rows[i], i + 3, board);
         if (status != null) status.text = board.entries.Count == 0
-            ? "TERMINE UNE PARTIE POUR INSCRIRE TON SCORE !"
+            ? "FINISH A GAME TO RECORD YOUR SCORE!"
             : !string.IsNullOrEmpty(board.latestPlayer)
-                ? $"{board.latestPlayer} : {board.latestScore} PTS · RECORD {CroustyLeaderboardScores.BestForPlayer(board.latestPlayer, board)}"
-                : "MEILLEUR SCORE PAR JOUEUR · LOCAL";
+                ? $"{board.latestPlayer} : {board.latestScore} PTS · BEST {CroustyLeaderboardScores.BestForPlayer(board.latestPlayer, board)}"
+                : "PERSONAL BESTS · LOCAL";
     }
 
     private void Fill(Slot slot, int index, CroustyLeaderboardScores.Board board)
     {
         bool filled = index < board.entries.Count;
         var entry = filled ? board.entries[index] : null;
-        slot.player.text = filled ? entry.player : "À TOI DE JOUER";
+        slot.player.text = filled ? entry.player : "YOUR TURN TO PLAY";
         slot.score.text = filled ? entry.score.ToString() : "—";
         if (slot.ribbon != null)
             slot.ribbon.sprite = filled && entry.id == board.latestId ? latestRibbon : normalRibbon;
@@ -116,7 +116,7 @@ public static class CroustyLeaderboardScores
     public static string NormalizePlayer(string value)
     {
         string name = CroustyPlayerProfile.Normalize(value);
-        return name.Length > 0 ? name : "Toi";
+        return name.Length > 0 ? name : "You";
     }
 
     private static bool SamePlayer(string a, string b) =>
@@ -132,7 +132,7 @@ public static class CroustyLeaderboardScores
         return record != null ? record.score : 0;
     }
 
-    public static void Record(int score, string player = "Toi", string storageKey = StorageKey)
+    public static void Record(int score, string player = "You", string storageKey = StorageKey)
     {
         var board = Load(storageKey);
         string name = NormalizePlayer(player);

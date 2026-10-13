@@ -134,11 +134,11 @@ public sealed class PowerUpInventory : MonoBehaviour
 
     private void Update()
     {
-        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame || Keyboard.current == null)
+        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame || CroustyInput.Keyboard == null)
             return;
-        if (Keyboard.current.tabKey.wasPressedThisFrame)
+        if (CroustyInput.Keyboard.tabKey.wasPressedThisFrame)
             SwapSlots();
-        if (Keyboard.current.eKey.wasPressedThisFrame)
+        if (CroustyInput.Keyboard.eKey.wasPressedThisFrame)
             TryActivatePrimary();
     }
 

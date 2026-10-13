@@ -106,6 +106,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
 
     private void Awake()
     {
+        CroustySettings.ApplyCity(this);
         if (player == null) player = FindAnyObjectByType<BusController>()?.transform;
         if (deliveries == null) deliveries = FindAnyObjectByType<DeliveryManager>();
         if (player == null || deliveries == null || cityModel == null)

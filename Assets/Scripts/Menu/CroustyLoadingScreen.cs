@@ -16,7 +16,7 @@ public sealed class CroustyLoadingScreen : MonoBehaviour
     [Min(.1f)] public float fadeSeconds = .8f;
     [Range(1, 4)] public int prewarmRadius = 2;
     [Range(1, 10)] public float generationBudgetMs = 6;
-    public string[] messages = { "LOADING...", "CUTTING THE TENDERS...", "SPREADING THE SAUCE...", "PLACING THE CRISPY ONIONS...", "C'EST CHAUD, ON Y VA !" };
+    public string[] messages = { "LOADING...", "CUTTING THE TENDERS...", "SPREADING THE SAUCE...", "PLACING THE CRISPY ONIONS...", "HOT AND READY. LET'S GO!" };
     public static bool IsLoading { get; private set; }
     public float Progress { get; private set; }
     public bool Ready { get; private set; }
@@ -54,15 +54,15 @@ public sealed class CroustyLoadingScreen : MonoBehaviour
         AsyncOperation operation = null;
         try { operation = SceneManager.LoadSceneAsync(scene); }
         catch (System.Exception e) { Fail(e.Message); }
-        if (operation == null) { Fail("Niveau indisponible"); yield break; }
+        if (operation == null) { Fail("Level unavailable"); yield break; }
         while (!operation.isDone)
         { target = .35f * Mathf.Clamp01(operation.progress / .9f); yield return null; }
         Time.timeScale = 0;
         yield return null; // let the scene's Start methods bind their references
         var city = FindAnyObjectByType<ProceduralCity>();
         if (city == null || !city.enabled || city.WorldRoot == null)
-        { Fail("La ville n'a pas pu être préparée"); yield break; }
-        var preparation = city.Prewarm(prewarmRadius, generationBudgetMs);
+        { Fail("The city could not be loaded"); yield break; }
+        var preparation = city.Prewarm(Mathf.Min(prewarmRadius, city.viewDistance), generationBudgetMs);
         while (true)
         {
             bool next = false;
@@ -109,7 +109,7 @@ public sealed class CroustyLoadingScreen : MonoBehaviour
     void Fail(string reason)
     {
         failed = true;
-        status.text = "OUPS ! RETOUR AU MENU";
+        status.text = "OOPS! BACK TO MENU";
         errorReturn.SetActive(true);
         Debug.LogError("Chargement interrompu : " + reason, this);
     }

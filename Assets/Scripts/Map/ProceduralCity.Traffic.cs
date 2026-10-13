@@ -75,6 +75,18 @@ public sealed partial class ProceduralCity
         traffic.RemoveAll(car => car == null); // exploded by the bus
         int civilians = 0;
         foreach (var car in traffic) if (!car.IsPolice) civilians++;
+        // Retire surplus civilians gradually after reducing traffic in the pause menu.
+        // Police are never removed by a performance preference.
+        if (civilians > trafficCars)
+            for (int i = traffic.Count - 1; i >= 0; i--)
+                if (!traffic[i].IsPolice)
+                {
+                    var surplus = traffic[i];
+                    traffic.RemoveAt(i);
+                    Destroy(surplus.gameObject);
+                    civilians--;
+                    break;
+                }
         if (vehicles.Length == 0) return;
         if (trafficRoot == null)
         {

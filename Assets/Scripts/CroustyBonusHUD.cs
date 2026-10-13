@@ -47,8 +47,8 @@ public sealed class CroustyBonusHUD : MonoBehaviour
     [Header("Cartes placées dans la scène")]
     [SerializeField] private Card gps = new Card { englishName = "GPS", frenchName = "GPS" };
     [SerializeField] private Card pet = new Card { englishName = "PET", frenchName = "PET" };
-    [SerializeField] private Card rice = new Card { englishName = "RICE", frenchName = "RIZ" };
-    [SerializeField] private Card flight = new Card { englishName = "FLIGHT", frenchName = "VOL" };
+    [SerializeField] private Card rice = new Card { englishName = "RICE", frenchName = "RICE" };
+    [SerializeField] private Card flight = new Card { englishName = "FLIGHT", frenchName = "FLIGHT" };
     [SerializeField] private Material grayMaterial;
     [SerializeField] private Sprite emptySprite;
     [SerializeField] private BonusLanguage language = BonusLanguage.English;

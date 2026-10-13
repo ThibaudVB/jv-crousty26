@@ -38,7 +38,7 @@ public class PoliceCarAI : MonoBehaviour
     private readonly RaycastHit[] groundHits = new RaycastHit[8];
     private readonly RaycastHit[] obstacleHits = new RaycastHit[32];
     private BoxCollider shape;
-    private float blockedFor, reverseUntil, nextRam;
+    private float blockedFor, reverseUntil, nextRam, ramRetreatUntil;
     private int routeIndex;
     private float nextRoute, blindUntil, yaw, wobble;
     private Vector3 routeGoal, laneTarget;
@@ -64,7 +64,7 @@ public class PoliceCarAI : MonoBehaviour
     {
         if (IsDestroyed) return;
         IsRammingBus = false;
-        blockedFor = reverseUntil = 0f;
+        blockedFor = reverseUntil = ramRetreatUntil = 0f;
         SetRiceSpeedFactor(1f);
         State = Mode.Patrol;
         city.Pursuers.Remove(transform);
@@ -115,13 +115,14 @@ public class PoliceCarAI : MonoBehaviour
         float behind = -Vector3.Dot(fromBus, busForward);
         float lateral = Mathf.Abs(Vector3.Dot(fromBus, Vector3.Cross(Vector3.up, busForward)));
         float busSpeed = Vector3.Dot(manager.BusVelocity, busForward);
-        // A ram is a catch-up manoeuvre, never a head-on or side attack.
+        bool linedUpBehindBus = behind > manager.BusHalfLength && lateral < 2.5f &&
+            Vector3.Dot(forward, busForward) > .85f &&
+            toBus.sqrMagnitude < 26f * 26f && Vector3.Angle(forward, toBus) < 20f;
+        // Line up behind the bus, including when it is stopped. Acceleration belongs
+        // to the attack itself; requiring existing closing speed deadlocked parked targets.
         IsRammingBus = InPursuit && SeesBus && !IsBlinded && RiceSpeedFactor > .9f &&
             Time.time >= nextRam && Time.time >= reverseUntil &&
-            manager.CanAttemptRearRam(this) && busSpeed > 2f && Speed > busSpeed + .5f &&
-            behind > manager.BusHalfLength && lateral < 2.5f &&
-            Vector3.Dot(forward, busForward) > .85f &&
-            toBus.sqrMagnitude < 26f * 26f && Vector3.Angle(forward, toBus) < 20f &&
+            manager.CanAttemptRearRam(this) && linedUpBehindBus &&
             StaticClearance(position, toBus.normalized, toBus.magnitude) >= toBus.magnitude;
         float top = manager.ChaseSpeed;
         float desired;
@@ -145,7 +146,14 @@ public class PoliceCarAI : MonoBehaviour
         else if (IsRammingBus)
         {
             goal = manager.BusPosition - busForward * manager.BusHalfLength;
-            desired = Mathf.Min(top, busSpeed + manager.RamClosingSpeed);
+            desired = Mathf.Min(top, Mathf.Max(0f, busSpeed) + manager.RamClosingSpeed);
+        }
+        else if (InPursuit && SeesBus && linedUpBehindBus && Mathf.Abs(busSpeed) < 2f)
+        {
+            // Hold the rear approach during the attack cooldown instead of orbiting
+            // a stopped target. A retreat still moves backward below, then waits here.
+            goal = manager.BusPosition - busForward * manager.BusHalfLength;
+            desired = 0f;
         }
         else if (SeesBus && toBus.sqrMagnitude < 75f * 75f &&
             StaticClearance(position, toBus.normalized, toBus.magnitude) >= toBus.magnitude)
@@ -174,7 +182,7 @@ public class PoliceCarAI : MonoBehaviour
 
         // Steering: a car cannot turn on the spot, less so at speed.
         Vector3 to = goal - position; to.y = 0;
-        if (to.sqrMagnitude > .01f)
+        if (to.sqrMagnitude > .01f && Time.time >= ramRetreatUntil)
         {
             float angle = Vector3.SignedAngle(forward, to, Vector3.up);
             float rate = Mathf.Lerp(105f, 32f, Mathf.Clamp01(Speed / 32f));
@@ -201,7 +209,11 @@ public class PoliceCarAI : MonoBehaviour
             if (blockedFor > 1.2f) { reverseUntil = Time.time + 1f; nextRoute = 0f; blockedFor = 0f; }
         }
         else blockedFor = 0f;
-        if (reversing) { IsRammingBus = false; yaw += (approachSide < 0 ? -1f : 1f) * 45f * dt; }
+        if (reversing)
+        {
+            IsRammingBus = false;
+            if (Time.time >= ramRetreatUntil) yaw += (approachSide < 0 ? -1f : 1f) * 45f * dt;
+        }
         position += movement * allowed;
         position.y = Ground(position, body.position.y);
         body.MovePosition(position);
@@ -340,8 +352,12 @@ public class PoliceCarAI : MonoBehaviour
     {
         if (!IsDestroyed && manager != null && collision.rigidbody != null && collision.rigidbody == manager.BusBody)
         {
-            manager.Provoked(this);
-            if (IsRearRamCollision(collision)) manager.RearRamContact();
+            if (IsRearRamCollision(collision))
+            {
+                manager.RearRamContact();
+                // Separate after contact so the next attack can hit a stationary bus again.
+                reverseUntil = ramRetreatUntil = Time.time + .8f;
+            }
             nextRam = Time.time + 3.5f;
             // Keep IsRammingBus through this callback so BusDamage sees the same impact state.
         }

@@ -62,9 +62,12 @@ public sealed class CroustyMenu : MonoBehaviour
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
         }
-        float sensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(SensitivityKey, 0.75f), sensitivitySlider.minValue, sensitivitySlider.maxValue);
-        sensitivitySlider.SetValueWithoutNotify(sensitivity);
-        sensitivityLabel.text = sensitivity.ToString("0.00");
+        if (sensitivitySlider != null)
+        {
+            float sensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(SensitivityKey, 0.75f), sensitivitySlider.minValue, sensitivitySlider.maxValue);
+            sensitivitySlider.SetValueWithoutNotify(sensitivity);
+            if (sensitivityLabel != null) sensitivityLabel.text = sensitivity.ToString("0.00");
+        }
         float volume = Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, 1f));
         volumeSlider.SetValueWithoutNotify(volume);
         AudioListener.volume = volume;
@@ -221,8 +224,10 @@ public sealed class CroustyMenu : MonoBehaviour
         RefreshFullscreenLabel(target);
     }
 
-    private void RefreshFullscreenLabel(bool fullscreen) =>
-        fullscreenLabel.text = fullscreen ? "ACTIVÉ" : "DÉSACTIVÉ";
+    private void RefreshFullscreenLabel(bool fullscreen)
+    {
+        if (fullscreenLabel != null) fullscreenLabel.text = fullscreen ? "ON" : "OFF";
+    }
 
     private void OnDisable() => PlayerPrefs.Save();
 

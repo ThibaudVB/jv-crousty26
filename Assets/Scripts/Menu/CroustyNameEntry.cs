@@ -15,6 +15,7 @@ public sealed class CroustyNameEntry : MonoBehaviour
     public Animator departure;
     public CroustyLoadingScreen loadingScreen;
     [Min(.1f)] public float departureSeconds = .8f;
+    [Min(0f)] public float departureHoldSeconds = .65f;
     public bool IsLaunching { get; private set; }
     static readonly int Launch = Animator.StringToHash("Launch");
 
@@ -40,7 +41,7 @@ public sealed class CroustyNameEntry : MonoBehaviour
     {
         bool valid = CroustyPlayerProfile.Normalize(value).Length > 0;
         playButton.interactable = valid && !IsLaunching;
-        hint.text = valid ? "PRÊT À FAIRE CRACHER LE MOTEUR ?" : "ENTRE TON NOM POUR PRENDRE LE VOLANT";
+        hint.text = valid ? "READY TO FIRE UP THE ENGINE?" : "ENTER YOUR NAME TO GET BEHIND THE WHEEL";
     }
 
     public void Submit(string value) => ConfirmPlay();
@@ -57,7 +58,7 @@ public sealed class CroustyNameEntry : MonoBehaviour
         }
         if (!Application.CanStreamedLevelBeLoaded("SceneBase"))
         {
-            hint.text = "SCENEBASE DOIT ÊTRE AJOUTÉE AU BUILD";
+            hint.text = "THE GAME LEVEL IS UNAVAILABLE";
             return;
         }
         nameInput.SetTextWithoutNotify(playerName);
@@ -66,7 +67,7 @@ public sealed class CroustyNameEntry : MonoBehaviour
         IsLaunching = true;
         controls.interactable = controls.blocksRaycasts = false;
         playButton.interactable = false;
-        hint.text = "ON PART !";
+        hint.text = "LET'S GO!";
         CroustySoundDesignManager.PlayUI(CroustySound.Paper);
         if (departure != null) departure.SetTrigger(Launch);
         StartCoroutine(Depart());
@@ -84,8 +85,8 @@ public sealed class CroustyNameEntry : MonoBehaviour
             elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
-        // Show the fully closed wipe for a frame before opening the loading panel.
-        yield return null;
+        // Leave the completed title readable before the loading screen covers it.
+        yield return new WaitForSecondsRealtime(departureHoldSeconds);
         if (loadingScreen != null) Instantiate(loadingScreen).Begin("SceneBase");
         else SceneManager.LoadSceneAsync("SceneBase");
     }
@@ -101,7 +102,7 @@ public static class CroustyPlayerProfile
     public const string NameKey = "Crousty.PlayerName";
     public const int MaximumNameLength = 20;
     public static string StoredName => Normalize(PlayerPrefs.GetString(NameKey, ""));
-    public static string PlayerName => StoredName.Length > 0 ? StoredName : "Toi";
+    public static string PlayerName => StoredName.Length > 0 ? StoredName : "You";
 
     public static string Normalize(string value)
     {

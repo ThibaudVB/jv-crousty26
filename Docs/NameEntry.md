@@ -15,8 +15,8 @@ Les parties lancées depuis une ancienne scène sans saisie gardent « Toi ».
 Les objets graphiques sont éditables dans la hiérarchie du panel. Les trois
 clips Arrivée, Prêt et Départ et le controller se trouvent dans
 `Assets/Menu/NameEntry/Animations`. Le départ comprime puis étire le
-formulaire et ferme un volet orange avec « ON PART ! ». Une fois le volet
-fermé, le panel de chargement prépare SceneBase et sa ville procédurale,
+formulaire et ferme un volet orange avec « LET'S GO! ». Une fois le volet
+fermé, le titre reste visible 0,7 seconde, puis le panel de chargement prépare SceneBase et sa ville procédurale,
 puis révèle le jeu par un fondu (voir `Docs/LoadingScreen.md`).
 Les clics répétés et le retour sont bloqués pendant le départ.
 

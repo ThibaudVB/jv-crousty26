@@ -117,9 +117,9 @@ public class BusFlightController : MonoBehaviour
         if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame)
             return;
 
-        Keyboard keyboard = Keyboard.current;
+        Keyboard keyboard = CroustyInput.Keyboard;
 
-        var pad = Gamepad.current;
+        var pad = CroustyInput.Pad;
 
         if (!IsAirborne)
             return;

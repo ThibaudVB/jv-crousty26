@@ -70,8 +70,8 @@ public static class CroustyIngameReferenceLayout
         var shipping = Card(layout, "Livraisons", "Rectangle shipping.png", new Vector2(0, 1), new Vector2(48, -158), new Vector2(310, 112));
         var deliveries = Label(shipping, "Progression", "0/5", new Vector2(110, -21), new Vector2(175, 69), 56, Color.white);
         var objective = Card(layout, "Objectif", "Rectangle Objectif.png", new Vector2(1, 1), new Vector2(-50, -18), new Vector2(565, 243));
-        Label(objective, "Titre", "OBJECTIF", new Vector2(100, -15), new Vector2(425, 83), 67, Ink);
-        var objectiveText = Label(objective, "Consigne", "Récupère les commandes au\nrestaurant de Crousty (0/1)", new Vector2(42, -120), new Vector2(465, 92), 28, Ink);
+        Label(objective, "Titre", "TASK", new Vector2(100, -15), new Vector2(425, 83), 67, Ink);
+        var objectiveText = Label(objective, "Consigne", "Pick up your orders at\nCrousty's restaurant (0/1)", new Vector2(42, -120), new Vector2(465, 92), 28, Ink);
         objectiveText.enableAutoSizing = true; objectiveText.fontSizeMin = 23; objectiveText.fontSizeMax = 28;
         objectiveText.textWrappingMode = TextWrappingModes.Normal;
         var timer = Label(objective, "Chronometre", "01:30", new Vector2(415, -201), new Vector2(100, 35), 26, Ink);
@@ -144,7 +144,7 @@ public static class CroustyIngameReferenceLayout
         row.anchoredPosition = new Vector2(48, -282); row.sizeDelta = new Vector2(230, 208); row.localScale = Vector3.one;
         fields.FindProperty("singleCardMode").boolValue = true;
         fields.FindProperty("selectedBonus").enumValueIndex = (int)CroustyBonusHUD.SelectedBonus.Pet;
-        fields.FindProperty("language").enumValueIndex = (int)CroustyBonusHUD.BonusLanguage.French;
+        fields.FindProperty("language").enumValueIndex = (int)CroustyBonusHUD.BonusLanguage.English;
         foreach (var field in new[] { "pet", "gps", "rice", "flight" })
         {
             var card = fields.FindProperty(field);
@@ -160,8 +160,8 @@ public static class CroustyIngameReferenceLayout
             PlaceCentered(count.rectTransform, new Vector2(36, 79), new Vector2(46, 35));
             if (field == "pet")
             {
-                card.FindPropertyRelative("frenchName").stringValue = "Gaz Toxique";
-                name.text = "Gaz Toxique";
+                card.FindPropertyRelative("englishName").stringValue = "TOXIC GAS";
+                name.text = "TOXIC GAS";
             }
             rect.gameObject.SetActive(field == "pet");
         }
@@ -214,7 +214,7 @@ public static class CroustyIngameReferenceLayout
         ImageAt(panel, "Papier", Resources.Load<Sprite>("Gerant/bandeau"), new Vector2(65, -265), new Vector2(750, 172));
         ImageAt(panel, "Etiquette", Resources.Load<Sprite>("Gerant/etiquette"), new Vector2(178, -192), new Vector2(294, 100));
         ImageAt(panel, "Portrait", Resources.Load<Sprite>("Gerant/portrait"), new Vector2(-10, -36), new Vector2(345, 397));
-        ImageAt(panel, "Titre", Resources.Load<Sprite>("Gerant/titre"), new Vector2(212, -223), new Vector2(184, 51));
+        Label(panel, "Titre", "MANAGER", new Vector2(212, -223), new Vector2(184, 51), 35, new Color32(239, 233, 225, 255));
         var message = Label(panel, "Message", dialogue.deliveryStartLines[0], new Vector2(263, -300), new Vector2(505, 110), 28, Ink);
         message.enableAutoSizing = true; message.fontSizeMin = 23; message.fontSizeMax = 28;
         message.textWrappingMode = TextWrappingModes.Normal;

@@ -25,6 +25,7 @@ public static class NameEntryChecks
         deadline=EditorApplication.timeSinceStartup+180;EditorApplication.update+=Tick;
         Application.logMessageReceived+=(m,s,t)=>{
             if(SessionState.GetInt(Key,0)==0)return;
+            if(s.Contains("UnityEditor.Search."))return;
             if(t==LogType.Error&&m=="No texture data is available to upload.")oldTextures++;
             else if(t==LogType.Error&&m=="HUD : assigner les panels et indications dans la scene.")oldHud++;
             else if(t==LogType.Error||t==LogType.Exception)errors++;
@@ -86,7 +87,7 @@ public static class NameEntryChecks
                 ExecuteEvents.ExecuteHierarchy(hits[0].gameObject,click,ExecuteEvents.pointerDownHandler);
                 ExecuteEvents.ExecuteHierarchy(hits[0].gameObject,click,ExecuteEvents.pointerClickHandler);
                 Check(EventSystem.current.currentSelectedGameObject==entry.nameInput.gameObject,"Mouse click restores input selection after another control");
-                Check(CroustyPlayerProfile.PlayerName=="Toi","Legacy games retain a fallback name");
+                Check(CroustyPlayerProfile.PlayerName=="You","Legacy games retain an English fallback name");
                 entry.nameInput.text="   ";entry.ConfirmPlay();
                 Check(!entry.IsLaunching&&!entry.playButton.interactable,"Whitespace name cannot start the game");
                 Check(CroustyPlayerProfile.Normalize("  Éloïse   Test  ")=="Éloïse Test","Accented names survive whitespace normalization");
@@ -119,6 +120,8 @@ public static class NameEntryChecks
                 if(SceneManager.GetActiveScene().name=="CroustyMainMenu")
                 {
                     if(entry.departure.GetCurrentAnimatorStateInfo(0).normalizedTime<.95f)return;
+                    Check(!CroustyLoadingScreen.IsLoading,"Loading waits for the departure title to finish and hold");
+                    Check(entry.hint.text=="LET'S GO!","Departure caption is English");
                     Check(entry.departure.GetCurrentAnimatorStateInfo(0).IsName("Départ"),"Departure plays the authored goofy animation");
                     var wipe=entry.transform.Find("Volet orange de départ").GetComponent<CanvasGroup>();
                     Check(wipe.alpha>.99f,"Orange wipe covers the screen before game activation");

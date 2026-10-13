@@ -84,7 +84,7 @@ public sealed class BusGPS : MonoBehaviour
             foreach (MeshCollider collider in FindObjectsByType<MeshCollider>())
                 if (collider.name == "Ground_Asphalt") { navigationRoot = collider.transform.root; break; }
         }
-        if (navigationRoot == null) { Status = "GPS : carte indisponible"; return false; }
+        if (navigationRoot == null) { Status = "GPS: map unavailable"; return false; }
         var sources = new List<NavMeshBuildSource>();
         NavMeshBuilder.CollectSources(navigationRoot, ~0, NavMeshCollectGeometry.PhysicsColliders,
             0, new List<NavMeshBuildMarkup>(), sources);
@@ -94,7 +94,7 @@ public sealed class BusGPS : MonoBehaviour
         foreach (var source in sources)
             if (source.sourceObject is Mesh mesh && !mesh.isReadable)
             {
-                Status = "GPS : meshes non lisibles";
+                Status = "GPS: map data unavailable";
                 return false;
             }
         var renderers = navigationRoot.GetComponentsInChildren<Renderer>();
@@ -111,7 +111,7 @@ public sealed class BusGPS : MonoBehaviour
         settings.overrideVoxelSize = true;
         settings.voxelSize = 0.4f;
         data = NavMeshBuilder.BuildNavMeshData(settings, sources, bounds, Vector3.zero, Quaternion.identity);
-        if (data == null) { ReleaseNavigation(); Status = "GPS : navigation indisponible"; return false; }
+        if (data == null) { ReleaseNavigation(); Status = "GPS: navigation unavailable"; return false; }
         instance = NavMesh.AddNavMeshData(data);
         filter = new NavMeshQueryFilter { agentTypeID = agentType, areaMask = NavMesh.AllAreas };
         return true;
@@ -139,7 +139,7 @@ public sealed class BusGPS : MonoBehaviour
         if (deliveries.player == null) return false;
         if (candidates.Count == 0)
         {
-            Status = "GPS : prends des commandes";
+            Status = "GPS: pick up some orders";
             return false;
         }
         if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
@@ -158,7 +158,7 @@ public sealed class BusGPS : MonoBehaviour
         }
         Target = null;
         Route.Clear();
-        Status = candidates.Count == 0 ? "GPS : prends des commandes" : "GPS : aucune route accessible";
+        Status = candidates.Count == 0 ? "GPS: pick up some orders" : "GPS: no route available";
         return false;
     }
     private void Update()
@@ -167,7 +167,7 @@ public sealed class BusGPS : MonoBehaviour
         if (Target == null || !Target.IsWaiting || Time.time < nextRepath) return;
         nextRepath = Time.time + 0.75f;
         if (Calculate(Target)) SetRoute();
-        else { Route.Clear(); Status = "GPS : rejoins une route"; }
+        else { Route.Clear(); Status = "GPS: get back on the road"; }
     }
     private void SetRoute()
     {
@@ -176,14 +176,14 @@ public sealed class BusGPS : MonoBehaviour
         else Route.AddRange(path.corners);
         float distance = 0;
         for (int i=1; i<Route.Count; i++) distance += Vector3.Distance(Route[i-1], Route[i]);
-        Status = $"GPS : {distance:0} m";
+        Status = $"GPS: {distance:0} m";
     }
     private void OnDelivered(DeliveryPoint point)
     {
         if (point != Target) return;
         Target = null;
         Route.Clear();
-        Status = Charges > 0 ? "[E] GPS : prochaine livraison" : "GPS epuise";
+        Status = Charges > 0 ? "[E] GPS: next delivery" : "GPS depleted";
     }
     private void ReleaseNavigation()
     {
