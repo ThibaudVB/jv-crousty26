@@ -44,6 +44,26 @@ public class DeliveryManager : MonoBehaviour
     [Tooltip("Points en plus pour chaque seconde restante à la fin de la tournée")]
     [Min(0)] public int pointsPerRemainingSecond = 10;
 
+    [Header("Livraison en hauteur")]
+    [Tooltip("Coché : on peut livrer à n'importe quelle hauteur (en volant, depuis un toit...). " +
+             "Décoché : le bus doit être à moins de \"Max Height Difference\" de l'adresse.")]
+    public bool deliverFromAnyHeight = true;
+
+    [Header("Parachute")]
+    [Tooltip("Le crousty ouvre un parachute quand il est lancé de haut")]
+    public bool useParachute = true;
+    [Tooltip("Le parachute s'ouvre si le crousty part de plus haut que ça au-dessus de l'adresse (m)")]
+    [Min(0f)] public float parachuteMinHeight = 8f;
+    [Tooltip("Vitesse de descente sous le parachute (m/s)")]
+    [Min(0.5f)] public float parachuteFallSpeed = 6f;
+    [Tooltip("Durée maximale de la descente (s), même lancé de très haut")]
+    [Min(0.5f)] public float parachuteMaxSeconds = 6f;
+    [Tooltip("Largeur de la toile du parachute (m)")]
+    public float parachuteSize = 2.5f;
+    public Color parachuteColor = new Color(0.9f, 0.15f, 0.15f);
+    [Tooltip("Balancement du crousty sous le parachute (degrés)")]
+    public float parachuteSwing = 15f;
+
     [Header("Lancer du crousty")]
     [Tooltip("Durée du vol du crousty jusqu'à l'adresse (s)")]
     public float throwDuration = 0.8f;
@@ -356,7 +376,13 @@ public class DeliveryManager : MonoBehaviour
 
         foreach (DeliveryPoint point in deliveryPoints)
         {
-            if (point == null || !point.IsWaiting || !point.IsInRange(player.position))
+            if (point == null || !point.IsWaiting)
+                continue;
+
+            bool inRange = deliverFromAnyHeight
+                ? point.IsInRangeAnyHeight(player.position)
+                : point.IsInRange(player.position);
+            if (!inRange)
                 continue;
 
             float distance = DistanceToPlayer(point);
@@ -387,6 +413,17 @@ public class DeliveryManager : MonoBehaviour
         Vector3 start = player.position + Vector3.up * throwStartHeight;
         Vector3 end = target.DropPosition;
 
+        // Lancé de haut : le crousty descend en parachute, plus lentement
+        float drop = start.y - end.y;
+        bool parachute = useParachute && drop > parachuteMinHeight;
+        float duration = throwDuration;
+        GameObject canopy = null;
+        if (parachute)
+        {
+            duration = Mathf.Clamp(drop / parachuteFallSpeed, throwDuration, parachuteMaxSeconds);
+            canopy = CreateParachute(projectile.transform);
+        }
+
         float t = 0f; // 0 = départ, 1 = arrivée
         while (t < 1f)
         {
@@ -398,15 +435,13 @@ public class DeliveryManager : MonoBehaviour
                 yield break;
             }
 
-            t += Time.deltaTime / Mathf.Max(0.01f, throwDuration);
+            t += Time.deltaTime / Mathf.Max(0.01f, duration);
             t = Mathf.Min(t, 1f);
 
-            // Ligne droite + une bosse en forme de cloche (sinus) = trajectoire en arc
-            Vector3 position = Vector3.Lerp(start, end, t);
-            position.y += Mathf.Sin(t * Mathf.PI) * throwArcHeight;
-
-            projectile.transform.position = position;
-            projectile.transform.Rotate(360f * Time.deltaTime, 540f * Time.deltaTime, 0f);
+            if (parachute)
+                MoveUnderParachute(projectile.transform, canopy, start, end, t, duration);
+            else
+                MoveInArc(projectile.transform, start, end, t);
 
             yield return null; // attend l'image suivante
         }
@@ -437,6 +472,66 @@ public class DeliveryManager : MonoBehaviour
         SaveBestScore();
         CroustySoundDesignManager.Play(CroustySound.RunComplete);
         RunCompleted?.Invoke();
+    }
+
+    // Lancer normal : ligne droite + une bosse en forme de cloche (sinus) = trajectoire en arc
+    private void MoveInArc(Transform projectile, Vector3 start, Vector3 end, float t)
+    {
+        Vector3 position = Vector3.Lerp(start, end, t);
+        position.y += Mathf.Sin(t * Mathf.PI) * throwArcHeight;
+        projectile.position = position;
+        projectile.Rotate(360f * Time.deltaTime, 540f * Time.deltaTime, 0f);
+    }
+
+    // Descente en parachute : le crousty glisse vite au-dessus de l'adresse,
+    // puis descend tout droit en se balançant
+    private void MoveUnderParachute(Transform projectile, GameObject canopy, Vector3 start, Vector3 end, float t, float duration)
+    {
+        // Horizontal : rapide au début, puis presque immobile (courbe "ease out")
+        float side = 1f - (1f - t) * (1f - t);
+        Vector3 position = Vector3.Lerp(start, end, side);
+        // Vertical : descente régulière
+        position.y = Mathf.Lerp(start.y, end.y, t);
+        projectile.position = position;
+
+        // Balancement de gauche à droite
+        float swing = Mathf.Sin(t * duration * 3f) * parachuteSwing;
+        projectile.rotation = Quaternion.Euler(0f, 0f, swing);
+
+        // La toile s'ouvre en 0.3 seconde
+        float open = Mathf.Clamp01(t * duration / 0.3f);
+        canopy.transform.localScale = new Vector3(open, 1f, open);
+    }
+
+    // Parachute fait de formes simples : une toile (sphère aplatie) et 4 cordes
+    private GameObject CreateParachute(Transform crousty)
+    {
+        // Le parachute ne doit pas grandir si le crousty est un gros objet : on compense son échelle
+        GameObject parachute = new GameObject("Parachute");
+        parachute.transform.SetParent(crousty, false);
+        Vector3 scale = crousty.lossyScale;
+        parachute.transform.localScale = new Vector3(1f / Mathf.Max(0.01f, scale.x), 1f / Mathf.Max(0.01f, scale.y), 1f / Mathf.Max(0.01f, scale.z));
+
+        float height = parachuteSize; // hauteur de la toile au-dessus du crousty
+        GameObject canopy = new GameObject("Toile");
+        canopy.transform.SetParent(parachute.transform, false);
+        GameObject cloth = JojoVisuals.CreateShape(PrimitiveType.Sphere, canopy.transform, parachuteColor);
+        cloth.transform.localPosition = Vector3.up * height;
+        cloth.transform.localScale = new Vector3(parachuteSize, parachuteSize * 0.35f, parachuteSize);
+
+        // 4 cordes du crousty jusqu'au bord de la toile
+        for (int i = 0; i < 4; i++)
+        {
+            float angle = i * 90f + 45f;
+            Vector3 edge = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * (parachuteSize * 0.45f) + Vector3.up * height;
+            GameObject rope = JojoVisuals.CreateShape(PrimitiveType.Cube, canopy.transform, Color.white);
+            rope.transform.localPosition = edge * 0.5f;
+            rope.transform.localRotation = Quaternion.FromToRotation(Vector3.up, edge);
+            rope.transform.localScale = new Vector3(0.03f, edge.magnitude, 0.03f);
+        }
+
+        canopy.transform.localScale = new Vector3(0f, 1f, 0f); // fermé au départ
+        return canopy;
     }
 
     private GameObject CreateProjectile()

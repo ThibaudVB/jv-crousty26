@@ -21,7 +21,7 @@ public class DeliveryPoint : MonoBehaviour
     public GameObject marker;
     public Color markerColor = new Color(0.2f, 1f, 0.3f);
     [Tooltip("Hauteur du faisceau (m)")]
-    public float beamHeight = 150f;
+    public float beamHeight = 150000f;
     [Tooltip("Largeur du faisceau (m)")]
     public float beamWidth = 2.5f;
 
@@ -69,6 +69,12 @@ public class DeliveryPoint : MonoBehaviour
     public bool IsInRange(Vector3 position)
     {
         return JojoVisuals.IsClose(transform.position, position, deliveryRadius, maxHeightDifference);
+    }
+
+    // Comme IsInRange, mais sans regarder la hauteur (livraison depuis le ciel)
+    public bool IsInRangeAnyHeight(Vector3 position)
+    {
+        return JojoVisuals.IsClose(transform.position, position, deliveryRadius, float.PositiveInfinity);
     }
 
     // Le faisceau n'est visible que quand une commande attend
