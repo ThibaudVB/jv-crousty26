@@ -20,6 +20,9 @@ public class BusCarCrash : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private float lastSpeedKmh;
 
+    // Nombre de voitures explosées pendant la partie (affiché sur l'écran de fin)
+    public int CarsExploded { get; private set; }
+
     private Rigidbody rb;
     private Vector3 velocityBeforeImpact;
     private readonly HashSet<GameObject> destroyedCars = new HashSet<GameObject>();
@@ -69,6 +72,7 @@ public class BusCarCrash : MonoBehaviour
 
     private void ExplodeCar(GameObject car)
     {
+        CarsExploded++;
         CroustySoundDesignManager.Play(CroustySound.Explosion,car.transform.position);
         if (explosionPrefab != null)
         {

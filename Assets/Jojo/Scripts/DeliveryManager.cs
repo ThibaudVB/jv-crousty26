@@ -63,6 +63,7 @@ public class DeliveryManager : MonoBehaviour
     public int OrdersTotal { get; private set; }   // commandes de la tournée en cours
     public int CroustyLeft { get; private set; }   // crousty encore dans le bus
     public int Delivered { get; private set; }     // crousty arrivés à destination
+    public int TotalDelivered { get; private set; } // crousty livrés depuis le début de la partie
     public bool HasStarted { get; private set; }   // au moins une tournée a été chargée
     public bool RunActive { get; private set; }    // une tournée est en cours (chrono lancé)
     public bool HasFailed { get; private set; }    // partie perdue (chrono ou police)
@@ -418,6 +419,7 @@ public class DeliveryManager : MonoBehaviour
         // Livré !
         target.CompleteDelivery();
         Delivered++;
+        TotalDelivered++;
         AddScore(pointsPerDelivery);
         CroustySoundDesignManager.Play(CroustySound.DeliveryCoin);
 
