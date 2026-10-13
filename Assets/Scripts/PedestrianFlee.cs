@@ -34,7 +34,7 @@ public class PedestrianFlee : MonoBehaviour
         if (Time.time < nextSearchTime) return false;
         nextSearchTime = Time.time + 1f;
 
-        BusController bus = FindFirstObjectByType<BusController>();
+        BusController bus = FindAnyObjectByType<BusController>();
         if (bus == null) return false;
 
         busBody = bus.GetComponent<Rigidbody>();
