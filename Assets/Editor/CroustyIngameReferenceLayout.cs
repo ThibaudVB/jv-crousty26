@@ -206,12 +206,6 @@ public static class CroustyIngameReferenceLayout
     {
         var dialogue = Find<GerantDialogue>(scene) ?? hud.gameObject.AddComponent<GerantDialogue>();
         dialogue.manager = hud.manager;
-        dialogue.startLine = "Hop hop hop ! Les commandes\nattendent, on se bouge !";
-        dialogue.ordersLeftLine = "Encore {0} commandes !\nLes clients ont faim !";
-        dialogue.lastOrderLine = "Plus qu'une commande,\nne lâche rien !";
-        dialogue.hurryLine = "Dépêche-toi, le temps file !";
-        dialogue.runCompleteLine = "Bien joué ! {0} points !\nRetourne au restaurant !";
-        dialogue.failedLine = "Les clients attendent encore…\nRetourne au restaurant !";
         var root = new GameObject("Dialogue maquette", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
         root.transform.SetParent(hud.transform, false);
         var canvas = root.GetComponent<Canvas>(); ConfigureCanvas(canvas); canvas.sortingOrder = 105;
@@ -221,7 +215,7 @@ public static class CroustyIngameReferenceLayout
         ImageAt(panel, "Etiquette", Resources.Load<Sprite>("Gerant/etiquette"), new Vector2(178, -192), new Vector2(294, 100));
         ImageAt(panel, "Portrait", Resources.Load<Sprite>("Gerant/portrait"), new Vector2(-10, -36), new Vector2(345, 397));
         ImageAt(panel, "Titre", Resources.Load<Sprite>("Gerant/titre"), new Vector2(212, -223), new Vector2(184, 51));
-        var message = Label(panel, "Message", dialogue.startLine, new Vector2(263, -300), new Vector2(505, 110), 28, Ink);
+        var message = Label(panel, "Message", dialogue.deliveryStartLines[0], new Vector2(263, -300), new Vector2(505, 110), 28, Ink);
         message.enableAutoSizing = true; message.fontSizeMin = 23; message.fontSizeMax = 28;
         message.textWrappingMode = TextWrappingModes.Normal;
         var arrow = ImageAt(panel, "Suite", AssetDatabase.LoadAssetAtPath<Sprite>("Assets/UI/RepereFleche.asset"), new Vector2(733, -391), new Vector2(26, 24));
