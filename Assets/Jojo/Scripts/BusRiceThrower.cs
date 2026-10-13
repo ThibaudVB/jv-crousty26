@@ -3,8 +3,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 // Compétence RIZ (touche E) : le bus jette une poignée de riz derrière lui.
-// Le riz reste sur la route un moment : la police qui roule dessus glisse et ralentit.
-// Si la police est collée au bus au moment du jet, elle est ralentie tout de suite.
+// Le riz reste sur la route un moment : la police qui roule dessus glisse (elle freine et zigzague).
+// Si la police est collée au bus au moment du jet, elle glisse tout de suite.
 //
 // A placer à la main sur le bus (le GameObject qui a le BusController et le Rigidbody).
 [DisallowMultipleComponent]
@@ -32,8 +32,6 @@ public class BusRiceThrower : MonoBehaviour
     [Header("Effet sur la police")]
     [Tooltip("Durée de la glissade (s)")]
     public float slowDuration = 3.5f;
-    [Tooltip("Vitesse de la police sur le riz (0.3 = 30 %)")]
-    [Range(0.05f, 1f)] public float slowFactor = 0.3f;
     [Tooltip("La police à moins de cette distance derrière le bus est touchée directement (m)")]
     public float directHitRange = 25f;
 
@@ -163,11 +161,11 @@ public class BusRiceThrower : MonoBehaviour
 
         // Police juste derrière : riz en pleine face
         PoliceCarAI car = police != null ? police.ActivePolice : null;
-        if (car != null && car.DistanceToTarget <= directHitRange)
+        if (car != null && Vector3.Distance(car.transform.position, transform.position) <= directHitRange)
         {
             bool carIsBehind = Vector3.Dot(car.transform.position - transform.position, back) > 0f;
             if (carIsBehind)
-                car.Slow(slowDuration, slowFactor);
+                car.Blind(slowDuration);
         }
 
         return true;
@@ -201,7 +199,7 @@ public class BusRiceThrower : MonoBehaviour
                 Vector3 offset = car.transform.position - slick.center;
                 offset.y = 0f;
                 if (offset.magnitude <= slickRadius)
-                    car.Slow(slowDuration, slowFactor);
+                    car.Blind(slowDuration);
             }
         }
     }

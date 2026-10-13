@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,8 +7,9 @@ using UnityEngine.UI;
 // Le gérant commente la tournée en lisant le DeliveryManager, et râle quand le bus se cogne.
 //
 // A placer à la main sur un GameObject vide de la scène (ex : "Gerant").
-// Glisser les images du dossier Jojo/Resources/Gerant dans les champs "Images".
-// La boîte crée son propre Canvas au lancement.
+// Deux façons de l'utiliser :
+// 1. Boîte déjà placée dans un Canvas : glisser son texte, sa flèche et son Canvas dans "Boîte placée dans la scène".
+// 2. Sinon, la boîte est créée au lancement : glisser les images de Jojo/Resources/Gerant dans "Images".
 public class GerantDialogue : MonoBehaviour
 {
     [Header("Références")]
@@ -15,6 +17,14 @@ public class GerantDialogue : MonoBehaviour
     public DeliveryManager manager;
     [Tooltip("Optionnel : le BusDamage du bus, pour que le gérant réagisse aux chocs")]
     public BusDamage busDamage;
+
+    [Header("Boîte placée dans la scène (optionnel)")]
+    [Tooltip("Texte du message. Si rempli, la boîte n'est pas créée par le script.")]
+    [SerializeField] private TMP_Text authoredMessage;
+    [Tooltip("Petit triangle \"suite\"")]
+    [SerializeField] private RectTransform authoredArrow;
+    [Tooltip("Canvas de la boîte : caché quand le jeu est en pause")]
+    [SerializeField] private Canvas authoredCanvas;
 
     [Header("Images (portrait, bandeau, etiquette, titre)")]
     public Sprite portrait;
@@ -70,6 +80,7 @@ public class GerantDialogue : MonoBehaviour
     private string currentMessage = "";
     private float shownLetters;         // nombre de lettres déjà écrites
     private float crashMessageUntil;    // la réplique de choc reste affichée jusqu'à ce moment
+    private float arrowBaseY = 38f;     // hauteur du triangle quand il ne sautille pas
 
     // Taille de la boîte, d'après la maquette
     private static readonly Vector2 BoxSize = new Vector2(740f, 410f);
@@ -83,7 +94,17 @@ public class GerantDialogue : MonoBehaviour
         if (busDamage != null)
             busDamage.Damaged += OnDamaged;
 
-        Build();
+        if (authoredMessage != null)
+        {
+            // Boîte déjà dans la scène : rien à créer
+            arrow = authoredArrow;
+            if (arrow != null)
+                arrowBaseY = arrow.anchoredPosition.y;
+        }
+        else
+        {
+            Build();
+        }
     }
 
     private void OnDestroy()
@@ -166,7 +187,7 @@ public class GerantDialogue : MonoBehaviour
     // Affiche une nouvelle réplique (elle s'écrit lettre par lettre)
     public void SetMessage(string message)
     {
-        if (messageText == null || message == null || message == currentMessage)
+        if (!HasTextBox() || message == null || message == currentMessage)
             return;
 
         currentMessage = message;
@@ -202,8 +223,12 @@ public class GerantDialogue : MonoBehaviour
 
     private void Update()
     {
-        if (messageText == null)
+        if (!HasTextBox())
             return;
+
+        // La boîte placée dans la scène se cache pendant la pause
+        if (authoredCanvas != null)
+            authoredCanvas.enabled = Time.timeScale > 0f;
 
         if (manager != null)
             SetMessage(GetMessage());
@@ -213,13 +238,26 @@ public class GerantDialogue : MonoBehaviour
             shownLetters += lettersPerSecond * Time.unscaledDeltaTime;
 
         int count = Mathf.Min(currentMessage.Length, Mathf.FloorToInt(shownLetters));
-        messageText.text = currentMessage.Substring(0, count);
+        string visibleText = currentMessage.Substring(0, count);
+        if (authoredMessage != null)
+            authoredMessage.text = visibleText;
+        else
+            messageText.text = visibleText;
+
+        if (arrow == null)
+            return;
 
         // Le triangle n'apparaît (et sautille) qu'une fois le texte complet
         bool finished = count >= currentMessage.Length;
         arrow.gameObject.SetActive(finished && currentMessage.Length > 0);
         arrow.anchoredPosition = new Vector2(arrow.anchoredPosition.x,
-            38f + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) * arrowBounce);
+            arrowBaseY + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) * arrowBounce);
+    }
+
+    // Vrai s'il y a un texte où écrire (boîte de la scène ou boîte créée par le script)
+    private bool HasTextBox()
+    {
+        return authoredMessage != null || messageText != null;
     }
 
     private static Image CreateImage(Transform parent, string name, Sprite sprite, Color fallbackColor,

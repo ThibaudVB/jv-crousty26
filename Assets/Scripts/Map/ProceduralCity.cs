@@ -49,7 +49,6 @@ public sealed partial class ProceduralCity : MonoBehaviour
         public readonly List<SignalDisplay> signals = new List<SignalDisplay>();
         public readonly List<DeliveryPoint> addresses = new List<DeliveryPoint>();
         public readonly List<CroustyShop> shops = new List<CroustyShop>();
-        public readonly List<CarPointRoute> routes = new List<CarPointRoute>();
     }
     private sealed class Landmark
     {
@@ -62,14 +61,13 @@ public sealed partial class ProceduralCity : MonoBehaviour
     private readonly List<Template> trees = new List<Template>();
     private readonly List<Landmark> landmarks = new List<Landmark>();
     private readonly List<Vector2Int> removal = new List<Vector2Int>();
-    private CarFollowPoints[] cars;
     private Template restaurant;
     private Material asphalt, pavement, grass, markings, wood;
     private BusGPS gps;
     private BusMinimap minimap;
     private static readonly ProfilerMarker StreamingMarker = new ProfilerMarker("Crousty.City.Streaming");
     private readonly Queue<Chunk> retiredChunks = new Queue<Chunk>();
-    private readonly List<MeshFilter> retirementMeshes = new List<MeshFilter>();
+    private readonly List<Transform> retirementParts = new List<Transform>();
     private Chunk retiringChunk;
     private int retirementIndex;
     private IEnumerator activeBuild;
@@ -124,7 +122,9 @@ public sealed partial class ProceduralCity : MonoBehaviour
         markings = Material(new Color(0.96f, 0.96f, 0.9f));
         wood = Material(new Color(0.53f, 0.35f, 0.23f));
         PrepareRoadMaterials();
-        cars = FindObjectsByType<CarFollowPoints>();
+        LoadVehicles();
+        // Hand-placed waypoint traffic has no route here; the city spawns its own cars.
+        foreach (var car in FindObjectsByType<CarFollowPoints>()) car.gameObject.SetActive(false);
         foreach (var setup in FindObjectsByType<SceneBaseTrafficSetup>()) setup.enabled = false;
         foreach (var route in FindObjectsByType<CarPointRoute>()) route.gameObject.SetActive(false);
         foreach (var intersection in FindObjectsByType<IntersectionChooser>()) intersection.gameObject.SetActive(false);
@@ -171,7 +171,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
         using (StreamingMarker.Auto())
         {
             // Reserve a little of the shared budget for deferred Unity destruction.
-            for (int i = 0; i < 8 && Time.realtimeSinceStartupAsDouble < deadline; i++)
+            for (int i = 0; i < 24 && Time.realtimeSinceStartupAsDouble < deadline; i++)
                 if (!RetireNextMesh()) break;
             do
             {
@@ -341,6 +341,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
         while (roads.MoveNext()) yield return null;
         chunk.complete = true;
         foreach (var address in chunk.addresses) deliveries.RegisterPoint(address);
+        yield return null; // the minimap indexing and the road markings each cost a few ms
         minimap?.AddMapGeometry(chunk.root.transform);
     }
 
@@ -361,14 +362,16 @@ public sealed partial class ProceduralCity : MonoBehaviour
         {
             if (retiredChunks.Count == 0) return false;
             retiringChunk = retiredChunks.Dequeue();
-            retirementMeshes.Clear();
-            retiringChunk.root.GetComponentsInChildren(true, retirementMeshes);
-            retirementIndex = 0;
+            retirementParts.Clear();
+            retiringChunk.root.GetComponentsInChildren(true, retirementParts);
+            // Pre-order list: walking it backwards destroys children before their parents,
+            // so the final Destroy of the root no longer tears down a whole district at once.
+            retirementIndex = retirementParts.Count - 1;
         }
-        if (retirementIndex < retirementMeshes.Count)
+        if (retirementIndex > 0)
         {
-            var filter = retirementMeshes[retirementIndex++];
-            if (filter != null) Destroy(filter.gameObject);
+            var part = retirementParts[retirementIndex--];
+            if (part != null) Destroy(part.gameObject);
         }
         else
         {
@@ -397,38 +400,6 @@ public sealed partial class ProceduralCity : MonoBehaviour
                 if (distance < best) { closest = shop; best = distance; }
             }
         deliveries.shop = closest;
-    }
-
-    private void UpdateTraffic(bool initial)
-    {
-        foreach (var car in cars)
-        {
-            if (car == null) continue;
-            if (!initial && car.route != null && (car.transform.position - player.position).sqrMagnitude < ChunkSize * ChunkSize * 4)
-                continue;
-            CarPointRoute best = null;
-            float distance = float.PositiveInfinity;
-            int corner = 0;
-            foreach (var chunk in chunks.Values)
-                foreach (var route in chunk.routes)
-                    for (int i = 0; i < 4; i++)
-                    {
-                        if (!chunk.complete) continue;
-                        float d = (route.transform.GetChild(i).position - player.position).sqrMagnitude;
-                        // Spread the cars among nearby circuits instead of stacking at one corner.
-                        if (d < 20 * 20 || d >= distance) continue;
-                        bool occupied = false;
-                        foreach (var other in cars) if (other != car && other != null && other.route == route) occupied = true;
-                        if (occupied) continue;
-                        best = route; distance = d; corner = i;
-                    }
-            if (best == null) continue;
-            car.transform.position = best.transform.GetChild(corner).position;
-            int next = (corner + 1) % 4;
-            car.transform.rotation = Quaternion.LookRotation(best.transform.GetChild(next).position - car.transform.position);
-            car.proceduralCity = this;
-            car.FollowRoute(best, next);
-        }
     }
 
     // Search the street graph: full-size stunt plazas and parks close their internal
@@ -529,7 +500,11 @@ public sealed partial class ProceduralCity : MonoBehaviour
     }
     private static Material Material(Color color)
     {
-        var material = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+        // A referenced Resources material includes the shader and instancing variants in the player.
+        var surfaceTemplate = Resources.Load<Material>("Crousty/ProceduralSurface");
+        if (surfaceTemplate == null)
+            throw new InvalidOperationException("Materiau de ville manquant : Resources/Crousty/ProceduralSurface.");
+        var material = new Material(surfaceTemplate);
         material.color = color;
         material.enableInstancing = true;
         return material;
@@ -558,5 +533,6 @@ public sealed partial class ProceduralCity : MonoBehaviour
         foreach (var material in new[] { asphalt, pavement, grass, markings, wood })
             if (material != null) Destroy(material);
         DisposeRoadMaterials();
+        DisposeTraffic();
     }
 }

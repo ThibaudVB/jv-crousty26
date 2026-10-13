@@ -25,11 +25,22 @@ public class CroustyHUD : MonoBehaviour
     [SerializeField] private TMP_Text scoreValue;
     [SerializeField] private TMP_Text scoreGain;
 
+    [Header("Style maquette (textes en français, heure 24 h, score en k)")]
+    [Tooltip("Coché par le menu Tools/Crousty qui place le HUD de la maquette")]
+    [SerializeField] private bool referenceHudStyle;
+    [SerializeField, HideInInspector] private int referenceLayoutRevision; // utilisé par l'outil de l'éditeur
+
     [Header("Textes de l'objectif ({0} = commandes restantes)")]
     public string objectivePickup = "Pick up your orders at the restaurant";
     public string objectiveDeliver = "Deliver your orders ({0} remaining)";
     public string objectiveComplete = "Run complete! Return to the restaurant";
     public string objectiveFailed = "Run failed!";
+
+    [Header("Textes de l'objectif, style maquette ({0} = livrées, {1} = total)")]
+    [TextArea] public string referencePickup = "Récupère les commandes au\nrestaurant de Crousty (0/1)";
+    [TextArea] public string referenceDeliver = "Livre les commandes aux clients\n({0}/{1})";
+    [TextArea] public string referenceComplete = "Tournée terminée ! Retourne\nau restaurant de Crousty.";
+    [TextArea] public string referenceFailed = "Tournée échouée ! Retourne au restaurant.";
 
     [Header("Vitesse")]
     [Tooltip("Vitesse (km/h) qui remplit complètement la jauge")]
@@ -138,6 +149,19 @@ public class CroustyHUD : MonoBehaviour
     {
         int remaining = Mathf.Max(0, manager.OrdersTotal - manager.Delivered);
 
+        if (referenceHudStyle)
+        {
+            if (manager.HasFailed)
+                objectiveValue.text = referenceFailed;
+            else if (!manager.HasStarted)
+                objectiveValue.text = referencePickup;
+            else if (remaining > 0)
+                objectiveValue.text = string.Format(referenceDeliver, manager.Delivered, manager.OrdersTotal);
+            else
+                objectiveValue.text = referenceComplete;
+            return;
+        }
+
         if (manager.HasFailed)
             objectiveValue.text = objectiveFailed;
         else if (!manager.HasStarted)
@@ -161,7 +185,9 @@ public class CroustyHUD : MonoBehaviour
             kmh = velocity.magnitude * 3.6f; // m/s -> km/h
         }
 
-        speedValue.text = Mathf.RoundToInt(kmh) + " <size=48%>km/h</size>";
+        // Style maquette : "km/h" passe sous le chiffre
+        string separator = referenceHudStyle ? "\n" : " ";
+        speedValue.text = Mathf.RoundToInt(kmh) + separator + "<size=48%>km/h</size>";
         if (speedFill != null)
             speedFill.fillAmount = Mathf.Clamp01(kmh / speedGaugeMaxKmh);
     }
@@ -177,6 +203,13 @@ public class CroustyHUD : MonoBehaviour
         int hour = totalMinutes / 60;
         int minute = totalMinutes % 60;
 
+        // Style maquette : heure sur 24 h, sans la période de la journée
+        if (referenceHudStyle)
+        {
+            timeValue.text = $"{hour:00}:{minute:00}";
+            return;
+        }
+
         int twelveHour = hour % 12;
         if (twelveHour == 0)
             twelveHour = 12;
@@ -188,6 +221,10 @@ public class CroustyHUD : MonoBehaviour
 
     private void UpdateTimer()
     {
+        // Style maquette : le chrono n'apparaît que pendant une tournée (ou à la défaite)
+        if (referenceHudStyle)
+            timerValue.gameObject.SetActive(manager.RunActive || manager.HasFailed);
+
         float seconds;
         string label;
 
@@ -213,7 +250,11 @@ public class CroustyHUD : MonoBehaviour
         }
 
         int wholeSeconds = Mathf.CeilToInt(seconds);
-        timerValue.text = $"{wholeSeconds / 60:00}:{wholeSeconds % 60:00}\n<size=48%>{label}</size>";
+        string time = $"{wholeSeconds / 60:00}:{wholeSeconds % 60:00}";
+        if (referenceHudStyle)
+            timerValue.text = time;
+        else
+            timerValue.text = time + $"\n<size=48%>{label}</size>";
 
         // Clignote en orange quand il reste peu de temps
         bool urgent = manager.RunActive && wholeSeconds <= urgentSeconds;
@@ -247,7 +288,7 @@ public class CroustyHUD : MonoBehaviour
         shownScore = Mathf.SmoothDamp(shownScore, manager.Score, ref scoreSpeed, 0.2f, Mathf.Infinity, dt);
         if (Mathf.Abs(shownScore - manager.Score) < 0.5f)
             shownScore = manager.Score;
-        scoreValue.text = Mathf.RoundToInt(shownScore).ToString();
+        scoreValue.text = FormatScore(Mathf.RoundToInt(shownScore));
 
         // Le score grossit un peu juste après un gain
         float pulse = Mathf.Sin(Mathf.Clamp01(timeSinceGain / 0.35f) * Mathf.PI) * 0.14f;
@@ -262,6 +303,16 @@ public class CroustyHUD : MonoBehaviour
 
         if (progress >= 1f)
             pendingGain = 0;
+    }
+
+    // Style maquette : 6767 s'affiche "6,8k"
+    private string FormatScore(int score)
+    {
+        if (!referenceHudStyle || score < 1000)
+            return score.ToString();
+
+        decimal thousands = score / 1000m;
+        return thousands.ToString("0.#", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + "k";
     }
 
     // ---------- REPERES ----------

@@ -3,7 +3,6 @@ using UnityEngine;
 public class CarFollowPoints : MonoBehaviour
 {
     public CarPointRoute route;
-    [HideInInspector] public ProceduralCity proceduralCity;
     private int routeIndex;
 
     public void FollowRoute(CarPointRoute path, int index = 0)
@@ -103,10 +102,7 @@ public class CarFollowPoints : MonoBehaviour
         {
             Vector3 target = currentPoint.position;
             target.y = transform.position.y;
-            float step = speed * Time.deltaTime;
-            if (proceduralCity != null)
-                step = proceduralCity.AllowedTrafficStep(this, transform.position, target, step);
-            transform.position = Vector3.MoveTowards(transform.position, target, step);
+            transform.position = Vector3.MoveTowards(transform.position, target, speed * Time.deltaTime);
         }
         else transform.position += transform.forward * speed * Time.deltaTime;
     }

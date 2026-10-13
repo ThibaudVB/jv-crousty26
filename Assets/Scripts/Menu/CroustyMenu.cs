@@ -13,6 +13,8 @@ public sealed class CroustyMenu : MonoBehaviour
     [Header("Panels placés dans la scène")]
     public GameObject mainPanel;
     public GameObject optionsPanel;
+    public GameObject leaderboardPanel;
+    public CroustyMenuPages homePages;
     [Tooltip("Assigné uniquement pour les options du menu pause.")]
     public CroustyPauseMenu pauseMenu;
     [Tooltip("Commandes, Audio, Vidéo, Crédits")]
@@ -42,6 +44,7 @@ public sealed class CroustyMenu : MonoBehaviour
     private bool animationReady;
     private int selectedCategory = -1;
     public bool IsOptionsOpen { get; private set; }
+    public bool IsLeaderboardOpen { get; private set; }
 
     private void Awake()
     {
@@ -66,6 +69,7 @@ public sealed class CroustyMenu : MonoBehaviour
         RefreshFullscreenLabel(Screen.fullScreen);
         SelectCategory(0);
         CloseOptions();
+        if (leaderboardPanel != null) leaderboardPanel.SetActive(false);
         if (pauseMenu != null) mainPanel.SetActive(false);
         CroustyPanelMotion.Prepare(mainPanel);
         CroustyPanelMotion.Prepare(optionsPanel);
@@ -75,8 +79,12 @@ public sealed class CroustyMenu : MonoBehaviour
 
     private void Update()
     {
-        if (pauseMenu == null && IsOptionsOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            CloseOptions();
+        if (pauseMenu == null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            if (IsOptionsOpen) CloseOptions();
+            else if (IsLeaderboardOpen) CloseLeaderboard();
+            else if (homePages != null && homePages.IsExpanded) homePages.SetExpanded(false);
+        }
         // Unity applies fullscreen changes at the end of the frame.
         if (requestedFullscreen.HasValue && Screen.fullScreen == requestedFullscreen.Value)
             requestedFullscreen = null;
@@ -89,6 +97,38 @@ public sealed class CroustyMenu : MonoBehaviour
         IsOptionsOpen = true;
         CroustyPanelMotion.Hide(mainPanel);
         CroustyPanelMotion.Show(optionsPanel);
+        CroustySoundDesignManager.PlayUI(CroustySound.Paper);
+    }
+
+    public void ToggleMore() => homePages?.Toggle();
+
+    public void OpenSettings()
+    {
+        SelectCategory(0);
+        OpenOptions();
+    }
+
+    public void OpenCredits()
+    {
+        SelectCategory(3);
+        OpenOptions();
+    }
+
+    public void OpenLeaderboard()
+    {
+        if (leaderboardPanel == null || IsLeaderboardOpen) return;
+        IsLeaderboardOpen = true;
+        CroustyPanelMotion.Hide(mainPanel);
+        CroustyPanelMotion.Show(leaderboardPanel);
+        CroustySoundDesignManager.PlayUI(CroustySound.Paper);
+    }
+
+    public void CloseLeaderboard()
+    {
+        if (!IsLeaderboardOpen) return;
+        IsLeaderboardOpen = false;
+        CroustyPanelMotion.Hide(leaderboardPanel);
+        CroustyPanelMotion.Show(mainPanel);
         CroustySoundDesignManager.PlayUI(CroustySound.Paper);
     }
 

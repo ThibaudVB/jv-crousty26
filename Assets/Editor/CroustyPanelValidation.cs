@@ -85,7 +85,7 @@ public static class CroustyPanelValidation
         Require(EditorApplication.isPlaying, "Lancer le menu en mode Play avant le test.");
         var menu = UnityEngine.Object.FindAnyObjectByType<CroustyMenu>();
         Require(menu != null, "Le menu principal doit être chargé.");
-        menu.mainPanel.transform.Find("RÉGLAGES").GetComponent<Button>().onClick.Invoke();
+        FindHomeButton(menu, "RÉGLAGES").onClick.Invoke();
         double ready = EditorApplication.timeSinceStartup + .45;
         int stage = 0;
         EditorApplication.CallbackFunction verify = null;
@@ -109,7 +109,7 @@ public static class CroustyPanelValidation
             if (stage == 5)
             {
                 Require(!menu.IsOptionsOpen && menu.mainPanel.activeSelf && !menu.optionsPanel.activeSelf, "Retour incorrect.");
-                menu.mainPanel.transform.Find("JOUER").GetComponent<Button>().onClick.Invoke();
+                FindHomeButton(menu, "JOUER").onClick.Invoke();
                 stage = 6; ready = EditorApplication.timeSinceStartup + 1; return;
             }
             EditorApplication.update -= verify;
@@ -136,6 +136,12 @@ public static class CroustyPanelValidation
         var serialized = new SerializedObject(target);
         foreach (string field in fields)
             Require(serialized.FindProperty(field)?.objectReferenceValue != null, target.name + " : référence absente " + field);
+    }
+    private static Button FindHomeButton(CroustyMenu menu, string name)
+    {
+        foreach (var button in menu.mainPanel.GetComponentsInChildren<Button>(true))
+            if (button.name == name) return button;
+        throw new InvalidOperationException("Bouton du menu introuvable : " + name);
     }
     private static void CheckHud(CroustyHUD hud)
     {

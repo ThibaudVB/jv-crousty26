@@ -439,12 +439,11 @@ public class BusCameraFollow : MonoBehaviour
         if (chaseManager != null &&
             chaseManager.ActivePolice != null)
         {
-            // Limite le decalage quand la police est encore loin derriere.
-            policeFocus = Vector3.ClampMagnitude(Vector3.ProjectOnPlane(
+            policeFocus = Vector3.ProjectOnPlane(
                 chaseManager.ActivePolice.transform.position
                 - target.position,
                 Vector3.up
-            ), 20f) * policeFramingWeight * chaseBlend;
+            ) * policeFramingWeight * chaseBlend;
         }
 
         lookAhead *= 1f - chaseBlend;

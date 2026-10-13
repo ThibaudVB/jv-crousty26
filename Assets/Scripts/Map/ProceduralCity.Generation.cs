@@ -216,7 +216,6 @@ public sealed partial class ProceduralCity
         if (!course && !shop && feature == null && (x == 0 && z == 1 || random.Next(5) == 0))
             BuildStreetKicker(parent, random);
         if (!course && feature == null) AddAddresses(chunk, parent, x, z);
-        AddTrafficLoop(chunk, parent, 27);
     }
 
     private void BuildNativeBlock(Transform parent, System.Random random, float yaw, District district)
@@ -290,7 +289,6 @@ public sealed partial class ProceduralCity
             Template light = catalog["Lamp_001__Block_r0_c0_StreetProps"];
             Visual(light, parent, new Vector3(signX * 51, .15f, signZ * 51), Vector3.one, i * 90, false);
         }
-        AddTrafficLoop(chunk, parent, 59);
     }
 
     private bool BuildRooftopBlock(Transform parent, int x, int z)
@@ -333,20 +331,6 @@ public sealed partial class ProceduralCity
             point.deliveryRadius = 12; point.beamHeight = 80; point.beamWidth = 1.6f;
             go.SetActive(true); chunk.addresses.Add(point);
         }
-    }
-
-    private void AddTrafficLoop(Chunk chunk, Transform parent, float extent)
-    {
-        var route = new GameObject("Circuit").AddComponent<CarPointRoute>();
-        route.transform.SetParent(parent, false); route.nextRoute = route;
-        // Counter-clockwise around a block keeps every car in the right-hand lane.
-        foreach (var corner in new[] { new Vector3(-extent, .6f, -extent), new Vector3(-extent, .6f, extent),
-                     new Vector3(extent, .6f, extent), new Vector3(extent, .6f, -extent) })
-        {
-            var point = new GameObject("Route").transform;
-            point.SetParent(route.transform, false); point.localPosition = corner;
-        }
-        chunk.routes.Add(route);
     }
 
     private GameObject PlaceAssembly(Landmark source, Transform parent, Vector3 position, float yaw, float scale, bool solid)

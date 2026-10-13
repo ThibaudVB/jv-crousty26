@@ -17,6 +17,7 @@ public class BusFlightController : MonoBehaviour
     public Key activationKey = Key.F;
     [Range(0, 3)] public int startingCharges = 3;
     public int UsesRemaining { get; private set; } = 3;
+    public bool BonusEquipped { get; set; } = true;
     [Min(1f)] public float flightDuration = 15f;
 
     [Header("Impulsion initiale")]
@@ -187,7 +188,7 @@ public class BusFlightController : MonoBehaviour
 
     private void ActivateFlight()
     {
-        if (IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
+        if (!BonusEquipped || IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
             rb.isKinematic || !busController.enabled)
             return;
 

@@ -1,0 +1,17 @@
+# HUD de BASE
+
+Le HUD reprend la maquette fournie avec les quatre PNG originaux dans `Assets/UI/IngameReference`. Il est placé dans le Canvas de `Assets/SceneBase.unity` : compteur avec symbole $, livraisons en haut à gauche, objectif en haut à droite, dialogue du gérant en bas à gauche et mini-carte circulaire avec la vitesse dans le badge orange en bas à droite. La police est RetroBlendy.
+
+Les valeurs proviennent du gameplay existant : le compteur $ utilise le score de DeliveryManager, les livraisons utilisent le nombre réel de commandes, la vitesse lit le Rigidbody et la mini-carte conserve ses rues, repères et itinéraires. Les valeurs illustratives de la maquette ne sont pas enregistrées comme données de jeu. Le chronomètre reste visible pendant une tournée, l'heure est discrète au-dessus de la mini-carte et le compteur des passagers apparaît uniquement s'il y en a.
+
+Dans BASE, un seul atout est équipé et affiché. Gaz Toxique est l'atout initial. Son compteur suit `BusPetController.UsesRemaining` et toute la carte disparaît à zéro charge. `CroustyBonusHUD.SelectBonus` remplace l'atout dans le même emplacement et actualise l'autorisation d'activation des contrôleurs PET, GPS et vol. Le riz reste le mécanisme prévu par le projet, sans nouvel effet ajouté ici. Les charges des atouts non équipés ne sont pas consommées.
+
+Le gérant est désormais un panel enregistré dans BASE, avec les images existantes et un texte TMP en français qui s'écrit progressivement. Les autres scènes conservent leur création de dialogue et leur présentation antérieures grâce aux références optionnelles. Aucun Canvas de dialogue supplémentaire n'est créé dans BASE au lancement. La pause masque le HUD, le dialogue et la mini-carte.
+
+`Tools > Crousty > Appliquer la maquette du HUD ingame` installe cette présentation dans BASE uniquement. Pour une scène déjà ouverte, la migration conserve les modifications en mémoire et utilise Undo ; elle ne force pas de sauvegarde. Les anciens blocs visuels restent dans la scène, désactivés. Les scènes sources restent intactes.
+
+`Tools/Validation/IngameHudChecks.cs`, copié dans Assets d'une copie isolée complète, teste les valeurs réelles, les textes français, le masque circulaire, l'absence de dialogue dupliqué, les activations et les trois consommations de Gaz Toxique, sa disparition, la sélection d'un nouvel atout et la pause. Il rend également le HUD sur le jeu et sur fond blanc en 1920×1080, 1280×720 et 1280×960. Les valeurs 6.767 et 130 sont injectées seulement dans le processus de test pour comparer la présentation à la maquette.
+
+Validation sous Unity 6000.4.0f1 : 24 contrôles du HUD réussis en Play. Les vues [en jeu](Previews/hud-ingame-live.png), [sur fond blanc](Previews/hud-maquette-1920.png) et [en 4:3](Previews/hud-maquette-4x3.png) ont été inspectées. Les textes complets sont lisibles sans troncature. Le build Windows est régénéré sans le lanceur de test.
+
+Correction du badge de vitesse : MinimapSpeedBadge redessine uniquement le polygone du badge depuis le sprite original au-dessus de la carte et sous le texte. Migration BASE révision 3. Validation : 25 contrôles réussis, aperçu vérifié visuellement.

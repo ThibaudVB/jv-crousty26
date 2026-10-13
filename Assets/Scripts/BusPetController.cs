@@ -14,6 +14,7 @@ public sealed class BusPetController : MonoBehaviour
     [Min(0f)] public float cloudRange = 40f;
     [Range(0, 3)] public int startingCharges = 3;
     public int UsesRemaining { get; private set; } = 3;
+    public bool BonusEquipped { get; set; } = true;
     public float BoostRemaining { get; private set; }
     public bool IsBoosting => isActiveAndEnabled && BoostRemaining > 0f && drive != null &&
         drive.enabled && (flight == null || !flight.IsAirborne);
@@ -67,7 +68,7 @@ public sealed class BusPetController : MonoBehaviour
 
     public bool TryActivate()
     {
-        if (!isActiveAndEnabled || Time.timeScale <= 0f || drive == null || !drive.enabled ||
+        if (!BonusEquipped || !isActiveAndEnabled || Time.timeScale <= 0f || drive == null || !drive.enabled ||
             UsesRemaining <= 0 || BoostRemaining > 0f || (flight != null && flight.IsAirborne) ||
             GetComponent<Rigidbody>().isKinematic) return false;
         UsesRemaining--;

@@ -19,11 +19,10 @@ public class PoliceGameOverManager : MonoBehaviour
     }
 
     public void TriggerPoliceGameOver()
-        => TriggerGameOver(null);
+        => TriggerGameOver(false);
     public void TriggerTimeoutGameOver()
-        => TriggerGameOver("OUT OF TIME!");
-    // title : remplace le titre "POLICE" du panneau (null = garde le titre de la police)
-    private void TriggerGameOver(string title)
+        => TriggerGameOver(true);
+    private void TriggerGameOver(bool timeout)
     {
         if (gameOver)
             return;
@@ -37,12 +36,12 @@ public class PoliceGameOverManager : MonoBehaviour
         }
         if (gameOverPanel != null)
         {
-            if (title != null)
+            if (timeout)
             {
                 foreach (var text in gameOverPanel.GetComponentsInChildren<TMPro.TMP_Text>(true))
-                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = title;
+                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
                 foreach (var text in gameOverPanel.GetComponentsInChildren<UnityEngine.UI.Text>(true))
-                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = title;
+                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
             }
             CroustyPanelMotion.Show(gameOverPanel);
             CroustySoundDesignManager.PlayUI(CroustySound.Paper);
@@ -51,7 +50,7 @@ public class PoliceGameOverManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         Time.timeScale = 0f;
-        Debug.Log(title != null ? "Game Over : " + title : "Game Over : la police a immobilise le bus.", this);
+        Debug.Log(timeout ? "Game Over : livraison hors delai." : "Game Over : la police a immobilise le bus.", this);
     }
 
     public void RestartLevel()
