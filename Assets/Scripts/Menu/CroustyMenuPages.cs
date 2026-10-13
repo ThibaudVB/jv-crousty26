@@ -19,9 +19,9 @@ public sealed class CroustyMenuPages : MonoBehaviour
     [Min(0.05f)] public float transitionDuration = 0.55f;
     public float tabHeight = 88f;
     public bool IsExpanded { get; private set; }
-    public bool IsAnimating => elapsed < transitionDuration;
+    public bool IsAnimating => Mathf.Abs(progress - (IsExpanded ? 1f : 0f)) > .0001f || Mathf.Abs(velocity) > .001f;
 
-    private float progress, from, elapsed = 10f;
+    private float progress, velocity;
 
     private void Awake() => Apply();
     private void OnEnable() => Apply();
@@ -33,8 +33,6 @@ public sealed class CroustyMenuPages : MonoBehaviour
     {
         if (IsExpanded == expanded) return;
         IsExpanded = expanded;
-        from = progress;
-        elapsed = 0f;
         if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
         CroustySoundDesignManager.PlayUI(CroustySound.Paper);
         Apply();
@@ -44,9 +42,8 @@ public sealed class CroustyMenuPages : MonoBehaviour
     {
         if (IsAnimating)
         {
-            elapsed = Mathf.Min(transitionDuration, elapsed + Time.unscaledDeltaTime);
-            float t = Mathf.SmoothStep(0f, 1f, elapsed / transitionDuration);
-            progress = Mathf.Lerp(from, IsExpanded ? 1f : 0f, t);
+            CroustyPanelMotion.Spring(ref progress, ref velocity, IsExpanded ? 1f : 0f,
+                Time.unscaledDeltaTime * .55f / Mathf.Max(.05f, transitionDuration));
         }
         Apply();
         if (IsAnimating || Keyboard.current == null || !Keyboard.current.eKey.wasPressedThisFrame) return;

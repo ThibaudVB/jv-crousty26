@@ -55,9 +55,18 @@ public sealed class CroustyMenuHover : MonoBehaviour,
         if (animateTransform)
         {
             target.localScale = Vector3.SmoothDamp(target.localScale,desired,ref scaleVelocity,.07f,Mathf.Infinity,Time.unscaledDeltaTime);
-            target.localRotation = Quaternion.Slerp(target.localRotation,baseRotation * Quaternion.Euler(0,0,pressed ? -1.5f : bounce * 22),t);
-            target.anchoredPosition = Vector2.Lerp(target.anchoredPosition,
-                basePosition + new Vector2(active * 5f, 0f), t);
+            if (ribbonImage != null)
+            {
+                // Ribbons scale from their left pivot: keep that edge attached to the menu.
+                target.localRotation = baseRotation;
+                target.anchoredPosition = basePosition;
+            }
+            else
+            {
+                target.localRotation = Quaternion.Slerp(target.localRotation,baseRotation * Quaternion.Euler(0,0,pressed ? -1.5f : bounce * 22),t);
+                target.anchoredPosition = Vector2.Lerp(target.anchoredPosition,
+                    basePosition + new Vector2(active * 5f, 0f), t);
+            }
         }
         if (colorTarget != null)
             colorTarget.color = Color.Lerp(colorTarget.color,

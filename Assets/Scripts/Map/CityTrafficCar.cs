@@ -23,6 +23,13 @@ public sealed class CityTrafficCar : MonoBehaviour
     public float HalfLength { get; private set; }
     // Patrolling police car: obeys the same rules, managed by PoliceChaseManager.
     public bool IsPolice { get; set; }
+    private float surfaceSpeedFactor = 1f;
+    public void SetSurfaceSpeedFactor(float factor)
+    {
+        factor = Mathf.Clamp01(factor);
+        if (factor < surfaceSpeedFactor) Speed *= factor / Mathf.Max(.01f, surfaceSpeedFactor);
+        surfaceSpeedFactor = factor;
+    }
     // Past the entry of the junction ahead: the car is committed to clear it.
     public bool InJunction => index > 0;
 
@@ -53,7 +60,7 @@ public sealed class CityTrafficCar : MonoBehaviour
     public void Place(Vector2Int from, Vector2Int to, Vector3 position)
     {
         From = from; To = to;
-        next = city.ChooseExit(From, To);
+        next = IsPolice ? city.ChoosePolicePatrolExit(From, To) : city.ChooseExit(From, To);
         BuildLeg();
         Speed = cruiseSpeed * .7f;
         released = false; stoppedAt = -1f;
@@ -68,6 +75,7 @@ public sealed class CityTrafficCar : MonoBehaviour
         if (city == null) return;
         float dt = Time.fixedDeltaTime;
         Vector3 position = body.position;
+        if (IsPolice && !city.IsAreaReady(position)) return;
         Vector3 forward = transform.forward; forward.y = 0; forward.Normalize();
 
         float ruleRoom = city.ClearanceAhead(this, position);
@@ -79,8 +87,10 @@ public sealed class CityTrafficCar : MonoBehaviour
         if (InJunction) desired = Mathf.Min(desired, turnSpeed);
         else desired = Mathf.Min(desired, Mathf.Sqrt(turnSpeed * turnSpeed + 2f * ComfortBraking * Vector3.Distance(position, points[0])));
         desired = Mathf.Min(desired, Mathf.Sqrt(2f * ComfortBraking * Mathf.Max(0f, room)));
+        desired *= surfaceSpeedFactor;
         Speed = Mathf.MoveTowards(Speed, desired, (desired > Speed ? acceleration : braking) * dt);
         float step = Mathf.Min(Speed * dt, Mathf.Max(0f, room));
+        if (IsPolice && !city.IsAreaReady(position + forward * (step + HalfLength))) step = 0f;
         if (room <= .01f) Speed = 0f;
 
         // Two cars waiting on each other inside a junction would wait forever: one of
@@ -116,7 +126,7 @@ public sealed class CityTrafficCar : MonoBehaviour
     private void NextLeg()
     {
         From = To; To = next;
-        next = city.ChooseExit(From, To);
+        next = IsPolice ? city.ChoosePolicePatrolExit(From, To) : city.ChooseExit(From, To);
         released = false; stoppedAt = -1f;
         BuildLeg();
     }

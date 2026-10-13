@@ -5,11 +5,22 @@ public class PoliceGameOverManager : MonoBehaviour
 {
     [Header("UI")]
     [SerializeField] private GameObject gameOverPanel;
+    [SerializeField] private TMPro.TMP_Text moneyValue;
+    [SerializeField] private TMPro.TMP_Text deliveriesValue;
+    [SerializeField] private TMPro.TMP_Text totalValue;
+    [Header("Score final")]
+    [SerializeField, Min(0)] private int pointsPerMoney = 1;
+    [SerializeField, Min(0)] private int pointsPerDelivery = 100;
 
     [Header("Bus")]
     [SerializeField] private BusController busController;
     private bool gameOver;
     public bool IsGameOver => gameOver;
+
+    private void Update()
+    {
+        if (gameOver) CroustyMenu.EnsureControllerSelection(gameOverPanel);
+    }
 
     private void Awake()
     {
@@ -28,6 +39,13 @@ public class PoliceGameOverManager : MonoBehaviour
             return;
         gameOver = true;
         DeliveryManager.Instance?.EndRunOnCapture();
+        var delivery = DeliveryManager.Instance;
+        int money = delivery != null ? delivery.Score : 0;
+        int delivered = delivery != null ? delivery.TotalDelivered : 0;
+        long total = (long)money * Mathf.Max(0, pointsPerMoney) + (long)delivered * Mathf.Max(0, pointsPerDelivery);
+        if (moneyValue != null) moneyValue.text = money.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
+        if (deliveriesValue != null) deliveriesValue.text = delivered.ToString();
+        if (totalValue != null) totalValue.text = $"Total : {total} Pts";
         if (busController != null)
         {
             var flight = busController.GetComponent<BusFlightController>();
@@ -36,13 +54,6 @@ public class PoliceGameOverManager : MonoBehaviour
         }
         if (gameOverPanel != null)
         {
-            if (timeout)
-            {
-                foreach (var text in gameOverPanel.GetComponentsInChildren<TMPro.TMP_Text>(true))
-                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
-                foreach (var text in gameOverPanel.GetComponentsInChildren<UnityEngine.UI.Text>(true))
-                    if (text.GetComponentInParent<UnityEngine.UI.Button>() == null && text.text.ToUpperInvariant().Contains("POLICE")) text.text = "OUT OF TIME!";
-            }
             CroustyPanelMotion.Show(gameOverPanel);
             CroustySoundDesignManager.PlayUI(CroustySound.Paper);
             CroustySoundDesignManager.PlayUI(CroustySound.Alarm);

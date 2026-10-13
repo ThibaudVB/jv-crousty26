@@ -49,6 +49,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
         public readonly List<SignalDisplay> signals = new List<SignalDisplay>();
         public readonly List<DeliveryPoint> addresses = new List<DeliveryPoint>();
         public readonly List<CroustyShop> shops = new List<CroustyShop>();
+        public readonly List<Transform> garages = new List<Transform>();
     }
     private sealed class Landmark
     {
@@ -57,6 +58,22 @@ public sealed partial class ProceduralCity : MonoBehaviour
         public Bounds bounds;
     }
     private readonly Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
+
+    public void GetNearbyGarages(Vector3 position, float radius, List<Vector3> results)
+    {
+        results.Clear();
+        foreach (var chunk in chunks.Values)
+        {
+            if (!chunk.complete || !chunk.root.activeInHierarchy) continue;
+            foreach (var garage in chunk.garages)
+            {
+                if (garage == null) continue;
+                Vector3 offset = garage.position - position; offset.y = 0f;
+                if (offset.sqrMagnitude <= radius * radius) results.Add(garage.position);
+            }
+        }
+        results.Sort((a, b) => (a - position).sqrMagnitude.CompareTo((b - position).sqrMagnitude));
+    }
     private readonly List<Template> buildings = new List<Template>();
     private readonly List<Template> trees = new List<Template>();
     private readonly List<Landmark> landmarks = new List<Landmark>();

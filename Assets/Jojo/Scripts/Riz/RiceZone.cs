@@ -53,8 +53,9 @@ public class RiceZone : MonoBehaviour
     public bool Contains(Vector3 position)
     {
         Vector3 offset = position - transform.position;
+        if (Mathf.Abs(offset.y) > 2.5f) return false;
         offset.y = 0f;
-        return offset.magnitude <= radius;
+        return offset.magnitude <= radius * transform.localScale.x;
     }
 
     // Vrai si la position est dans au moins une flaque

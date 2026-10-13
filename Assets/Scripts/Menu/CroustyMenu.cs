@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 /// <summary>Controls the authored panels in CroustyMainMenu; never creates or lays out UI.</summary>
 public sealed class CroustyMenu : MonoBehaviour
@@ -79,7 +80,11 @@ public sealed class CroustyMenu : MonoBehaviour
 
     private void Update()
     {
-        if (pauseMenu == null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (pauseMenu == null || IsOptionsOpen)
+            EnsureControllerSelection(IsOptionsOpen ? optionsPanel : IsLeaderboardOpen ? leaderboardPanel : mainPanel);
+        bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) ||
+            (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
+        if (pauseMenu == null && back)
         {
             if (IsOptionsOpen) CloseOptions();
             else if (IsLeaderboardOpen) CloseLeaderboard();
@@ -89,6 +94,28 @@ public sealed class CroustyMenu : MonoBehaviour
         if (requestedFullscreen.HasValue && Screen.fullScreen == requestedFullscreen.Value)
             requestedFullscreen = null;
         if (!requestedFullscreen.HasValue) RefreshFullscreenLabel(Screen.fullScreen);
+    }
+
+    // Select authored controls after transitions, page changes or controller connection.
+    // Submission and directional navigation remain owned by InputSystemUIInputModule.
+    public static void EnsureControllerSelection(GameObject panel)
+    {
+        var events = EventSystem.current;
+        if (Gamepad.current == null || events == null || panel == null || !panel.activeInHierarchy) return;
+        var current = events.currentSelectedGameObject;
+        if (current != null && current.transform.IsChildOf(panel.transform))
+        {
+            var selected = current.GetComponent<Selectable>();
+            if (selected != null && selected.isActiveAndEnabled && selected.IsInteractable()) return;
+        }
+        foreach (var control in panel.GetComponentsInChildren<Selectable>())
+        {
+            if (!control.isActiveAndEnabled || !control.IsInteractable() ||
+                control.navigation.mode == Navigation.Mode.None) continue;
+            events.SetSelectedGameObject(control.gameObject);
+            return;
+        }
+        events.SetSelectedGameObject(null);
     }
 
     public void OpenOptions()

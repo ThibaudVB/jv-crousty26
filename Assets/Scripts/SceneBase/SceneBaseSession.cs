@@ -23,7 +23,7 @@ public sealed class SceneBaseSession : MonoBehaviour
         var label = new GameObject("Passagers", typeof(RectTransform), typeof(Text), typeof(Outline));
         label.transform.SetParent(hudCanvas.transform, false);
         passengerText = label.GetComponent<Text>();
-        passengerText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        passengerText.font = (CroustyTypography.LegacyFont != null ? CroustyTypography.LegacyFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
         passengerText.fontSize = 26;
         passengerText.fontStyle = FontStyle.Bold;
         passengerText.color = Color.white;

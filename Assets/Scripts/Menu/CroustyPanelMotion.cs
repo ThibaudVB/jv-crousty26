@@ -3,6 +3,20 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class CroustyPanelMotion : MonoBehaviour
 {
+    // Exact damped spring: same small bounce at any frame rate, continuous on reversal.
+    public static void Spring(ref float value, ref float velocity, float target, float dt)
+    {
+        const float damping = 13f, frequency = 10f;
+        float offset = value - target;
+        float b = (velocity + damping * offset) / frequency;
+        float decay = Mathf.Exp(-damping * dt);
+        float cosine = Mathf.Cos(frequency * dt), sine = Mathf.Sin(frequency * dt);
+        float wave = offset * cosine + b * sine;
+        value = target + decay * wave;
+        velocity = decay * ((b * frequency * cosine - offset * frequency * sine) - damping * wave);
+        if (Mathf.Abs(value - target) < .0001f && Mathf.Abs(velocity) < .001f)
+        { value = target; velocity = 0f; }
+    }
     private RectTransform rect;
     private CanvasGroup group;
     private Vector2 position;
@@ -64,7 +78,7 @@ public sealed class CroustyPanelMotion : MonoBehaviour
     private void Update()
     {
         if (progress >= 1) return;
-        progress = Mathf.Min(1,progress + Time.unscaledDeltaTime / (closing ? .16f : .32f));
+        progress = Mathf.Min(1,progress + Time.unscaledDeltaTime / (closing ? .24f : .48f));
         Apply();
         if (progress >= 1)
         {
@@ -75,10 +89,11 @@ public sealed class CroustyPanelMotion : MonoBehaviour
     private void Apply()
     {
         float t = progress;
-        float back = 1 + 2.25f * Mathf.Pow(t - 1,3) + 1.25f * Mathf.Pow(t - 1,2);
+        float smooth = t * t * t * (t * (6f * t - 15f) + 10f);
+        float back = smooth + .12f * Mathf.Sin(Mathf.PI * t) * Mathf.Sin(Mathf.PI * t);
         group.alpha = Mathf.Lerp(fromAlpha,closing ? 0 : 1,Mathf.SmoothStep(0,1,closing ? t : Mathf.Clamp01(t * 2)));
         if (rect == null) return;
-        float blend = closing ? Mathf.SmoothStep(0,1,t) : back;
+        float blend = closing ? smooth : back;
         rect.localScale = Vector3.LerpUnclamped(fromScale,closing ? scale * .94f : scale,blend);
         rect.anchoredPosition = Vector2.LerpUnclamped(fromPosition,position + (closing ? new Vector2(0,-15) : Vector2.zero),blend);
         rect.localRotation = Quaternion.SlerpUnclamped(fromRotation,rotation * Quaternion.Euler(0,0,closing ? 1.5f : 0),blend);

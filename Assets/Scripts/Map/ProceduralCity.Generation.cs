@@ -50,7 +50,23 @@ public sealed partial class ProceduralCity
 
     public bool IsLandmarkBlock(int x, int z) => !IsCroustyBlock(x, z) && !IsRooftopBlock(x, z) &&
         FeatureChunk(new Vector2Int(Mathf.FloorToInt(x / 2f), Mathf.FloorToInt(z / 2f))) == null &&
-        (IsPoliceBlock(x, z) || FloorMod(x + z * 2, 7) == 3);
+        (IsPoliceBlock(x, z) || IsGarageBlock(x, z) || FloorMod(x + z * 2, 7) == 3);
+
+    // One additional garage per 3x3 neighbourhood when a normal city lot is available.
+    public bool IsGarageBlock(int x, int z)
+    {
+        int regionX = Mathf.FloorToInt(x / 3f), regionZ = Mathf.FloorToInt(z / 3f);
+        int first = (int)((uint)CoordinateSeed(regionX, regionZ, 2701) % 9);
+        for (int i = 0; i < 9; i++)
+        {
+            int slot = (first + i) % 9;
+            int gx = regionX * 3 + slot / 3, gz = regionZ * 3 + slot % 3;
+            if (IsCroustyBlock(gx, gz) || IsRooftopBlock(gx, gz) || IsPoliceBlock(gx, gz) || IsParkBlock(gx, gz)) continue;
+            if (FeatureChunk(new Vector2Int(Mathf.FloorToInt(gx / 2f), Mathf.FloorToInt(gz / 2f))) != null) continue;
+            return x == gx && z == gz;
+        }
+        return false;
+    }
 
     public string LandmarkNameAt(int x, int z)
     {
@@ -58,6 +74,7 @@ public sealed partial class ProceduralCity
         if (large != null) return large;
         if (IsRooftopBlock(x, z)) return "Parcours des toits";
         if (IsPoliceBlock(x, z)) return "Commissariat";
+        if (IsGarageBlock(x, z)) return "Garage 0" + (1 + (int)((uint)CoordinateSeed(x, z, 2702) % 3));
         if (!IsLandmarkBlock(x, z)) return null;
         string[] names = { "Skatepark", "Place du marche", "Garage 01", "Garage 02", "Garage 03", "Rampe des toits" };
         // Rotate through the source venues across nearby streets; a hash per block
@@ -208,7 +225,11 @@ public sealed partial class ProceduralCity
         else if (feature != null)
         {
             Landmark module = landmarks.Find(p => p.name == feature);
-            if (module != null) PlaceAssembly(module, parent, Vector3.zero, yaw, Mathf.Min(SourceScale, 46 / Mathf.Max(module.bounds.size.x, module.bounds.size.z)), true);
+            if (module != null)
+            {
+                var venue = PlaceAssembly(module, parent, Vector3.zero, yaw, Mathf.Min(SourceScale, 46 / Mathf.Max(module.bounds.size.x, module.bounds.size.z)), true);
+                if (feature.StartsWith("Garage ", StringComparison.Ordinal)) chunk.garages.Add(venue.transform);
+            }
         }
         else BuildNativeBlock(parent, random, yaw, DistrictAt(x, z));
 

@@ -30,7 +30,13 @@ public sealed class CroustyPauseMenu : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current == null || !Keyboard.current.escapeKey.wasPressedThisFrame) return;
+        if (paused && (optionsMenu == null || !optionsMenu.IsOptionsOpen))
+            CroustyMenu.EnsureControllerSelection(pausePanel);
+        var pad = Gamepad.current;
+        bool toggle = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) ||
+            (pad != null && (pad.startButton.wasPressedThisFrame ||
+                (paused && pad.buttonEast.wasPressedThisFrame)));
+        if (!toggle) return;
         if (paused && optionsMenu != null && optionsMenu.IsOptionsOpen)
         {
             lastToggleFrame = Time.frameCount;

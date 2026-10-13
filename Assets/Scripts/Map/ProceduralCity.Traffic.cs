@@ -28,6 +28,7 @@ public sealed partial class ProceduralCity
     // Police cars in pursuit leave the lanes; civilian cars still keep their distance from them.
     public readonly List<Transform> Pursuers = new List<Transform>();
     public int VehicleModelCount => vehicles.Length;
+    public bool IsAreaReady(Vector3 position) => chunks.TryGetValue(ChunkAt(position), out var chunk) && chunk.complete;
 
     public void AddPolicePatrol(CityTrafficCar car) { if (!traffic.Contains(car)) traffic.Add(car); }
     public void RemovePolicePatrol(CityTrafficCar car) => traffic.Remove(car);
@@ -49,6 +50,24 @@ public sealed partial class ProceduralCity
             if (direction == heading) exits.Add(direction); // going straight is twice as likely
         }
         return junction + (exits.Count == 0 ? -heading : exits[Random.Range(0, exits.Count)]);
+    }
+
+    // Patrol the player's neighbourhood without aiming directly at the bus or ignoring road rules.
+    public Vector2Int ChoosePolicePatrolExit(Vector2Int from, Vector2Int junction)
+    {
+        if (player == null) return ChooseExit(from, junction);
+        Vector2Int heading = junction - from;
+        Vector2Int best = from;
+        float bestScore = float.PositiveInfinity;
+        foreach (var direction in RoadDirections)
+        {
+            if (direction == -heading || !IsRoadEdgeOpen(junction, junction + direction)) continue;
+            Vector3 offset = JunctionPosition(junction + direction) - player.position;
+            offset.y = 0f;
+            float score = Mathf.Abs(offset.magnitude - 55f) + Random.Range(0f, 24f) - (direction == heading ? 8f : 0f);
+            if (score < bestScore) { bestScore = score; best = junction + direction; }
+        }
+        return best;
     }
 
     private void UpdateTraffic(bool initial)
@@ -186,6 +205,9 @@ public sealed partial class ProceduralCity
             bool crowded = false;
             foreach (var other in traffic)
                 if (other != null && other != car && (other.transform.position - at).sqrMagnitude < 12f * 12f) crowded = true;
+            foreach (var pursuer in Pursuers)
+                if (pursuer != null && (car == null || pursuer != car.transform) &&
+                    (pursuer.position - at).sqrMagnitude < 12f * 12f) crowded = true;
             if (crowded) continue;
             to = from + heading;
             return true;

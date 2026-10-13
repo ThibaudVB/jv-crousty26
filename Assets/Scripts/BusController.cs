@@ -49,7 +49,9 @@ public class BusController : MonoBehaviour
     [SerializeField] private bool isHandbraking;
 
     private BusPetController pet;
-    public float EffectiveMaxSpeedKmh => maxSpeedKmh * (pet != null && pet.IsBoosting ? pet.speedMultiplier : 1f);
+    private BusDamage damage;
+    public float EffectiveMaxSpeedKmh => maxSpeedKmh * (pet != null && pet.IsBoosting ? pet.speedMultiplier : 1f)
+        * (damage != null ? damage.SpeedMultiplier : 1f);
     public float PetAccelerationMultiplier => pet != null && pet.IsBoosting ? pet.accelerationMultiplier : 1f;
     private Rigidbody rb;
     private BusWheelRig wheelRig;
@@ -63,6 +65,7 @@ public class BusController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        damage = GetComponent<BusDamage>();
         pet = GetComponent<BusPetController>();
         if (pet == null) pet = gameObject.AddComponent<BusPetController>();
         busCollider = GetComponent<BoxCollider>();
@@ -91,6 +94,7 @@ public class BusController : MonoBehaviour
 
     private void Update()
     {
+        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame) return;
         ReadInputs();
 
         currentSteering = Mathf.MoveTowards(
@@ -100,8 +104,8 @@ public class BusController : MonoBehaviour
         );
 
         // RESET DU BUS
-        if (Keyboard.current != null &&
-            Keyboard.current[resetKey].wasPressedThisFrame)
+        if ((Keyboard.current != null && Keyboard.current[resetKey].wasPressedThisFrame) ||
+            (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame))
         {
             ResetVehicle();
         }
@@ -135,6 +139,14 @@ public class BusController : MonoBehaviour
         throttleInput = 0f;
         steeringInput = 0f;
         handbrakeInput = false;
+
+        var pad = Gamepad.current;
+        if (pad != null)
+        {
+            throttleInput = pad.rightTrigger.ReadValue() - pad.leftTrigger.ReadValue();
+            steeringInput = pad.leftStick.ReadValue().x;
+            handbrakeInput = pad.buttonSouth.isPressed;
+        }
 
         if (Keyboard.current == null)
             return;
@@ -178,7 +190,7 @@ public class BusController : MonoBehaviour
         }
 
         // FREIN A MAIN
-        handbrakeInput = Keyboard.current.spaceKey.isPressed;
+        handbrakeInput |= Keyboard.current.spaceKey.isPressed;
     }
 
     private void ApplyLongitudinalMovement()

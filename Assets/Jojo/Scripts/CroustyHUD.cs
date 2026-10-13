@@ -594,7 +594,7 @@ public class CroustyHUD : MonoBehaviour
         rect.sizeDelta = new Vector2(300f, 80f);
 
         Text text = label.GetComponent<Text>();
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.font = (CroustyTypography.LegacyFont != null ? CroustyTypography.LegacyFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
         text.fontSize = fontSize - 10;
         text.fontStyle = FontStyle.Bold;
         text.alignment = TextAnchor.UpperCenter;

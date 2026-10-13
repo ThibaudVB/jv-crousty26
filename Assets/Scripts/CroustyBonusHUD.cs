@@ -2,8 +2,10 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 /// <summary>Updates the four bonus cards authored on the delivery HUD canvas.</summary>
+[DefaultExecutionOrder(-150)]
 public sealed class CroustyBonusHUD : MonoBehaviour
 {
     public enum BonusLanguage { English, French }
@@ -12,6 +14,27 @@ public sealed class CroustyBonusHUD : MonoBehaviour
     [SerializeField] private SelectedBonus selectedBonus = SelectedBonus.Pet;
 
     public void SelectBonus(SelectedBonus value) { selectedBonus = value; Refresh(); }
+    public string SelectedKeyLabel => selectedBonus == SelectedBonus.Pet ? "P" : selectedBonus == SelectedBonus.GPS ? "G" : selectedBonus == SelectedBonus.Rice ? "E" : "F";
+    public bool HasSelectedBonus => selectedBonus switch
+    {
+        SelectedBonus.Pet => petController != null && petController.UsesRemaining > 0,
+        SelectedBonus.GPS => gpsController != null && gpsController.Charges > 0,
+        SelectedBonus.Rice => riceController != null && riceCharges > 0,
+        SelectedBonus.Flight => flightController != null && flightController.UsesRemaining > 0,
+        _ => false
+    };
+    public void CycleBonus(int direction) => SelectBonus((SelectedBonus)(((int)selectedBonus + direction + 4) % 4));
+    public void ActivateSelected()
+    {
+        Refresh();
+        switch (selectedBonus)
+        {
+            case SelectedBonus.Pet: petController?.TryActivate(); break;
+            case SelectedBonus.GPS: gpsController?.SelectNext(); break;
+            case SelectedBonus.Rice: riceController?.TryActivate(); break;
+            case SelectedBonus.Flight: flightController?.ActivateFlight(); break;
+        }
+    }
 
     [Serializable]
     public sealed class Card
@@ -35,6 +58,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
     [SerializeField] private BusGPS gpsController;
     [SerializeField] private BusPetController petController;
     [SerializeField] private BusFlightController flightController;
+    [SerializeField] private BusRiceThrower riceController;
 
     private static readonly Color ReadyTint = Color.white;
     private static readonly Color EmptyTint = new Color(0.7f, 0.7f, 0.7f, 0.76f);
@@ -44,11 +68,21 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         if (gpsController == null) gpsController = FindAnyObjectByType<BusGPS>();
         if (petController == null) petController = FindAnyObjectByType<BusPetController>();
         if (flightController == null) flightController = FindAnyObjectByType<BusFlightController>();
+        if (riceController == null) riceController = FindAnyObjectByType<BusRiceThrower>();
         SetLanguage(language);
         Refresh();
     }
 
     private void LateUpdate() => Refresh();
+
+    private void Update()
+    {
+        if (!singleCardMode || Time.timeScale <= 0f || Keyboard.current == null) return;
+        if (Keyboard.current.digit1Key.wasPressedThisFrame) SelectBonus(SelectedBonus.Pet);
+        if (Keyboard.current.digit2Key.wasPressedThisFrame) SelectBonus(SelectedBonus.GPS);
+        if (Keyboard.current.digit3Key.wasPressedThisFrame) SelectBonus(SelectedBonus.Rice);
+        if (Keyboard.current.digit4Key.wasPressedThisFrame) SelectBonus(SelectedBonus.Flight);
+    }
 
     public void SetLanguage(BonusLanguage value)
     {
@@ -58,7 +92,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
                 card.nameText.text = language == BonusLanguage.English ? card.englishName : card.frenchName;
     }
 
-    // Ready for the rice mechanic when it is implemented.
+    // Updated whenever a rice charge is spent.
     public void SetRiceCharges(int count)
     {
         riceCharges = Mathf.Clamp(count, 0, 3);
@@ -76,6 +110,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
             if (petController != null) petController.BonusEquipped = selectedBonus == SelectedBonus.Pet;
             if (gpsController != null) gpsController.BonusEquipped = selectedBonus == SelectedBonus.GPS;
             if (flightController != null) flightController.BonusEquipped = selectedBonus == SelectedBonus.Flight;
+            if (riceController != null) riceController.BonusEquipped = selectedBonus == SelectedBonus.Rice;
             ShowSelected(pet, SelectedBonus.Pet, petController != null ? petController.UsesRemaining : 0);
             ShowSelected(gps, SelectedBonus.GPS, gpsController != null ? gpsController.Charges : 0);
             ShowSelected(rice, SelectedBonus.Rice, riceCharges);
@@ -89,6 +124,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         if (petController != null) petController.BonusEquipped = true;
         if (gpsController != null) gpsController.BonusEquipped = true;
         if (flightController != null) flightController.BonusEquipped = true;
+        if (riceController != null) riceController.BonusEquipped = true;
     }
 
     private void ShowSelected(Card card, SelectedBonus kind, int charges)

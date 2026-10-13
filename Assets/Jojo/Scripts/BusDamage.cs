@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Dégâts du bus : au premier gros choc (mur, bâtiment, voiture ou grosse chute),
-// le bus s'abîme : carrosserie noircie, fumée et flammes. C'est seulement visuel, on ne perd pas.
+// le bus s'abîme : carrosserie noircie, fumée, flammes et vitesse maximale réduite.
 // Le garage (BusGarageRepair) éteint le feu.
 //
 // A placer à la main sur le bus (le GameObject qui a le BusController et le Rigidbody).
@@ -24,7 +24,7 @@ public class BusDamage : MonoBehaviour
     public float fallDamageHeight = 15f;
 
     [Header("Vitesse")]
-    [Tooltip("Multiplie la vitesse max du BusController au lancement (0.85 = 15 % moins vite)")]
+    [Tooltip("Perte ajoutée à chaque choc : 0.85 = -15 %, cumul plafonné à -50 %.")]
     [Range(0.3f, 1f)] public float speedMultiplier = 0.85f;
 
     [Header("Carrosserie")]
@@ -53,6 +53,8 @@ public class BusDamage : MonoBehaviour
 
     // Infos pour les autres scripts
     public bool IsDamaged { get; private set; }
+    public float DamagePenalty { get; private set; }
+    public float SpeedMultiplier => isActiveAndEnabled ? 1f - DamagePenalty : 1f;
     public event System.Action Damaged; // appelé à chaque choc (le gérant réagit)
 
     // Composants du bus
@@ -60,6 +62,7 @@ public class BusDamage : MonoBehaviour
     private BoxCollider body;
     private BusWheelRig wheelRig;
     private BusFlightController flight;
+    private PoliceCatchZone catchZone;
 
     // Chocs et chute
     private float lastHitTime = -999f;
@@ -96,14 +99,11 @@ public class BusDamage : MonoBehaviour
         body = GetComponent<BoxCollider>();
         wheelRig = GetComponent<BusWheelRig>();
         flight = GetComponent<BusFlightController>();
+        catchZone = GetComponentInChildren<PoliceCatchZone>(true);
     }
 
     private void Start()
     {
-        BusController bus = GetComponent<BusController>();
-        if (bus != null)
-            bus.maxSpeedKmh *= speedMultiplier;
-
         highestY = rb.position.y;
         SaveOriginalColors();
         CreateFires();
@@ -127,6 +127,11 @@ public class BusDamage : MonoBehaviour
     // Appelé par le garage
     public void ExtinguishFire()
     {
+        IsDamaged = false;
+        DamagePenalty = 0f;
+        lastHitTime = Time.time;
+        for (int i = 0; i < materials.Count; i++)
+            materials[i].SetColor("_BaseColor", originalColors[i]);
         extinguished = true;
         ShowFires(false);
         foreach (Puff puff in puffs)
@@ -139,6 +144,23 @@ public class BusDamage : MonoBehaviour
     {
         if (!CanTakeHit() || collision.transform.IsChildOf(transform))
             return;
+        var garage = GetComponent<BusGarageRepair>();
+        if (garage != null && garage.IsGarage(collision.collider.transform)) return;
+        var police = collision.collider.GetComponentInParent<PoliceCarAI>();
+        if (police != null && police.IsRammingBus && !police.IsDestroyed)
+        {
+            // Reaching the limit is survivable; a subsequent police ram ends the run.
+            if (DamagePenalty >= .5f)
+            {
+                lastHitTime = Time.time;
+                if (catchZone != null) catchZone.SetProgress(1f);
+                return;
+            }
+            TakeHit(collision.contactCount > 0 ? collision.GetContact(0).point : transform.position);
+            return;
+        }
+        var crash = GetComponent<BusCarCrash>();
+        if (crash != null && crash.WillDestroy(collision.collider)) return;
 
         float floorY = (body != null ? body.bounds.min.y : rb.position.y) + curbHeight;
         float strongestImpact = 0f;
@@ -172,18 +194,15 @@ public class BusDamage : MonoBehaviour
     {
         bool cooldownOver = Time.time - lastHitTime >= hitCooldown;
         bool gameLost = DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed;
-        return cooldownOver && !gameLost;
+        return cooldownOver && !gameLost && (catchZone == null || !catchZone.IsCaught);
     }
 
     private void TakeHit(Vector3 point)
     {
         lastHitTime = Time.time;
-
-        if (!IsDamaged)
-        {
-            IsDamaged = true;
-            DarkenBody();
-        }
+        DamagePenalty = Mathf.Min(.5f, DamagePenalty + Mathf.Clamp01(1f - speedMultiplier));
+        IsDamaged = true;
+        DarkenBody();
 
         extinguished = false;
         if (onFire)
@@ -273,7 +292,8 @@ public class BusDamage : MonoBehaviour
     {
         for (int i = 0; i < materials.Count; i++)
         {
-            Color color = Color.Lerp(originalColors[i], burntColor, darkening);
+            Color color = Color.Lerp(originalColors[i], burntColor,
+                Mathf.Lerp(darkening, .8f, Mathf.InverseLerp(.15f, .5f, DamagePenalty)));
             color.a = originalColors[i].a; // garde la transparence (vitres)
             materials[i].SetColor("_BaseColor", color);
         }
@@ -401,6 +421,7 @@ public class BusDamage : MonoBehaviour
     // Lance une bouffée (on réutilise la plus ancienne)
     private void EmitPuff(Vector3 position, float minSize, float maxSize)
     {
+        if (puffs.Count == 0) return;
         Puff puff = puffs[nextPuff];
         nextPuff = (nextPuff + 1) % puffs.Count;
 
@@ -418,7 +439,7 @@ public class BusDamage : MonoBehaviour
         // Le bus abîmé fume en continu depuis chaque emplacement du feu
         if (IsDamaged && !extinguished)
         {
-            puffTimer += smokePerSecond * Time.deltaTime;
+            puffTimer += smokePerSecond * Mathf.Lerp(1f, 2.5f, DamagePenalty / .5f) * Time.deltaTime;
             while (puffTimer >= 1f)
             {
                 puffTimer -= 1f;

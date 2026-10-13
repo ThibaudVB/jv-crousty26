@@ -27,14 +27,14 @@ public class BusGarageRepair : MonoBehaviour
     {
         if (logTouched) Debug.Log($"{name} touche : {other.name}", other);
 
+        if (IsGarage(other)) Repair();
+    }
+
+    public bool IsGarage(Transform other)
+    {
         for (Transform t = other; t != null; t = t.parent)
-        {
-            if (t.name.StartsWith(garageNamePrefix, System.StringComparison.OrdinalIgnoreCase))
-            {
-                Repair();
-                return;
-            }
-        }
+            if (t.name.StartsWith(garageNamePrefix, System.StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 
     private void Repair()

@@ -15,22 +15,22 @@ public class PoliceChaseManager : MonoBehaviour
     [SerializeField] private BusFlightController flightController;
 
     [Header("Patrouilles")]
-    [SerializeField, Range(0, 10)] private int patrolCount = 4;
+    [SerializeField, Range(0, 10)] private int patrolCount = 7;
     [SerializeField, Min(0f)] private float startupGraceSeconds = 3f;
-    [SerializeField, Min(50f)] private float patrolRadius = 230f;
+    [SerializeField, Min(50f)] private float patrolRadius = 115f;
 
     [Header("Detection")]
-    [SerializeField, Min(10f)] private float speedLimitKmh = 65f;
-    [SerializeField, Min(5f)] private float visionRange = 55f;
-    [SerializeField, Range(10f, 180f)] private float visionHalfAngle = 65f;
+    [SerializeField, Min(10f)] private float speedLimitKmh = 50f;
+    [SerializeField, Min(5f)] private float visionRange = 75f;
+    [SerializeField, Range(10f, 180f)] private float visionHalfAngle = 95f;
     [Tooltip("En dessous de cette distance, la patrouille remarque le bus dans toutes les directions.")]
-    [SerializeField, Min(0f)] private float closeAwareness = 14f;
+    [SerializeField, Min(0f)] private float closeAwareness = 22f;
     [SerializeField, Min(0f)] private float spottingSeconds = .35f;
 
     [Header("Poursuite")]
     [SerializeField, Min(10f)] private float chaseSpeedKmh = 88f;
     [SerializeField, Min(1f)] private float chaseAcceleration = 9f;
-    [SerializeField, Range(1, 5)] private int maxChasers = 3;
+    [SerializeField, Range(1, 5)] private int maxChasers = 5;
     [SerializeField, Min(0f)] private float backupRadius = 260f;
     [SerializeField, Min(10f)] private float pursuitVisionRange = 90f;
     [Tooltip("Apres la perte de vue, la radio donne encore la position du bus pendant ce delai.")]
@@ -38,6 +38,16 @@ public class PoliceChaseManager : MonoBehaviour
     [SerializeField, Min(1f)] private float loseSightSeconds = 8f;
     [SerializeField, Min(30f)] private float escapeDistance = 170f;
     [SerializeField, Min(0f)] private float escapeCooldownSeconds = 8f;
+
+    [Header("Escalade")]
+    [SerializeField, Range(1, 5)] private int maximumHeat = 5;
+    [SerializeField, Min(5f)] private float escalationSeconds = 30f;
+    [SerializeField, Range(3, 12)] private int maximumReinforcements = 10;
+    private int heat;
+    private float nextEscalation, nextBackup;
+    public int HeatLevel => heat;
+    private int PursuitLimit => Mathf.Min(maximumReinforcements, maxChasers + Mathf.Max(0, heat - 1) * 2);
+    private float SearchDuration => loseSightSeconds + Mathf.Max(0, heat - 1) * 1.5f;
 
     [Header("Arrestation")]
     [SerializeField, Min(1f)] private float bustDistance = 9f;
@@ -54,6 +64,7 @@ public class PoliceChaseManager : MonoBehaviour
     private bool chasing;
     private float suspicion, lastSeen, calmUntil, nextSpawn, nextSight, arrest, messageUntil;
     private Vector3 lastKnown;
+    private Vector3 lastKnownVelocity;
     private string message = "";
     private Text statusText;
     private Image arrestFill;
@@ -64,14 +75,15 @@ public class PoliceChaseManager : MonoBehaviour
     public bool BusInSight { get; private set; }
     public float SecondsOutOfSight => chasing ? Time.time - lastSeen : 0f;
     public float ArrestProgress => arrest;
-    public float ChaseSpeed => chaseSpeedKmh / 3.6f;
-    public float ChaseAcceleration => chaseAcceleration;
+    public float ChaseSpeed => Mathf.Max(chaseSpeedKmh / 3.6f + heat * 2f,
+        chasing && BusInSight ? BusVelocity.magnitude * 1.08f + 3f : 0f);
+    public float ChaseAcceleration => chaseAcceleration + heat * 1.5f;
     public Rigidbody BusBody => busRigidbody;
     public Vector3 BusPosition => busRigidbody.position;
     public Vector3 BusVelocity { get { var v = busRigidbody.linearVelocity; v.y = 0; return v; } }
     public float BusHalfLength { get; private set; } = 3f;
     // Where pursuers head when they cannot see the bus: radio fix first, then the last sighting.
-    public Vector3 TrackedPosition => Time.time - lastSeen < radioTrackingSeconds ? BusPosition : lastKnown;
+    public Vector3 TrackedPosition => lastKnown + lastKnownVelocity * Mathf.Clamp(Time.time - lastSeen, 0f, radioTrackingSeconds);
 
     // Nearest pursuer close enough for the camera to frame it.
     public PoliceCarAI ActivePolice
@@ -127,7 +139,7 @@ public class PoliceChaseManager : MonoBehaviour
     {
         if (city == null || city.WorldRoot == null || Time.timeScale <= 0f || catchZone != null && catchZone.IsCaught) return;
         float dt = Time.fixedDeltaTime;
-        cars.RemoveAll(car => car == null);
+        cars.RemoveAll(car => car == null || car.IsDestroyed);
         MaintainPatrols();
 
         bool look = Time.time >= nextSight;
@@ -138,19 +150,27 @@ public class PoliceChaseManager : MonoBehaviour
         if (!chasing)
         {
             bool spotted = false;
-            if (Time.time >= calmUntil && !hidden && busKmh > speedLimitKmh)
+            if (Time.time >= calmUntil && !hidden)
                 foreach (var car in cars)
-                    if (car.State == PoliceCarAI.Mode.Patrol && !car.IsBlinded && CanSee(car, visionRange, visionHalfAngle))
-                    { spotted = true; if ((suspicion += dt) >= spottingSeconds) { BeginChase(car); break; } }
+                    if (car.State == PoliceCarAI.Mode.Patrol && !car.IsBlinded &&
+                        (busKmh > speedLimitKmh || Vector3.Distance(car.transform.position, BusPosition) < closeAwareness) &&
+                        CanSee(car, visionRange, visionHalfAngle))
+                    { spotted = true; if ((suspicion += dt) >= spottingSeconds) BeginChase(car); break; }
             if (!spotted) suspicion = Mathf.Max(0f, suspicion - dt);
             SetArrest(Mathf.MoveTowards(arrest, 0f, dt));
             return;
         }
 
         // Backup arrives a few seconds after the call.
+        if (Time.time >= nextEscalation && BusInSight)
+        {
+            RaiseHeat();
+            nextEscalation = Time.time + escalationSeconds;
+        }
+        RequestBackup();
         for (int i = backup.Count - 1; i >= 0; i--)
         {
-            if (backup[i].car == null) { backup.RemoveAt(i); continue; }
+            if (backup[i].car == null || backup[i].car.IsDestroyed) { backup.RemoveAt(i); continue; }
             if (Time.time < backup[i].at) continue;
             backup[i].car.StartChase();
             backup.RemoveAt(i);
@@ -166,12 +186,12 @@ public class PoliceChaseManager : MonoBehaviour
             if (car.SeesBus) BusInSight = true;
             Vector3 offset = car.transform.position - BusPosition; offset.y = 0;
             nearest = Mathf.Min(nearest, offset.magnitude);
-            if (!car.IsBlinded && offset.magnitude < bustDistance) pinning++;
+            if (car.SeesBus && !hidden && !car.IsBlinded && offset.magnitude < bustDistance) pinning++;
         }
-        if (BusInSight) { lastSeen = Time.time; lastKnown = BusPosition; }
+        if (BusInSight) { lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity; }
 
         float unseen = Time.time - lastSeen;
-        if (unseen > loseSightSeconds || unseen > 2f && nearest > escapeDistance) { Escape(); return; }
+        if (unseen > SearchDuration || unseen > 4f + heat && nearest > escapeDistance + heat * 35f) { Escape(); return; }
 
         // Arrest: slow (or stuck) next to an officer. Two officers are quicker.
         if (pinning > 0 && busKmh < bustSpeedKmh)
@@ -201,10 +221,13 @@ public class PoliceChaseManager : MonoBehaviour
     private void BeginChase(PoliceCarAI first)
     {
         chasing = true; suspicion = 0f;
-        lastSeen = Time.time; lastKnown = BusPosition;
+        heat = Mathf.Max(1, heat);
+        nextEscalation = Time.time + escalationSeconds;
+        nextBackup = 0f;
+        lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
         first.StartChase();
         first.SeesBus = true;
-        Flash("POLICE ! Tu roulais trop vite");
+        Flash("POLICE ! Le bus a ete repere");
         backup.Clear();
         var others = new List<PoliceCarAI>();
         foreach (var car in cars)
@@ -217,15 +240,83 @@ public class PoliceChaseManager : MonoBehaviour
     // Ramming a patrol car, even slowly, starts a chase immediately.
     public void Provoked(PoliceCarAI car)
     {
+        if (car == null || car.IsDestroyed) return;
         if (catchZone != null && catchZone.IsCaught) return;
         if (!chasing) BeginChase(car);
         else car.StartChase();
-        lastSeen = Time.time; lastKnown = BusPosition;
+        lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
+    }
+
+    public void CarDestroyed(PoliceCarAI car)
+    {
+        cars.Remove(car);
+        backup.RemoveAll(entry => entry.car == car);
+        if (catchZone != null && catchZone.IsCaught) return;
+        if (!chasing)
+        {
+            chasing = true;
+            heat = 1;
+        }
+        RaiseHeat();
+        lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
+        nextEscalation = Time.time + escalationSeconds;
+        nextBackup = nextSpawn = 0f;
+        Flash("VOITURE DE POLICE DETRUITE ! ALERTE " + heat + " - RENFORTS !");
+    }
+
+    public void CivilianCarDestroyed(Rigidbody source)
+    {
+        if (!isActiveAndEnabled || source != busRigidbody || catchZone != null && catchZone.IsCaught) return;
+        if (!chasing)
+        {
+            PoliceCarAI closest = null;
+            float nearest = float.PositiveInfinity;
+            foreach (var car in cars)
+            {
+                if (car == null || car.IsDestroyed) continue;
+                float distance = (car.transform.position - BusPosition).sqrMagnitude;
+                if (distance < nearest) { nearest = distance; closest = car; }
+            }
+            if (closest != null) BeginChase(closest);
+            else { chasing = true; heat = 1; suspicion = 0f; }
+        }
+        else RaiseHeat();
+        lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
+        nextEscalation = Time.time + escalationSeconds;
+        nextBackup = nextSpawn = 0f;
+        RequestBackup();
+        Flash("VOITURE DETRUITE ! LA POLICE EST A TES TROUSSES !");
+    }
+
+    private void RaiseHeat()
+    {
+        if (heat >= maximumHeat) return;
+        heat++;
+        Flash("ALERTE " + heat + " - La police appelle des renforts !");
+    }
+
+    private void RequestBackup()
+    {
+        if (!BusInSight && SecondsOutOfSight > radioTrackingSeconds) return;
+        if (Time.time < nextBackup) return;
+        nextBackup = Time.time + 1f;
+        int assigned = backup.Count;
+        foreach (var car in cars) if (car.InPursuit) assigned++;
+        foreach (var car in cars)
+        {
+            if (assigned >= PursuitLimit) break;
+            if (car.IsDestroyed || car.InPursuit || backup.Exists(entry => entry.car == car)) continue;
+            if (Vector3.Distance(car.transform.position, BusPosition) > backupRadius) continue;
+            backup.Add((car, Time.time + Mathf.Max(.5f, 2.5f - heat * .35f)));
+            assigned++;
+        }
     }
 
     private void Escape()
     {
         chasing = false;
+        heat = 0;
+        BusInSight = false;
         backup.Clear();
         foreach (var car in cars) { car.SeesBus = false; car.ReturnToPatrol(); }
         calmUntil = Time.time + escapeCooldownSeconds;
@@ -257,26 +348,46 @@ public class PoliceChaseManager : MonoBehaviour
     {
         if (Time.time < nextSpawn) return;
         nextSpawn = Time.time + .5f;
-        if (cars.Count < patrolCount)
+        bool reinforcing = chasing && (BusInSight || SecondsOutOfSight < radioTrackingSeconds);
+        if (cars.Count < (reinforcing ? Mathf.Max(patrolCount, PursuitLimit + 2) : patrolCount))
         {
-            var car = CreateCar();
-            if (city.TryFindStreetSpawn(null, 90f, patrolRadius, true, 24, out var from, out var to, out var at))
-            { car.StartPatrol(from, to, at); cars.Add(car); }
-            else Destroy(car.gameObject);
+            if (city.TryFindStreetSpawn(null, 55f, patrolRadius, true, 40, out var from, out var to, out var at))
+            { var car = CreateCar(); car.StartPatrol(from, to, at); cars.Add(car); }
             return;
         }
         foreach (var car in cars)
         {
-            if (car.InPursuit) continue;
             Vector3 offset = car.transform.position - BusPosition; offset.y = 0;
-            if (offset.magnitude > patrolRadius + 90f) { Recycle(car); return; }
+            if (VisibleToPlayer(car.transform.position)) continue;
+            if (car.InPursuit && !reinforcing) continue;
+            if (!chasing && cars.Count > patrolCount && offset.magnitude > 90f)
+            {
+                cars.Remove(car);
+                Destroy(car.gameObject);
+                return;
+            }
+            if (offset.magnitude > patrolRadius + 15f || !city.IsAreaReady(car.transform.position)) { Recycle(car); return; }
         }
     }
 
     public void Recycle(PoliceCarAI car)
     {
-        if (city.TryFindStreetSpawn(null, 90f, patrolRadius, true, 24, out var from, out var to, out var at))
+        if (VisibleToPlayer(car.transform.position)) return;
+        if (city.TryFindStreetSpawn(car.GetComponent<CityTrafficCar>(), 55f, patrolRadius, true, 40, out var from, out var to, out var at))
+        {
+            backup.RemoveAll(entry => entry.car == car);
             car.StartPatrol(from, to, at);
+        }
+    }
+
+    private bool VisibleToPlayer(Vector3 position)
+    {
+        if (Vector3.Distance(position, BusPosition) < 45f) return true;
+        var camera = Camera.main;
+        if (camera == null) return false;
+        var point = camera.WorldToViewportPoint(position + Vector3.up);
+        return point.z > 0f && point.z < RenderSettings.fogEndDistance + 20f &&
+            point.x > -.1f && point.x < 1.1f && point.y > -.1f && point.y < 1.1f;
     }
 
     private PoliceCarAI CreateCar()
@@ -305,8 +416,10 @@ public class PoliceChaseManager : MonoBehaviour
             }
         }
         if (!found) bounds = new Bounds(new Vector3(0, .8f, 0), new Vector3(2f, 1.6f, 4.5f));
-        model.transform.localPosition = -new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
-        Vector3 size = bounds.size;
+        float modelScale = city.vehicleLength / Mathf.Max(.01f, bounds.size.z);
+        model.transform.localScale *= modelScale;
+        model.transform.localPosition = -new Vector3(bounds.center.x, bounds.min.y, bounds.center.z) * modelScale;
+        Vector3 size = bounds.size * modelScale;
         var box = car.AddComponent<BoxCollider>();
         box.size = size; box.center = new Vector3(0, size.y * .5f, 0);
         car.AddComponent<Rigidbody>();
@@ -351,7 +464,7 @@ public class PoliceChaseManager : MonoBehaviour
         var textObject = new GameObject("Statut police", typeof(RectTransform), typeof(Text), typeof(Outline));
         textObject.transform.SetParent(canvasObject.transform, false);
         statusText = textObject.GetComponent<Text>();
-        statusText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        statusText.font = (CroustyTypography.LegacyFont != null ? CroustyTypography.LegacyFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
         statusText.fontSize = 34; statusText.fontStyle = FontStyle.Bold;
         statusText.alignment = TextAnchor.MiddleCenter; statusText.raycastTarget = false;
         textObject.GetComponent<Outline>().effectDistance = new Vector2(2, -2);
@@ -378,8 +491,8 @@ public class PoliceChaseManager : MonoBehaviour
         if (statusText == null) return;
         string text = ""; Color color = Color.white;
         if (Time.time < messageUntil) { text = message; color = chasing ? new Color(1f, .3f, .25f) : new Color(.55f, 1f, .45f); }
-        else if (chasing && BusInSight) { text = "POURSUITE POLICIERE"; color = new Color(1f, .3f, .25f); }
-        else if (chasing) { text = "Hors de vue... " + Mathf.CeilToInt(Mathf.Max(0f, loseSightSeconds - SecondsOutOfSight)) + " s"; color = new Color(1f, .8f, .3f); }
+        else if (chasing && BusInSight) { text = "ALERTE " + heat + "/" + maximumHeat + " - POURSUITE POLICIERE"; color = new Color(1f, .3f, .25f); }
+        else if (chasing) { text = "ALERTE " + heat + " - Hors de vue... " + Mathf.CeilToInt(Mathf.Max(0f, SearchDuration - SecondsOutOfSight)) + " s"; color = new Color(1f, .8f, .3f); }
         statusText.text = text; statusText.color = color;
         bool showBar = arrest > .001f;
         arrestBar.SetActive(showBar);

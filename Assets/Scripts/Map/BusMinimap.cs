@@ -34,6 +34,9 @@ public sealed class BusMinimap : MonoBehaviour
     [SerializeField] private Image policeIcon;
     private readonly List<Image> deliveryIcons = new List<Image>();
     private readonly List<Image> policeIcons = new List<Image>();
+    private readonly List<Image> garageIcons = new List<Image>();
+    private readonly List<Vector3> nearbyGarages = new List<Vector3>();
+    private ProceduralCity city;
     private float nextReferenceSearch;
     [SerializeField] private Sprite circleSprite;
     [SerializeField] private Sprite arrowSprite;
@@ -154,6 +157,7 @@ public sealed class BusMinimap : MonoBehaviour
             if (controller != null) bus = controller.transform;
         }
         if (police == null) police = FindAnyObjectByType<PoliceChaseManager>();
+        if (city == null) city = FindAnyObjectByType<ProceduralCity>();
     }
 
     private void BuildCamera()
@@ -256,6 +260,7 @@ public sealed class BusMinimap : MonoBehaviour
         labelRect.anchoredPosition = new Vector2(0, -8);
         labelRect.sizeDelta = new Vector2(sizeOnScreen + 10, 55);
         gpsLabel = labelRect.gameObject.AddComponent<TextMeshProUGUI>();
+        CroustyTypography.Apply(gpsLabel);
         gpsLabel.fontSize = 17;
         gpsLabel.alignment = TextAlignmentOptions.Center;
         gpsLabel.raycastTarget = false;
@@ -272,6 +277,7 @@ public sealed class BusMinimap : MonoBehaviour
         northRect.anchoredPosition = new Vector2(0f, 2f);
         northRect.sizeDelta = new Vector2(30f, 22f);
         TextMeshProUGUI north = northRect.gameObject.AddComponent<TextMeshProUGUI>();
+        CroustyTypography.Apply(north);
         north.fontSize = 18;
         north.fontStyle = FontStyles.Bold;
         north.alignment = TextAlignmentOptions.Center;
@@ -340,8 +346,41 @@ public sealed class BusMinimap : MonoBehaviour
         for (int i = Mathf.Max(1, shown); i < policeIcons.Count; i++)
             policeIcons[i].gameObject.SetActive(false);
 
+        UpdateGarages();
         // Le bus reste au-dessus des autres marqueurs.
         busIcon.transform.SetAsLastSibling();
+    }
+
+    private void UpdateGarages()
+    {
+        nearbyGarages.Clear();
+        if (city != null) city.GetNearbyGarages(bus.position, 250f, nearbyGarages);
+        int shown = Mathf.Min(3, nearbyGarages.Count);
+        while (garageIcons.Count < shown)
+        {
+            var icon = Instantiate(deliveryIconTemplate, maskRect);
+            icon.name = "Garage - reparation";
+            icon.color = new Color(.05f, .9f, .85f);
+            icon.raycastTarget = false;
+            var labelObject = new GameObject("G", typeof(RectTransform));
+            labelObject.transform.SetParent(icon.transform, false);
+            var label = labelObject.AddComponent<TextMeshProUGUI>();
+            CroustyTypography.Apply(label);
+            label.text = "G"; label.fontSize = 16; label.color = new Color(.02f, .12f, .15f);
+            label.alignment = TextAlignmentOptions.Center; label.raycastTarget = false;
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
+            garageIcons.Add(icon);
+        }
+        for (int i = 0; i < garageIcons.Count; i++)
+        {
+            var icon = garageIcons[i];
+            icon.gameObject.SetActive(i < shown);
+            if (i >= shown) continue;
+            PlaceIcon(icon, nearbyGarages[i], 28f);
+            // Keep the G upright even when the edge arrow turns towards the garage.
+            icon.GetComponentInChildren<TMP_Text>().rectTransform.localRotation = Quaternion.Inverse(icon.rectTransform.localRotation);
+        }
     }
 
     private bool IsOnMap(Vector3 targetPosition, float size)

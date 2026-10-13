@@ -12,6 +12,7 @@ using UnityEngine.UI;
 // 2. Sinon, la boîte est créée au lancement : glisser les images de Jojo/Resources/Gerant dans "Images".
 public class GerantDialogue : MonoBehaviour
 {
+    public event System.Action MessageChanged;
     [Header("Références")]
     [Tooltip("Si vide : le DeliveryManager de la scène")]
     public DeliveryManager manager;
@@ -122,7 +123,7 @@ public class GerantDialogue : MonoBehaviour
     private void Build()
     {
         if (font == null)
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = (CroustyTypography.LegacyFont != null ? CroustyTypography.LegacyFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
 
         // Canvas à part pour ne pas toucher au HUD enregistré dans la scène
         GameObject canvasObject = new GameObject("Canvas Gerant", typeof(Canvas), typeof(CanvasScaler));
@@ -192,6 +193,7 @@ public class GerantDialogue : MonoBehaviour
 
         currentMessage = message;
         shownLetters = lettersPerSecond > 0f ? 0f : message.Length;
+        MessageChanged?.Invoke();
     }
 
     // Réplique selon l'état de la tournée. null = on garde la réplique actuelle.

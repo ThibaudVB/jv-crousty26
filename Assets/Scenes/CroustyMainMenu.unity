@@ -807,7 +807,7 @@ MonoBehaviour:
   ribbonImage: {fileID: 1273418594}
   idleRibbon: {fileID: 21300000, guid: f0920b341d6dc49b0adaa02dcac89e5a, type: 3}
   activeRibbon: {fileID: 21300000, guid: 8464a98a6654546078e252ec7852d070, type: 3}
-  actionPrompt: {fileID: 870329709}
+  actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
 --- !u!114 &87994168
@@ -1658,7 +1658,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4281476646
   m_fontColor: {r: 0.14901961, g: 0.14901961, b: 0.19607843, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -1671,7 +1671,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2030,7 +2030,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4281476646
   m_fontColor: {r: 0.14901961, g: 0.14901961, b: 0.19607843, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -2043,7 +2043,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2299,7 +2299,7 @@ MonoBehaviour:
   ribbonImage: {fileID: 0}
   idleRibbon: {fileID: 0}
   activeRibbon: {fileID: 0}
-  actionPrompt: {fileID: 596549998}
+  actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 0
 --- !u!114 &300252599
@@ -2793,8 +2793,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2140000001}
   - component: {fileID: 388373054}
+  - component: {fileID: 2140000001}
   - component: {fileID: 388373055}
   - component: {fileID: 388373056}
   m_Layer: 0
@@ -2857,7 +2857,7 @@ MonoBehaviour:
   navigationTab: {fileID: 300252597}
   navigationViewport: {fileID: 750199939}
   ticketImage: {fileID: 1881240443}
-  navigationPrompt: {fileID: 596549999}
+  navigationPrompt: {fileID: 0}
   buttons:
   - {fileID: 774252310}
   - {fileID: 1608216259}
@@ -4757,7 +4757,7 @@ MonoBehaviour:
   ribbonImage: {fileID: 1404831163}
   idleRibbon: {fileID: 21300000, guid: f0920b341d6dc49b0adaa02dcac89e5a, type: 3}
   activeRibbon: {fileID: 21300000, guid: 8464a98a6654546078e252ec7852d070, type: 3}
-  actionPrompt: {fileID: 1236243731}
+  actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
 --- !u!114 &774252310
@@ -9762,8 +9762,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 440, y: 480}
+  m_AnchoredPosition: {x: -2.7865, y: 0}
+  m_SizeDelta: {x: 442.7865, y: 480}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1539866899
 MonoBehaviour:
@@ -9840,7 +9840,7 @@ MonoBehaviour:
   ribbonImage: {fileID: 1380871541}
   idleRibbon: {fileID: 21300000, guid: f0920b341d6dc49b0adaa02dcac89e5a, type: 3}
   activeRibbon: {fileID: 21300000, guid: 8464a98a6654546078e252ec7852d070, type: 3}
-  actionPrompt: {fileID: 1953018117}
+  actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
 --- !u!114 &1554518019
@@ -10668,7 +10668,7 @@ MonoBehaviour:
   ribbonImage: {fileID: 1024565205}
   idleRibbon: {fileID: 21300000, guid: f0920b341d6dc49b0adaa02dcac89e5a, type: 3}
   activeRibbon: {fileID: 21300000, guid: 8464a98a6654546078e252ec7852d070, type: 3}
-  actionPrompt: {fileID: 2072146529}
+  actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
 --- !u!114 &1608216259
@@ -11316,7 +11316,7 @@ MonoBehaviour:
   ribbonImage: {fileID: 1372475476}
   idleRibbon: {fileID: 21300000, guid: f0920b341d6dc49b0adaa02dcac89e5a, type: 3}
   activeRibbon: {fileID: 21300000, guid: 8464a98a6654546078e252ec7852d070, type: 3}
-  actionPrompt: {fileID: 1528177057}
+  actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
 --- !u!114 &1692263642
@@ -13056,7 +13056,7 @@ MonoBehaviour:
   ribbonImage: {fileID: 1688931221}
   idleRibbon: {fileID: 21300000, guid: f0920b341d6dc49b0adaa02dcac89e5a, type: 3}
   activeRibbon: {fileID: 21300000, guid: 8464a98a6654546078e252ec7852d070, type: 3}
-  actionPrompt: {fileID: 1410622906}
+  actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
 --- !u!114 &2063527663
@@ -13716,12 +13716,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 380, y: 104}
   m_Pivot: {x: 0, y: 1}
---- !u!1660057539 &9223372036854775807
-SceneRoots:
-  m_ObjectHideFlags: 0
-  m_Roots:
-  - {fileID: 1604330734}
-  - {fileID: 448125327}
 --- !u!114 &2140000001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13734,3 +13728,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9d6214e1d60494489add15246f17584, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CroustyMenuVideoBackground
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 1604330734}
+  - {fileID: 448125327}

@@ -97,20 +97,15 @@ public class BusFlightController : MonoBehaviour
 
     private void Update()
     {
-        if (Time.timeScale <= 0f)
+        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame)
             return;
 
         Keyboard keyboard = Keyboard.current;
 
-        if (keyboard == null)
-        {
-            turnInput = pitchInput = 0f;
-            boostInput = false;
-            return;
-        }
+        var pad = Gamepad.current;
 
         // Chaque envol consomme une charge.
-        if (!IsAirborne &&
+        if (!IsAirborne && keyboard != null &&
             keyboard[activationKey].wasPressedThisFrame)
         {
             ActivateFlight();
@@ -119,23 +114,19 @@ public class BusFlightController : MonoBehaviour
         if (!IsAirborne)
             return;
 
-        bool left =
-            keyboard.qKey.isPressed ||
+        bool left = keyboard != null && (keyboard.qKey.isPressed ||
             keyboard.aKey.isPressed ||
-            keyboard.leftArrowKey.isPressed;
+            keyboard.leftArrowKey.isPressed);
 
-        bool right =
-            keyboard.dKey.isPressed ||
-            keyboard.rightArrowKey.isPressed;
+        bool right = keyboard != null && (keyboard.dKey.isPressed ||
+            keyboard.rightArrowKey.isPressed);
 
-        bool noseDown =
-            keyboard.zKey.isPressed ||
+        bool noseDown = keyboard != null && (keyboard.zKey.isPressed ||
             keyboard.wKey.isPressed ||
-            keyboard.upArrowKey.isPressed;
+            keyboard.upArrowKey.isPressed);
 
-        bool noseUp =
-            keyboard.sKey.isPressed ||
-            keyboard.downArrowKey.isPressed;
+        bool noseUp = keyboard != null && (keyboard.sKey.isPressed ||
+            keyboard.downArrowKey.isPressed);
 
         turnInput =
             (right ? 1f : 0f) -
@@ -145,7 +136,14 @@ public class BusFlightController : MonoBehaviour
             (noseUp ? 1f : 0f) -
             (noseDown ? 1f : 0f);
 
-        boostInput = keyboard.spaceKey.isPressed;
+        if (pad != null)
+        {
+            Vector2 stick = pad.leftStick.ReadValue();
+            if (Mathf.Abs(stick.x) > Mathf.Abs(turnInput)) turnInput = stick.x;
+            if (Mathf.Abs(stick.y) > Mathf.Abs(pitchInput)) pitchInput = -stick.y;
+        }
+        boostInput = (keyboard != null && keyboard.spaceKey.isPressed) ||
+            (pad != null && (pad.buttonSouth.isPressed || pad.rightTrigger.isPressed));
     }
 
     private void FixedUpdate()
@@ -186,7 +184,7 @@ public class BusFlightController : MonoBehaviour
     // ACTIVATION DU BONUS
     // =====================================================
 
-    private void ActivateFlight()
+    public void ActivateFlight()
     {
         if (!BonusEquipped || IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
             rb.isKinematic || !busController.enabled)
