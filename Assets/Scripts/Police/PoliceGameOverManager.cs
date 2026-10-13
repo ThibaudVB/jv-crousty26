@@ -1,25 +1,64 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Video;
 
 public class PoliceGameOverManager : MonoBehaviour
 {
     [Header("UI")]
     [SerializeField] private GameObject gameOverPanel;
-    [SerializeField] private TMPro.TMP_Text moneyValue;
-    [SerializeField] private TMPro.TMP_Text deliveriesValue;
-    [SerializeField] private TMPro.TMP_Text totalValue;
-    [Header("Score final")]
-    [SerializeField, Min(0)] private int pointsPerMoney = 1;
-    [SerializeField, Min(0)] private int pointsPerDelivery = 100;
+    [Header("Résultats")]
+    [SerializeField] private TMP_Text timeText;
+    [SerializeField] private TMP_Text deliveriesText;
+    [SerializeField] private TMP_Text bonusText;
+    [SerializeField] private TMP_Text explosionsText;
+    [SerializeField] private TMP_Text totalText;
 
     [Header("Bus")]
     [SerializeField] private BusController busController;
     private bool gameOver;
     public bool IsGameOver => gameOver;
 
+    private BusPetController pet;
+    private BusFlightController flight;
+    private BusGPS gps;
+    private BusRiceThrower rice;
+    private int lastPetCharges, lastFlightCharges, lastGpsCharges, lastRiceCharges;
+    private int bonusUsed;
+
+    private void Start()
+    {
+        if (busController != null)
+        {
+            pet = busController.GetComponent<BusPetController>();
+            flight = busController.GetComponent<BusFlightController>();
+            rice = busController.GetComponent<BusRiceThrower>();
+        }
+        gps = FindAnyObjectByType<BusGPS>();
+        lastPetCharges = pet != null ? pet.UsesRemaining : 0;
+        lastFlightCharges = flight != null ? flight.UsesRemaining : 0;
+        lastGpsCharges = gps != null ? gps.Charges : 0;
+        lastRiceCharges = rice != null ? rice.UsesRemaining : 0;
+    }
+
     private void Update()
     {
         if (gameOver) CroustyMenu.EnsureControllerSelection(gameOverPanel);
+        else CountBonuses();
+    }
+
+    private void CountBonuses()
+    {
+        if (pet != null) CountBonus(pet.UsesRemaining, ref lastPetCharges);
+        if (flight != null) CountBonus(flight.UsesRemaining, ref lastFlightCharges);
+        if (gps != null) CountBonus(gps.Charges, ref lastGpsCharges);
+        if (rice != null) CountBonus(rice.UsesRemaining, ref lastRiceCharges);
+    }
+
+    private void CountBonus(int charges, ref int lastCharges)
+    {
+        if (charges < lastCharges) bonusUsed += lastCharges - charges;
+        lastCharges = charges;
     }
 
     private void Awake()
@@ -37,15 +76,10 @@ public class PoliceGameOverManager : MonoBehaviour
     {
         if (gameOver)
             return;
+        CountBonuses();
         gameOver = true;
         DeliveryManager.Instance?.EndRunOnCapture();
-        var delivery = DeliveryManager.Instance;
-        int money = delivery != null ? delivery.Score : 0;
-        int delivered = delivery != null ? delivery.TotalDelivered : 0;
-        long total = (long)money * Mathf.Max(0, pointsPerMoney) + (long)delivered * Mathf.Max(0, pointsPerDelivery);
-        if (moneyValue != null) moneyValue.text = money.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
-        if (deliveriesValue != null) deliveriesValue.text = delivered.ToString();
-        if (totalValue != null) totalValue.text = $"Total : {total} Pts";
+        ShowResults();
         if (busController != null)
         {
             var flight = busController.GetComponent<BusFlightController>();
@@ -55,6 +89,11 @@ public class PoliceGameOverManager : MonoBehaviour
         if (gameOverPanel != null)
         {
             CroustyPanelMotion.Show(gameOverPanel);
+            foreach (var video in gameOverPanel.GetComponentsInChildren<VideoPlayer>(true))
+            {
+                video.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
+                video.Play();
+            }
             CroustySoundDesignManager.PlayUI(CroustySound.Paper);
             CroustySoundDesignManager.PlayUI(CroustySound.Alarm);
         }
@@ -62,6 +101,23 @@ public class PoliceGameOverManager : MonoBehaviour
         Cursor.visible = true;
         Time.timeScale = 0f;
         Debug.Log(timeout ? "Game Over : livraison hors delai." : "Game Over : la police a immobilise le bus.", this);
+    }
+
+    private void ShowResults()
+    {
+        var delivery = DeliveryManager.Instance;
+        var crash = busController != null ? busController.GetComponent<BusCarCrash>() : null;
+        float seconds = Time.timeSinceLevelLoad;
+        SetText(timeText, $"{Mathf.FloorToInt(seconds / 60f):00}:{Mathf.FloorToInt(seconds % 60f):00}:{Mathf.FloorToInt(seconds * 100f % 100f):00}");
+        SetText(deliveriesText, delivery != null ? delivery.TotalDelivered.ToString() : "0");
+        SetText(bonusText, bonusUsed.ToString());
+        SetText(explosionsText, crash != null ? crash.CarsExploded.ToString() : "0");
+        SetText(totalText, delivery != null ? delivery.Score.ToString() : "0");
+    }
+
+    private static void SetText(TMP_Text text, string value)
+    {
+        if (text != null) text.text = value;
     }
 
     public void RestartLevel()
