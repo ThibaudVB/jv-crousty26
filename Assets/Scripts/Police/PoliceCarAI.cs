@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // One police car. On patrol it is an ordinary CityTrafficCar (lanes, lights, priorities);
-// in pursuit it drives itself: straight at the bus while it is in sight, otherwise along
+// in pursuit it gets behind the bus before attempting a rear-end hit, otherwise follows
 // the street graph to where the bus was last reported. PoliceChaseManager decides.
 public class PoliceCarAI : MonoBehaviour
 {
@@ -50,7 +50,7 @@ public class PoliceCarAI : MonoBehaviour
         Renderer[] lights, Material dark, Material red, Material blue)
     {
         manager = owner; city = streets; HalfLength = halfLength;
-        approachSide = (owner.Cars.Count % 3) - 1;
+        approachSide = owner.Cars.Count % 2 == 0 ? -1f : 1f;
         beacons = lights; beaconDark = dark; beaconRed = red; beaconBlue = blue;
         body = GetComponent<Rigidbody>();
         shape = GetComponent<BoxCollider>();
@@ -110,10 +110,18 @@ public class PoliceCarAI : MonoBehaviour
         if (!city.IsAreaReady(position)) { Speed = 0f; IsRammingBus = false; return; }
         Vector3 forward = Quaternion.Euler(0, yaw, 0) * Vector3.forward;
         Vector3 toBus = Flat(manager.BusPosition - position);
-        // Drive into the bus on a clear short approach, with a recovery after each impact.
+        Vector3 busForward = Flat(manager.BusBody.rotation * Vector3.forward).normalized;
+        Vector3 fromBus = -toBus;
+        float behind = -Vector3.Dot(fromBus, busForward);
+        float lateral = Mathf.Abs(Vector3.Dot(fromBus, Vector3.Cross(Vector3.up, busForward)));
+        float busSpeed = Vector3.Dot(manager.BusVelocity, busForward);
+        // A ram is a catch-up manoeuvre, never a head-on or side attack.
         IsRammingBus = InPursuit && SeesBus && !IsBlinded && RiceSpeedFactor > .9f &&
             Time.time >= nextRam && Time.time >= reverseUntil &&
-            toBus.sqrMagnitude < 32f * 32f && Vector3.Angle(forward, toBus) < 40f &&
+            manager.CanAttemptRearRam(this) && busSpeed > 2f && Speed > busSpeed + .5f &&
+            behind > manager.BusHalfLength && lateral < 2.5f &&
+            Vector3.Dot(forward, busForward) > .85f &&
+            toBus.sqrMagnitude < 26f * 26f && Vector3.Angle(forward, toBus) < 20f &&
             StaticClearance(position, toBus.normalized, toBus.magnitude) >= toBus.magnitude;
         float top = manager.ChaseSpeed;
         float desired;
@@ -136,19 +144,21 @@ public class PoliceCarAI : MonoBehaviour
         }
         else if (IsRammingBus)
         {
-            // Aim at the body, not a point ahead that would create a roadblock.
-            goal = manager.BusPosition;
-            desired = Mathf.Max(top, manager.BusVelocity.magnitude + 6f);
+            goal = manager.BusPosition - busForward * manager.BusHalfLength;
+            desired = Mathf.Min(top, busSpeed + manager.RamClosingSpeed);
         }
         else if (SeesBus && toBus.sqrMagnitude < 75f * 75f &&
             StaticClearance(position, toBus.normalized, toBus.magnitude) >= toBus.magnitude)
         {
-            goal = manager.BusPosition;
-            desired = top;
+            goal = PursuitPoint(position, busForward);
+            Vector3 toGoal = Flat(goal - position);
+            if (StaticClearance(position, toGoal.normalized, toGoal.magnitude) < toGoal.magnitude)
+                goal = RoutePoint(position, goal, ref top);
+            desired = Mathf.Min(top, Mathf.Max(6f, busSpeed + Mathf.Clamp((toBus.magnitude - 10f) * .3f, 0f, 6f)));
         }
         else
         {
-            goal = RoutePoint(position, SeesBus ? manager.BusPosition : manager.TrackedPosition, ref top);
+            goal = RoutePoint(position, SeesBus ? PursuitPoint(position, busForward) : manager.TrackedPosition, ref top);
             desired = top;
         }
 
@@ -202,6 +212,39 @@ public class PoliceCarAI : MonoBehaviour
     {
         if (beacons == null) return;
         SetBeacons(!IsDestroyed && State != Mode.Patrol, Mathf.FloorToInt(Time.time * 6f));
+    }
+
+    private Vector3 PursuitPoint(Vector3 position, Vector3 busForward)
+    {
+        Vector3 right = Vector3.Cross(Vector3.up, busForward);
+        Vector3 offset = Flat(position - manager.BusPosition);
+        float along = Vector3.Dot(offset, busForward);
+        float side = Vector3.Dot(offset, right);
+        // An officer in front first moves out of the bus's path, then joins the tail.
+        if (along > -manager.BusHalfLength && Mathf.Abs(side) < 8f)
+        {
+            float flank = Mathf.Abs(side) > 1f ? Mathf.Sign(side) : approachSide;
+            return manager.BusPosition + busForward * (Mathf.Max(0f, along) + 5f) + right * flank * 12f;
+        }
+        return manager.BusPosition - busForward * (manager.BusHalfLength + HalfLength + 5f) +
+            right * (along > -manager.BusHalfLength ? Mathf.Sign(side) * 8f : approachSide);
+    }
+
+    public bool IsRearRamCollision(Collision collision)
+    {
+        if (!IsRammingBus || !InPursuit || IsDestroyed || IsBlinded || RiceSpeedFactor < .9f || manager == null) return false;
+        var busBox = manager.BusBody.GetComponent<BoxCollider>();
+        if (busBox == null) return false;
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            var contact = collision.GetContact(i);
+            Vector3 local = busBox.transform.InverseTransformPoint(contact.point) - busBox.center;
+            if (local.z > -busBox.size.z * .5f + .7f) continue;
+            if (Mathf.Abs(Vector3.Dot(contact.normal, busBox.transform.forward)) < .5f) continue;
+            if (Mathf.Abs(Vector3.Dot(collision.relativeVelocity, busBox.transform.forward)) < .5f) continue;
+            return true;
+        }
+        return false;
     }
 
     private void SetBeacons(bool on, int phase)
@@ -298,7 +341,8 @@ public class PoliceCarAI : MonoBehaviour
         if (!IsDestroyed && manager != null && collision.rigidbody != null && collision.rigidbody == manager.BusBody)
         {
             manager.Provoked(this);
-            nextRam = Time.time + 2.2f;
+            if (IsRearRamCollision(collision)) manager.RearRamContact();
+            nextRam = Time.time + 3.5f;
             // Keep IsRammingBus through this callback so BusDamage sees the same impact state.
         }
     }

@@ -23,9 +23,9 @@ public class BusDamage : MonoBehaviour
     [Tooltip("Hauteur de chute (m) à partir de laquelle l'atterrissage abîme le bus")]
     public float fallDamageHeight = 15f;
 
-    [Header("Vitesse")]
-    [Tooltip("Perte ajoutée à chaque choc : 0.85 = -15 %, cumul plafonné à -50 %.")]
-    [Range(0.3f, 1f)] public float speedMultiplier = 0.85f;
+    [Header("Résistance")]
+    [Tooltip("Nombre de chocs dommageables avant destruction. Le garage remet ce compteur à zéro.")]
+    [Min(1)] public int hitsToDestroy = 10;
 
     [Header("Carrosserie")]
     [Tooltip("Noircissement de la carrosserie une fois abîmé (0 = rien, 1 = tout noir)")]
@@ -53,6 +53,7 @@ public class BusDamage : MonoBehaviour
 
     // Infos pour les autres scripts
     public bool IsDamaged { get; private set; }
+    public int HitsTaken { get; private set; }
     public float DamagePenalty { get; private set; }
     public float SpeedMultiplier => isActiveAndEnabled ? 1f - DamagePenalty : 1f;
     public event System.Action Damaged; // appelé à chaque choc (le gérant réagit)
@@ -128,6 +129,7 @@ public class BusDamage : MonoBehaviour
     public void ExtinguishFire()
     {
         IsDamaged = false;
+        HitsTaken = 0;
         DamagePenalty = 0f;
         lastHitTime = Time.time;
         for (int i = 0; i < materials.Count; i++)
@@ -147,19 +149,15 @@ public class BusDamage : MonoBehaviour
         var garage = GetComponent<BusGarageRepair>();
         if (garage != null && garage.IsGarage(collision.collider.transform)) return;
         var police = collision.collider.GetComponentInParent<PoliceCarAI>();
-        if (police != null && police.IsRammingBus && !police.IsDestroyed)
+        var crash = GetComponent<BusCarCrash>();
+        if (police != null)
         {
-            // Reaching the limit is survivable; a subsequent police ram ends the run.
-            if (DamagePenalty >= .5f)
-            {
-                lastHitTime = Time.time;
-                if (catchZone != null) catchZone.SetProgress(1f);
-                return;
-            }
+            if (police.IsDestroyed || crash != null && crash.TryResolvePoliceCollision(collision)) return;
+            // Police only inflict damage with an actual rear-end pursuit impact.
+            if (!police.IsRearRamCollision(collision)) return;
             TakeHit(collision.contactCount > 0 ? collision.GetContact(0).point : transform.position);
             return;
         }
-        var crash = GetComponent<BusCarCrash>();
         if (crash != null && crash.WillDestroy(collision.collider)) return;
 
         float floorY = (body != null ? body.bounds.min.y : rb.position.y) + curbHeight;
@@ -194,13 +192,16 @@ public class BusDamage : MonoBehaviour
     {
         bool cooldownOver = Time.time - lastHitTime >= hitCooldown;
         bool gameLost = DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed;
-        return cooldownOver && !gameLost && (catchZone == null || !catchZone.IsCaught);
+        return cooldownOver && HitsTaken < Mathf.Max(1, hitsToDestroy) && !gameLost && (catchZone == null || !catchZone.IsCaught);
     }
 
     private void TakeHit(Vector3 point)
     {
+        if (!CanTakeHit()) return;
         lastHitTime = Time.time;
-        DamagePenalty = Mathf.Min(.5f, DamagePenalty + Mathf.Clamp01(1f - speedMultiplier));
+        HitsTaken++;
+        // Five percent per hit with the default ten-hit resistance; never more than 50%.
+        DamagePenalty = .5f * Mathf.Clamp01((float)HitsTaken / Mathf.Max(1, hitsToDestroy));
         IsDamaged = true;
         DarkenBody();
 
@@ -214,6 +215,9 @@ public class BusDamage : MonoBehaviour
         // Petite bouffée de fumée à l'endroit du choc
         for (int i = 0; i < 6; i++)
             EmitPuff(point + Random.insideUnitSphere * 0.5f, 0.5f, 0.9f);
+
+        if (HitsTaken >= Mathf.Max(1, hitsToDestroy) && catchZone != null)
+            catchZone.SetProgress(1f);
     }
 
     // ---------- CHUTE ----------

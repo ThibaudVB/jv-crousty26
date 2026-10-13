@@ -10,6 +10,8 @@ public class BusCarCrash : MonoBehaviour
 
     [Header("Vitesse minimale pour exploser une voiture")]
     public float explosionSpeedKmh = 60f;
+    [Tooltip("Choc avec l'avant du bus nécessaire pour détruire une voiture de police.")]
+    public float policeFrontImpactKmh = 15f;
 
     [Header("Explosion")]
     public GameObject explosionPrefab;
@@ -43,7 +45,7 @@ public class BusCarCrash : MonoBehaviour
         Vector3 flat = velocityBeforeImpact;
         flat.y = 0f;
         lastSpeedKmh = flat.magnitude * 3.6f;
-        if (lastSpeedKmh < explosionSpeedKmh || busCollider == null) return;
+        if (lastSpeedKmh < Mathf.Min(explosionSpeedKmh, policeFrontImpactKmh) || busCollider == null) return;
 
         // Remove cars just before the physics step reaches them, avoiding the contact impulse.
         Vector3 scale = busCollider.transform.lossyScale;
@@ -53,7 +55,11 @@ public class BusCarCrash : MonoBehaviour
             halfSize, velocityBeforeImpact.normalized, impactHits, busCollider.transform.rotation,
             velocityBeforeImpact.magnitude * Time.fixedDeltaTime + .05f, ~0, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < count; i++)
-            TryDestroyCar(impactHits[i].collider.transform);
+        {
+            if (impactHits[i].collider.GetComponentInParent<PoliceCarAI>() != null &&
+                Mathf.Abs(Vector3.Dot(impactHits[i].normal, transform.forward)) < .5f) continue;
+            TryDestroyCar(impactHits[i].collider, impactHits[i].point, lastSpeedKmh);
+        }
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -61,23 +67,67 @@ public class BusCarCrash : MonoBehaviour
         var police = collision.collider.GetComponentInParent<PoliceCarAI>();
         GameObject car = police != null ? police.gameObject : FindCarWithTag(collision.collider.transform);
         if (car == null) return;
-        if (police != null && (police.IsDestroyed || police.IsRammingBus)) return;
+        if (police != null)
+        {
+            TryResolvePoliceCollision(collision);
+            return;
+        }
 
         // Trop lent : simple choc, la voiture reste
         if (lastSpeedKmh < explosionSpeedKmh) { CroustySoundDesignManager.Play(CroustySound.Horn,car.transform.position); return; }
 
-        if (!TryDestroyCar(collision.collider.transform)) return;
+        if (!TryDestroyCar(collision.collider, collision.GetContact(0).point, lastSpeedKmh)) return;
 
         // Fallback for contacts missed by the sweep: preserve momentum and steering.
+        RestoreMomentum();
+    }
+
+    private void RestoreMomentum()
+    {
         rb.linearVelocity = velocityBeforeImpact;
         rb.angularVelocity = angularVelocityBeforeImpact;
     }
 
-    private bool TryDestroyCar(Transform hit)
+    // Shared by both collision callbacks so their execution order cannot change the winner.
+    public bool TryResolvePoliceCollision(Collision collision)
+    {
+        if (!isActiveAndEnabled) return false;
+        var police = collision.collider.GetComponentInParent<PoliceCarAI>();
+        if (police == null) return false;
+        if (police.IsDestroyed) return true;
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            var contact = collision.GetContact(i);
+            if (Mathf.Abs(Vector3.Dot(contact.normal, transform.forward)) < .5f) continue;
+            float closingKmh = Mathf.Abs(Vector3.Dot(collision.relativeVelocity, contact.normal)) * 3.6f;
+            if (TryDestroyCar(collision.collider, contact.point, closingKmh))
+            {
+                RestoreMomentum();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool IsFrontImpact(Vector3 point)
+    {
+        if (busCollider == null) return false;
+        Vector3 local = busCollider.transform.InverseTransformPoint(point) - busCollider.center;
+        return local.z >= busCollider.size.z * .5f - .7f &&
+            Mathf.Abs(local.x) <= busCollider.size.x * .5f + .5f;
+    }
+
+    private bool TryDestroyCar(Collider hit, Vector3 point, float impactKmh)
     {
         var police = hit.GetComponentInParent<PoliceCarAI>();
-        GameObject car = police != null ? police.gameObject : FindCarWithTag(hit);
-        if (car == null || police != null && (police.IsDestroyed || police.IsRammingBus) || !destroyedCars.Add(car)) return false;
+        GameObject car = police != null ? police.gameObject : FindCarWithTag(hit.transform);
+        if (car == null) return false;
+        if (police != null)
+        {
+            if (police.IsDestroyed || !IsFrontImpact(point) || impactKmh < policeFrontImpactKmh) return false;
+        }
+        else if (lastSpeedKmh < explosionSpeedKmh) return false;
+        if (!destroyedCars.Add(car)) return false;
         if (police != null) police.DestroyByBus();
         else if (policeManager != null) policeManager.CivilianCarDestroyed(rb);
         ExplodeCar(car);
@@ -86,9 +136,10 @@ public class BusCarCrash : MonoBehaviour
 
     public bool WillDestroy(Collider other)
     {
-        if (!isActiveAndEnabled || lastSpeedKmh < explosionSpeedKmh) return false;
+        if (!isActiveAndEnabled) return false;
         var police = other.GetComponentInParent<PoliceCarAI>();
-        return police != null ? !police.IsRammingBus : FindCarWithTag(other.transform) != null;
+        if (police != null) return police.IsDestroyed;
+        return lastSpeedKmh >= explosionSpeedKmh && FindCarWithTag(other.transform) != null;
     }
 
     // Remonte la hiérarchie : le tag peut être sur le collider ou sur un parent
