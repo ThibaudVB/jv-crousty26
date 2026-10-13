@@ -15448,6 +15448,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CroustyBonusHUD
   singleCardMode: 1
   selectedBonus: 0
+  inventorySlotIndex: 0
   gps:
     artwork: {fileID: 1217686688}
     nameText: {fileID: 565292420}
@@ -17220,6 +17221,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CroustyBonusHUD
   singleCardMode: 1
   selectedBonus: 0
+  inventorySlotIndex: 1
   gps:
     artwork: {fileID: 23498230}
     nameText: {fileID: 1270599921}

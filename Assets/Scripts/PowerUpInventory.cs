@@ -1,9 +1,12 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 public sealed class PowerUpInventory : MonoBehaviour
 {
+    public enum PowerUpType { Pet, GPS, Rice, Flight }
+
     [System.Serializable]
     public sealed class Slot
     {
@@ -13,11 +16,13 @@ public sealed class PowerUpInventory : MonoBehaviour
         public Sprite emptySprite;
         [Tooltip("Optionnel : affiche le nombre de charges")]
         public Text counter;
+        public PowerUpType powerUp;
+        [System.NonSerialized] public bool occupied;
         [System.NonSerialized] public int charges;
 
         public void Refresh()
         {
-            bool filled = charges > 0;
+            bool filled = occupied && charges > 0;
             if (image != null)
             {
                 var sprite = filled ? filledSprite : emptySprite;
@@ -32,49 +37,131 @@ public sealed class PowerUpInventory : MonoBehaviour
     [Range(0, 3)] public int startingCharges = 0;
 
     public bool HasCharge => primary != null && primary.charges > 0;
+    public PowerUpType? PrimaryPower => primary != null && primary.occupied ? primary.powerUp : (PowerUpType?)null;
     public int TotalCharges => (primary != null ? primary.charges : 0) +
                                (secondary != null ? secondary.charges : 0);
-    public bool CanAddCharges => TotalCharges < 3;
+    public bool CanAddCharges => !primary.occupied || !secondary.occupied;
 
-    private void Awake()
+    public static PowerUpInventory EnsureFor(GameObject owner)
     {
-        Initialize(startingCharges);
+        PowerUpInventory inventory = owner.GetComponent<PowerUpInventory>();
+        if (inventory == null) inventory = owner.AddComponent<PowerUpInventory>();
+        inventory.EnsureSlots();
+        return inventory;
     }
 
-    public void Initialize(int charges)
+    public void Initialize()
     {
-        if (primary == null) primary = new Slot();
-        if (secondary == null) secondary = new Slot();
-        primary.charges = Mathf.Clamp(charges, 0, 3);
-        secondary.charges = 0;
+        EnsureSlots();
+        Clear(primary);
+        Clear(secondary);
         RefreshAll();
     }
 
-    // Appelé par les Power Box. Renvoie false si aucun emplacement n'est disponible.
-    public bool TryAdd(int amount)
+    private void EnsureSlots()
     {
-        if (amount <= 0 || TotalCharges + amount > 3) return false;
-        if (primary.charges <= 0) primary.charges = amount;
-        else if (primary.charges + amount <= 3) primary.charges += amount;
-        else if (secondary.charges <= 0) secondary.charges = amount;
-        else if (secondary.charges + amount <= 3) secondary.charges += amount;
-        else return false;
+        if (primary == null) primary = new Slot();
+        if (secondary == null) secondary = new Slot();
+    }
+
+    public bool HasPower(PowerUpType powerUp)
+    {
+        return (primary.occupied && primary.powerUp == powerUp) ||
+               (secondary.occupied && secondary.powerUp == powerUp);
+    }
+
+    public bool CanAddPower(PowerUpType powerUp)
+    {
+        return !primary.occupied || !secondary.occupied;
+    }
+
+    public PowerUpType? GetPowerAt(int index)
+    {
+        Slot slot = GetSlot(index);
+        return slot != null && slot.occupied ? slot.powerUp : (PowerUpType?)null;
+    }
+
+    public int GetChargesAt(int index)
+    {
+        Slot slot = GetSlot(index);
+        return slot != null && slot.occupied ? slot.charges : 0;
+    }
+
+    public bool TryAddPower(PowerUpType powerUp, int amount)
+    {
+        if (amount <= 0) return false;
+
+        Slot slot = !primary.occupied ? primary : !secondary.occupied ? secondary : null;
+        if (slot == null || amount > 3) return false;
+        slot.powerUp = powerUp;
+        slot.occupied = true;
+        slot.charges = amount;
         RefreshAll();
         return true;
     }
 
-    // Appelé par BusPetController quand le power-up est utilisé.
-    public void Consume()
+    public bool TryActivatePrimary()
     {
-        if (primary.charges <= 0) return;
-        primary.charges--;
-        if (primary.charges <= 0)
+        if (!HasCharge) return false;
+        switch (primary.powerUp)
         {
-            // Le slot 2 passe dans le slot 1
-            primary.charges = secondary.charges;
-            secondary.charges = 0;
+            case PowerUpType.Pet:
+                BusPetController pet = GetComponent<BusPetController>();
+                return pet != null && pet.TryActivate();
+            case PowerUpType.GPS:
+                BusGPS gps = GetComponent<BusGPS>();
+                if (gps == null)
+                    gps = FindAnyObjectByType<BusGPS>();
+                return gps != null && gps.SelectNext();
+            case PowerUpType.Rice:
+                BusRiceThrower rice = GetComponent<BusRiceThrower>();
+                return rice != null && rice.TryActivate();
+            case PowerUpType.Flight:
+                BusFlightController flight = GetComponent<BusFlightController>();
+                if (flight == null) return false;
+                int chargesBeforeActivation = flight.UsesRemaining;
+                flight.ActivateFlight();
+                return flight.UsesRemaining < chargesBeforeActivation;
+            default:
+                return false;
+        }
+    }
+
+    private void Update()
+    {
+        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame || Keyboard.current == null)
+            return;
+        if (Keyboard.current.eKey.wasPressedThisFrame)
+            TryActivatePrimary();
+    }
+
+    public void Consume(PowerUpType powerUp)
+    {
+        Slot slot = primary.occupied && primary.powerUp == powerUp ? primary :
+                    secondary.occupied && secondary.powerUp == powerUp ? secondary : null;
+        if (slot == null || slot.charges <= 0) return;
+
+        slot.charges--;
+        if (slot.charges == 0)
+        {
+            Clear(slot);
+            if (slot == primary && secondary.occupied)
+            {
+                primary.powerUp = secondary.powerUp;
+                primary.occupied = true;
+                primary.charges = secondary.charges;
+                Clear(secondary);
+            }
         }
         RefreshAll();
+    }
+
+    private Slot GetSlot(int index) => index == 0 ? primary : index == 1 ? secondary : null;
+
+    private static void Clear(Slot slot)
+    {
+        slot.occupied = false;
+        slot.charges = 0;
     }
 
     private void RefreshAll()

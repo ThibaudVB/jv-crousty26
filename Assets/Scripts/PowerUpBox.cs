@@ -55,22 +55,47 @@ public sealed class PowerUpBox : MonoBehaviour
     {
         if (!available) return;
 
+        var bus = other.attachedRigidbody != null
+            ? other.attachedRigidbody.GetComponent<BusController>()
+            : other.GetComponentInParent<BusController>();
+        if (bus == null) return;
+
+        PowerUpInventory.EnsureFor(bus.gameObject);
+
         var candidates = new List<System.Func<bool>>(4);
-        var pet = other.GetComponentInParent<BusPetController>();
-        var gps = other.GetComponentInParent<BusGPS>();
-        var rice = other.GetComponentInParent<BusRiceThrower>();
-        var flight = other.GetComponentInParent<BusFlightController>();
+        var candidateTypes = new List<CroustyBonusHUD.SelectedBonus>(4);
+        var pet = bus.GetComponent<BusPetController>();
+        var gps = bus.GetComponent<BusGPS>();
+        var rice = bus.GetComponent<BusRiceThrower>();
+        var flight = bus.GetComponent<BusFlightController>();
         if (gps == null) gps = FindAnyObjectByType<BusGPS>();
 
         if (pet != null && pet.CanReceiveCharges)
+        {
             candidates.Add(() => pet.AddCharges(chargesGiven, 3));
+            candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Pet);
+        }
         if (gps != null && gps.CanReceiveCharges)
+        {
             candidates.Add(() => gps.AddCharges(chargesGiven, 3));
+            candidateTypes.Add(CroustyBonusHUD.SelectedBonus.GPS);
+        }
         if (rice != null && rice.CanReceiveCharges)
+        {
             candidates.Add(() => rice.AddCharges(chargesGiven, 3));
+            candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Rice);
+        }
         if (flight != null && flight.CanReceiveCharges)
+        {
             candidates.Add(() => flight.AddCharges(chargesGiven, 3));
-        if (candidates.Count == 0 || !candidates[Random.Range(0, candidates.Count)]()) return;
+            candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Flight);
+        }
+        if (candidates.Count == 0) return;
+        int awardedIndex = Random.Range(0, candidates.Count);
+        if (!candidates[awardedIndex]()) return;
+
+        foreach (CroustyBonusHUD hud in FindObjectsByType<CroustyBonusHUD>())
+            hud.SelectBonus(candidateTypes[awardedIndex]);
 
         if (pickupSound != null)
             AudioSource.PlayClipAtPoint(pickupSound, transform.position, pickupVolume);

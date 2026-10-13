@@ -18,7 +18,8 @@ public class BusFlightController : MonoBehaviour
     [Range(0, 3)] public int startingCharges = 0;
     public int UsesRemaining { get; private set; }
     public bool BonusEquipped { get; set; } = true;
-    public bool CanReceiveCharges => UsesRemaining < 3;
+    public bool CanReceiveCharges => UsesRemaining < 3 &&
+        (inventory == null || inventory.CanAddPower(PowerUpInventory.PowerUpType.Flight));
     [Min(1f)] public float flightDuration = 15f;
 
     [Header("Impulsion initiale")]
@@ -63,6 +64,7 @@ public class BusFlightController : MonoBehaviour
     private Rigidbody rb;
     private BusController busController;
     private BusWheelRig wheelRig;
+    private PowerUpInventory inventory;
 
     private WheelCollider[] wheelColliders;
     private bool[] originalWheelStates;
@@ -89,6 +91,9 @@ public class BusFlightController : MonoBehaviour
     private void Awake()
     {
         UsesRemaining = startingCharges;
+        inventory = PowerUpInventory.EnsureFor(gameObject);
+        if (inventory != null && UsesRemaining > 0)
+            inventory.TryAddPower(PowerUpInventory.PowerUpType.Flight, UsesRemaining);
         rb = GetComponent<Rigidbody>();
         busController = GetComponent<BusController>();
         wheelRig = GetComponent<BusWheelRig>();
@@ -100,6 +105,8 @@ public class BusFlightController : MonoBehaviour
     {
         int addedAmount = Mathf.Min(amount, max - UsesRemaining);
         if (addedAmount <= 0) return false;
+        if (inventory != null && !inventory.TryAddPower(PowerUpInventory.PowerUpType.Flight, addedAmount))
+            return false;
         UsesRemaining += addedAmount;
         BonusEquipped = true;
         return true;
@@ -113,13 +120,6 @@ public class BusFlightController : MonoBehaviour
         Keyboard keyboard = Keyboard.current;
 
         var pad = Gamepad.current;
-
-        // Chaque envol consomme une charge.
-        if (!IsAirborne && keyboard != null &&
-            keyboard[activationKey].wasPressedThisFrame)
-        {
-            ActivateFlight();
-        }
 
         if (!IsAirborne)
             return;
@@ -196,7 +196,8 @@ public class BusFlightController : MonoBehaviour
 
     public void ActivateFlight()
     {
-        if (!BonusEquipped || IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
+        if (IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
+            (inventory != null && inventory.PrimaryPower != PowerUpInventory.PowerUpType.Flight) ||
             rb.isKinematic || !busController.enabled)
             return;
 
@@ -259,6 +260,7 @@ public class BusFlightController : MonoBehaviour
         velocity.y = Mathf.Max(velocity.y, launchUpSpeed);
         rb.linearVelocity = velocity;
         UsesRemaining--;
+        inventory?.Consume(PowerUpInventory.PowerUpType.Flight);
         mode = FlightMode.Flying;
     }
 

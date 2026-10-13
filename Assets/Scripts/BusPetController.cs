@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(PowerUpInventory))]
 public sealed class BusPetController : MonoBehaviour
 {
     public Key activationKey = Key.P;
@@ -13,9 +14,9 @@ public sealed class BusPetController : MonoBehaviour
     [Min(1f)] public float accelerationMultiplier = 1.8f;
     [Min(0f)] public float cloudRange = 40f;
     [Range(0, 3)] public int startingCharges = 0;
-    public int UsesRemaining => inventory != null ? inventory.TotalCharges : usesRemaining;
+    public int UsesRemaining => usesRemaining;
     public bool CanReceiveCharges => UsesRemaining < 3 &&
-                                    (inventory == null || inventory.CanAddCharges);
+                                    (inventory == null || inventory.CanAddPower(PowerUpInventory.PowerUpType.Pet));
     public bool BonusEquipped { get; set; } = true;
     public float BoostRemaining { get; private set; }
     public bool IsBoosting => isActiveAndEnabled && BoostRemaining > 0f && drive != null &&
@@ -31,9 +32,10 @@ public sealed class BusPetController : MonoBehaviour
 
     private void Awake()
     {
-        inventory = GetComponent<PowerUpInventory>();
-        if (inventory != null) inventory.Initialize(startingCharges);
-        else usesRemaining = startingCharges;
+        inventory = PowerUpInventory.EnsureFor(gameObject);
+        usesRemaining = Mathf.Clamp(startingCharges, 0, 3);
+        if (usesRemaining > 0)
+            inventory.TryAddPower(PowerUpInventory.PowerUpType.Pet, usesRemaining);
     }
 
     private void Start()
@@ -71,19 +73,13 @@ public sealed class BusPetController : MonoBehaviour
 
 #endif
 
-    private void Update()
-    {
-        if (Time.timeScale <= 0f) return;
-        if (Keyboard.current != null && Keyboard.current[activationKey].wasPressedThisFrame) TryActivate();
-    }
-
     public bool TryActivate()
     {
-        if (!BonusEquipped || !isActiveAndEnabled || Time.timeScale <= 0f || drive == null || !drive.enabled ||
-            (inventory != null ? !inventory.HasCharge : UsesRemaining <= 0) ||
+        if (!isActiveAndEnabled || Time.timeScale <= 0f || drive == null || !drive.enabled ||
+            (inventory != null ? inventory.PrimaryPower != PowerUpInventory.PowerUpType.Pet : UsesRemaining <= 0) ||
             GetComponent<Rigidbody>().isKinematic) return false;
-        if (inventory != null) inventory.Consume();
-        else usesRemaining--;
+        usesRemaining--;
+        inventory.Consume(PowerUpInventory.PowerUpType.Pet);
         CroustySoundDesignManager.Play(CroustySound.Pet);
         BoostRemaining = Mathf.Max(0.1f, boostDuration);
         if (police != null) police.TryBlindWithPet(GetComponent<Rigidbody>(), blindDuration, cloudRange);
@@ -106,11 +102,9 @@ public sealed class BusPetController : MonoBehaviour
     {
         int addedAmount = Mathf.Min(amount, max - UsesRemaining);
         if (addedAmount <= 0) return false;
-        if (inventory != null)
-        {
-            if (!inventory.TryAdd(addedAmount)) return false;
-        }
-        else usesRemaining += addedAmount;
+        if (inventory != null && !inventory.TryAddPower(PowerUpInventory.PowerUpType.Pet, addedAmount))
+            return false;
+        usesRemaining += addedAmount;
         BonusEquipped = true;
         return true;
     }
