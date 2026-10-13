@@ -1,8 +1,5 @@
 using UnityEngine;
 
-// À mettre sur chaque petit personnage.
-// Quand le bus s'approche, le personnage s'enfuit en ligne droite, à la vitesse du bus (ou un peu plus)
-// pour ne jamais être rattrapé. Il traverse les murs : le déplacement est direct, sans physique.
 public class PedestrianFlee : MonoBehaviour
 {
     [Header("Détection")]
