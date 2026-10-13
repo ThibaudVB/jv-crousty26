@@ -14,7 +14,7 @@ public class BusRiceThrower : MonoBehaviour
     [Header("Touche et charges")]
     public Key activationKey = Key.E;
     [Tooltip("Nombre d'utilisations au début de la partie")]
-    [Range(0, 3)] public int startingCharges = 3;
+    [Range(0, 3)] public int startingCharges = 0;
 
     [Header("Flaque de riz")]
     [Tooltip("Rayon de la flaque de riz (m)")]
@@ -38,6 +38,8 @@ public class BusRiceThrower : MonoBehaviour
     // Charges restantes (lu par le HUD)
     public int UsesRemaining { get; private set; }
     public bool BonusEquipped { get; set; } = true;
+    public bool CanReceiveCharges => UsesRemaining < 3 &&
+        (inventory == null || inventory.CanAddPower(PowerUpInventory.PowerUpType.Rice));
 
     // Un grain en train de voler vers la route
     private class FlyingGrain
@@ -52,10 +54,12 @@ public class BusRiceThrower : MonoBehaviour
     private BusController drive;
     private BusFlightController flight;
     private BoxCollider body;
+    private PowerUpInventory inventory;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        inventory = PowerUpInventory.EnsureFor(gameObject);
         drive = GetComponent<BusController>();
         flight = GetComponent<BusFlightController>();
         body = GetComponent<BoxCollider>();
@@ -67,6 +71,8 @@ public class BusRiceThrower : MonoBehaviour
             bonusHud = FindAnyObjectByType<CroustyBonusHUD>();
 
         UsesRemaining = startingCharges;
+        if (inventory != null && UsesRemaining > 0)
+            inventory.TryAddPower(PowerUpInventory.PowerUpType.Rice, UsesRemaining);
         RefreshHud();
     }
 
@@ -74,9 +80,6 @@ public class BusRiceThrower : MonoBehaviour
     {
         if (Time.timeScale <= 0f)
             return;
-
-        if (Keyboard.current != null && Keyboard.current[activationKey].wasPressedThisFrame)
-            TryActivate();
 
         MoveFlyingGrains();
     }
@@ -86,10 +89,13 @@ public class BusRiceThrower : MonoBehaviour
     {
         bool busCanThrow = drive != null && drive.enabled && !rb.isKinematic;
         bool busIsFlying = flight != null && flight.IsAirborne;
-        if (!BonusEquipped || !isActiveAndEnabled || Time.timeScale <= 0f || UsesRemaining <= 0 || !busCanThrow || busIsFlying)
+        if (!isActiveAndEnabled || Time.timeScale <= 0f || UsesRemaining <= 0 ||
+            (inventory != null && inventory.PrimaryPower != PowerUpInventory.PowerUpType.Rice) ||
+            !busCanThrow || busIsFlying)
             return false;
 
         UsesRemaining--;
+        inventory?.Consume(PowerUpInventory.PowerUpType.Rice);
         RefreshHud();
         CroustySoundDesignManager.Play(CroustySound.Paper, transform.position);
 
@@ -131,6 +137,18 @@ public class BusRiceThrower : MonoBehaviour
     {
         if (bonusHud != null)
             bonusHud.SetRiceCharges(UsesRemaining);
+    }
+
+    public bool AddCharges(int amount, int max)
+    {
+        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        if (addedAmount <= 0) return false;
+        if (inventory != null && !inventory.TryAddPower(PowerUpInventory.PowerUpType.Rice, addedAmount))
+            return false;
+        UsesRemaining += addedAmount;
+        BonusEquipped = true;
+        RefreshHud();
+        return true;
     }
 
     // Fait voler les grains en cloche jusqu'à la route

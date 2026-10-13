@@ -1,0 +1,172 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
+
+[DisallowMultipleComponent]
+public sealed class PowerUpInventory : MonoBehaviour
+{
+    public enum PowerUpType { Pet, GPS, Rice, Flight }
+
+    [System.Serializable]
+    public sealed class Slot
+    {
+        [Tooltip("L'Image du canvas (Atouts / SecondAtouts)")]
+        public Image image;
+        public Sprite filledSprite;
+        public Sprite emptySprite;
+        [Tooltip("Optionnel : affiche le nombre de charges")]
+        public Text counter;
+        public PowerUpType powerUp;
+        [System.NonSerialized] public bool occupied;
+        [System.NonSerialized] public int charges;
+
+        public void Refresh()
+        {
+            bool filled = occupied && charges > 0;
+            if (image != null)
+            {
+                var sprite = filled ? filledSprite : emptySprite;
+                if (sprite != null) image.sprite = sprite;
+            }
+            if (counter != null) counter.text = filled ? charges.ToString() : "";
+        }
+    }
+
+    public Slot primary = new Slot();
+    public Slot secondary = new Slot();
+    [Range(0, 3)] public int startingCharges = 0;
+
+    public bool HasCharge => primary != null && primary.charges > 0;
+    public PowerUpType? PrimaryPower => primary != null && primary.occupied ? primary.powerUp : (PowerUpType?)null;
+    public int TotalCharges => (primary != null ? primary.charges : 0) +
+                               (secondary != null ? secondary.charges : 0);
+    public bool CanAddCharges => !primary.occupied || !secondary.occupied;
+
+    public static PowerUpInventory EnsureFor(GameObject owner)
+    {
+        PowerUpInventory inventory = owner.GetComponent<PowerUpInventory>();
+        if (inventory == null) inventory = owner.AddComponent<PowerUpInventory>();
+        inventory.EnsureSlots();
+        return inventory;
+    }
+
+    public void Initialize()
+    {
+        EnsureSlots();
+        Clear(primary);
+        Clear(secondary);
+        RefreshAll();
+    }
+
+    private void EnsureSlots()
+    {
+        if (primary == null) primary = new Slot();
+        if (secondary == null) secondary = new Slot();
+    }
+
+    public bool HasPower(PowerUpType powerUp)
+    {
+        return (primary.occupied && primary.powerUp == powerUp) ||
+               (secondary.occupied && secondary.powerUp == powerUp);
+    }
+
+    public bool CanAddPower(PowerUpType powerUp)
+    {
+        return !primary.occupied || !secondary.occupied;
+    }
+
+    public PowerUpType? GetPowerAt(int index)
+    {
+        Slot slot = GetSlot(index);
+        return slot != null && slot.occupied ? slot.powerUp : (PowerUpType?)null;
+    }
+
+    public int GetChargesAt(int index)
+    {
+        Slot slot = GetSlot(index);
+        return slot != null && slot.occupied ? slot.charges : 0;
+    }
+
+    public bool TryAddPower(PowerUpType powerUp, int amount)
+    {
+        if (amount <= 0) return false;
+
+        Slot slot = !primary.occupied ? primary : !secondary.occupied ? secondary : null;
+        if (slot == null || amount > 3) return false;
+        slot.powerUp = powerUp;
+        slot.occupied = true;
+        slot.charges = amount;
+        RefreshAll();
+        return true;
+    }
+
+    public bool TryActivatePrimary()
+    {
+        if (!HasCharge) return false;
+        switch (primary.powerUp)
+        {
+            case PowerUpType.Pet:
+                BusPetController pet = GetComponent<BusPetController>();
+                return pet != null && pet.TryActivate();
+            case PowerUpType.GPS:
+                BusGPS gps = GetComponent<BusGPS>();
+                if (gps == null)
+                    gps = FindAnyObjectByType<BusGPS>();
+                return gps != null && gps.SelectNext();
+            case PowerUpType.Rice:
+                BusRiceThrower rice = GetComponent<BusRiceThrower>();
+                return rice != null && rice.TryActivate();
+            case PowerUpType.Flight:
+                BusFlightController flight = GetComponent<BusFlightController>();
+                if (flight == null) return false;
+                int chargesBeforeActivation = flight.UsesRemaining;
+                flight.ActivateFlight();
+                return flight.UsesRemaining < chargesBeforeActivation;
+            default:
+                return false;
+        }
+    }
+
+    private void Update()
+    {
+        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame || Keyboard.current == null)
+            return;
+        if (Keyboard.current.eKey.wasPressedThisFrame)
+            TryActivatePrimary();
+    }
+
+    public void Consume(PowerUpType powerUp)
+    {
+        Slot slot = primary.occupied && primary.powerUp == powerUp ? primary :
+                    secondary.occupied && secondary.powerUp == powerUp ? secondary : null;
+        if (slot == null || slot.charges <= 0) return;
+
+        slot.charges--;
+        if (slot.charges == 0)
+        {
+            Clear(slot);
+            if (slot == primary && secondary.occupied)
+            {
+                primary.powerUp = secondary.powerUp;
+                primary.occupied = true;
+                primary.charges = secondary.charges;
+                Clear(secondary);
+            }
+        }
+        RefreshAll();
+    }
+
+    private Slot GetSlot(int index) => index == 0 ? primary : index == 1 ? secondary : null;
+
+    private static void Clear(Slot slot)
+    {
+        slot.occupied = false;
+        slot.charges = 0;
+    }
+
+    private void RefreshAll()
+    {
+        primary?.Refresh();
+        secondary?.Refresh();
+    }
+}
