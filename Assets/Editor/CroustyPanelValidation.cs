@@ -123,8 +123,8 @@ public static class CroustyPanelValidation
             var bonuses = UnityEngine.Object.FindAnyObjectByType<CroustyBonusHUD>();
             Require(bonuses != null, "Cartes d'atouts absentes.");
             bonuses.Refresh();
-            foreach (var pet in UnityEngine.Object.FindObjectsByType<BusPetController>(FindObjectsSortMode.None)) Check(pet, "hud", "label");
-            foreach (var fall in UnityEngine.Object.FindObjectsByType<BusFallSpeedEffect>(FindObjectsSortMode.None)) Check(fall, "canvas", "group");
+            foreach (var pet in UnityEngine.Object.FindObjectsByType<BusPetController>()) Check(pet, "hud", "label");
+            foreach (var fall in UnityEngine.Object.FindObjectsByType<BusFallSpeedEffect>()) Check(fall, "canvas", "group");
             EditorApplication.isPaused = true;
             Debug.Log("[Crousty] Test Play OK : Options, quatre onglets, Retour, Jouer, mini-carte et HUD chargés.");
         };
