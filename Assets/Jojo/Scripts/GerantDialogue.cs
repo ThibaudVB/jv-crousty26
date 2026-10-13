@@ -4,7 +4,9 @@ using UnityEngine.UI;
 
 // Boîte de dialogue du gérant en bas à gauche de l'écran :
 // portrait + étiquette "GÉRANT" + bandeau papier avec le texte qui s'écrit lettre par lettre.
-// Le gérant commente la tournée en lisant le DeliveryManager, et râle quand le bus se cogne.
+// Le gérant réagit à ce qui se passe : début de tournée, livraison réussie, partie perdue,
+// poursuite de police, boîte bonus, bus à l'arrêt... Il tire une réplique au hasard
+// dans la liste correspondante (toutes les listes se modifient dans l'Inspector).
 //
 // A placer à la main sur un GameObject vide de la scène (ex : "Gerant").
 // Deux façons de l'utiliser :
@@ -16,8 +18,8 @@ public class GerantDialogue : MonoBehaviour
     [Header("Références")]
     [Tooltip("Si vide : le DeliveryManager de la scène")]
     public DeliveryManager manager;
-    [Tooltip("Optionnel : le BusDamage du bus, pour que le gérant réagisse aux chocs")]
-    public BusDamage busDamage;
+    [Tooltip("Si vide : le PoliceChaseManager de la scène")]
+    public PoliceChaseManager police;
 
     [Header("Boîte placée dans la scène (optionnel)")]
     [Tooltip("Texte du message. Si rempli, la boîte n'est pas créée par le script.")]
@@ -36,22 +38,72 @@ public class GerantDialogue : MonoBehaviour
     [Tooltip("Titre GÉRANT en image. Si vide, il est écrit avec la police.")]
     public Sprite nameTitle;
 
-    [Header("Répliques ({0} = nombre ou points)")]
-    public string startLine = "Hop hop hop! The orders are waiting, get moving!";
-    public string ordersLeftLine = "{0} orders left, the customers are hungry!";
-    public string lastOrderLine = "Just one order left, don't give up!";
-    [Tooltip("Quand il reste peu de temps")]
-    public string hurryLine = "Hurry up, the clock is ticking!";
-    [Tooltip("{0} = points gagnés pendant la tournée")]
-    public string runCompleteLine = "Nice job! {0} points! Come back to the shop for more orders!";
-    [Tooltip("Temps écoulé ou arrêté par la police")]
-    public string failedLine = "What a disaster... The customers are still waiting!";
-    [Tooltip("Après un choc contre un mur, une voiture ou une grosse chute")]
-    public string crashLine = "Hey! Watch my car!";
-    [Tooltip("Durée d'affichage d'une réplique de choc")]
-    public float crashLineSeconds = 3f;
-    [Tooltip("Secondes restantes à partir desquelles le gérant presse le joueur")]
-    public float hurrySeconds = 15f;
+    [Header("Répliques (une est tirée au hasard dans la liste)")]
+    [Tooltip("Une tournée commence")]
+    public string[] deliveryStartLines =
+    {
+        "Here, deliver this. And don't touch the drumsticks, I counted them. Well... I counted to 3.",
+        "Order for old Mrs. Johnson. She ordered 3 days ago, but hey, she's not gonna die. Hopefully.",
+        "The chicken's still warm. Well, it was yesterday.",
+        "Careful, this order is worth more than your salary. Okay, that's not hard.",
+        "I dumped all my white sauce on it. The customer didn't ask for it, but trust me, he'll love it.",
+        "Drive fast, before the health inspector wakes up.",
+    };
+    [Tooltip("Le gérant parle tout seul quand il n'a rien dit depuis un moment")]
+    public string[] managerLines =
+    {
+        "Honestly? I don't even like Crousty chicken. I'm more of a kebab guy. Don't tell anyone.",
+        "Oh shoot, the rats tasted the order. Well... extra protein.",
+        "No, that hair is not mine. I don't think so, anyway.",
+        "The secret recipe? Chicken, breading, and a lot of prayers.",
+        "I dropped the chicken on the floor. Five-second rule. Or five minutes, I forget.",
+        "The fridge has been broken since Tuesday, but we call it 'dry-aged' now.",
+    };
+    [Tooltip("Une commande est livrée")]
+    public string[] deliverySuccessLines =
+    {
+        "Nice job. You've earned the right not to be fired today.",
+        "The customer left 5 stars. Okay, it was my mom, but it still counts.",
+        "Amazing. I'm giving you a raise. Two cents. No, one.",
+        "You're faster than Uber Eats. And cleaner than my kitchen.",
+    };
+    [Tooltip("La partie est perdue (chrono écoulé ou arrêté par la police)")]
+    public string[] deliveryFailedLines =
+    {
+        "The customer called. He's crying. So is the chicken.",
+        "You took so long the chicken had time to hatch.",
+        "Even the rats deliver faster than you. And they get paid in crumbs.",
+        "Next time, I'm sending my grandma. On a scooter.",
+    };
+    [Tooltip("La police commence à poursuivre le bus")]
+    public string[] policeChaseLines =
+    {
+        "If the cops ask, you never worked here. Neither did I, actually.",
+        "Are they after you for speeding... or for my health permits? Good question.",
+        "Throw them a drumstick, that usually calms them down.",
+        "Cops are my best customers. Just not when they're on duty.",
+    };
+    [Tooltip("Le bus ramasse une boîte bonus")]
+    public string[] bonusBoxLines =
+    {
+        "A mystery box! I don't even remember what I put in there. Surprise for both of us.",
+        "Careful, the last driver who opened one of these flew. Literally.",
+    };
+    [Tooltip("Le bus ne bouge plus depuis un moment")]
+    public string[] idleLines =
+    {
+        "Taking a break? The chicken isn't taking a break from getting cold.",
+        "Hello? Did the bus stall, or did you?",
+        "I'm not paying you by the hour to sightsee. Actually, I'm not paying you at all.",
+    };
+
+    [Header("Quand parler")]
+    [Tooltip("Le gérant dit une réplique \"Manager Lines\" s'il n'a rien dit depuis ce nombre de secondes")]
+    public float randomLineInterval = 20f;
+    [Tooltip("Secondes à l'arrêt avant que le gérant se plaigne")]
+    public float idleSeconds = 10f;
+    [Tooltip("En dessous de cette vitesse (km/h), le bus est considéré à l'arrêt")]
+    public float idleSpeedKmh = 3f;
 
     [Header("Texte")]
     public string speakerName = "GÉRANT";
@@ -80,8 +132,19 @@ public class GerantDialogue : MonoBehaviour
     private RectTransform arrow;
     private string currentMessage = "";
     private float shownLetters;         // nombre de lettres déjà écrites
-    private float crashMessageUntil;    // la réplique de choc reste affichée jusqu'à ce moment
     private float arrowBaseY = 38f;     // hauteur du triangle quand il ne sautille pas
+    private float lastSpokeTime;        // dernière fois que le gérant a parlé
+    private float idleTimer;            // secondes passées à l'arrêt
+    private bool saidFailed;            // réplique de défaite déjà dite
+    private bool wasChased;             // la police poursuivait déjà le bus
+    private int lastBonusCharges;       // charges de bonus à l'image précédente
+
+    // Bonus du bus (pour savoir quand une boîte bonus est ramassée)
+    private Rigidbody busBody;
+    private BusPetController pet;
+    private BusFlightController flight;
+    private BusGPS gps;
+    private BusRiceThrower rice;
 
     // Taille de la boîte, d'après la maquette
     private static readonly Vector2 BoxSize = new Vector2(740f, 410f);
@@ -90,10 +153,23 @@ public class GerantDialogue : MonoBehaviour
     {
         if (manager == null)
             manager = DeliveryManager.Instance;
+        if (police == null)
+            police = FindAnyObjectByType<PoliceChaseManager>();
 
-        // On s'abonne à l'événement : OnDamaged sera appelé à chaque choc du bus
-        if (busDamage != null)
-            busDamage.Damaged += OnDamaged;
+        if (manager != null)
+        {
+            // On s'abonne aux événements : la fonction est appelée quand ça arrive
+            manager.RunStarted += OnRunStarted;
+            manager.DeliveryCompleted += OnDeliveryCompleted;
+            if (manager.player != null)
+                busBody = manager.player.GetComponentInParent<Rigidbody>();
+        }
+
+        pet = FindAnyObjectByType<BusPetController>();
+        flight = FindAnyObjectByType<BusFlightController>();
+        gps = FindAnyObjectByType<BusGPS>();
+        rice = FindAnyObjectByType<BusRiceThrower>();
+        lastBonusCharges = BonusCharges();
 
         if (authoredMessage != null)
         {
@@ -106,17 +182,90 @@ public class GerantDialogue : MonoBehaviour
         {
             Build();
         }
+
+        Say(managerLines);
     }
 
     private void OnDestroy()
     {
-        if (busDamage != null)
-            busDamage.Damaged -= OnDamaged;
+        if (manager != null)
+        {
+            manager.RunStarted -= OnRunStarted;
+            manager.DeliveryCompleted -= OnDeliveryCompleted;
+        }
     }
 
-    private void OnDamaged()
+    private void OnRunStarted() { Say(deliveryStartLines); }
+    private void OnDeliveryCompleted(DeliveryPoint point) { Say(deliverySuccessLines); }
+
+    // Dit une réplique tirée au hasard dans la liste (différente de la réplique actuelle si possible)
+    private void Say(string[] lines)
     {
-        crashMessageUntil = Time.time + crashLineSeconds;
+        if (lines == null || lines.Length == 0)
+            return;
+
+        string line = lines[Random.Range(0, lines.Length)];
+        if (line == currentMessage && lines.Length > 1)
+            line = lines[(System.Array.IndexOf(lines, line) + 1) % lines.Length];
+
+        SetMessage(line);
+        lastSpokeTime = Time.time;
+    }
+
+    // Regarde ce qui se passe dans le jeu et fait parler le gérant
+    private void ReactToGame()
+    {
+        if (manager != null && manager.HasFailed)
+        {
+            if (!saidFailed)
+                Say(deliveryFailedLines);
+            saidFailed = true;
+            return;
+        }
+
+        // La police commence une poursuite
+        bool chased = police != null && police.ChaseStarted;
+        if (chased && !wasChased)
+            Say(policeChaseLines);
+        wasChased = chased;
+
+        // Une boîte bonus vient d'être ramassée : un bonus a gagné des charges
+        int charges = BonusCharges();
+        if (charges > lastBonusCharges)
+            Say(bonusBoxLines);
+        lastBonusCharges = charges;
+
+        // Le bus est à l'arrêt depuis trop longtemps
+        if (busBody != null && Time.timeScale > 0f)
+        {
+            Vector3 velocity = busBody.linearVelocity;
+            velocity.y = 0f;
+            if (velocity.magnitude * 3.6f < idleSpeedKmh)
+                idleTimer += Time.deltaTime;
+            else
+                idleTimer = 0f;
+
+            if (idleTimer >= idleSeconds)
+            {
+                Say(idleLines);
+                idleTimer = 0f;
+            }
+        }
+
+        // Rien dit depuis un moment : le gérant parle tout seul
+        if (Time.time - lastSpokeTime >= randomLineInterval)
+            Say(managerLines);
+    }
+
+    // Total des charges de tous les bonus du bus
+    private int BonusCharges()
+    {
+        int total = 0;
+        if (pet != null) total += pet.UsesRemaining;
+        if (flight != null) total += flight.UsesRemaining;
+        if (gps != null) total += gps.Charges;
+        if (rice != null) total += rice.UsesRemaining;
+        return total;
     }
 
     // Crée tous les éléments de la boîte
@@ -196,33 +345,6 @@ public class GerantDialogue : MonoBehaviour
         MessageChanged?.Invoke();
     }
 
-    // Réplique selon l'état de la tournée. null = on garde la réplique actuelle.
-    private string GetMessage()
-    {
-        if (manager.HasFailed)
-            return failedLine;
-
-        if (Time.time < crashMessageUntil)
-            return crashLine;
-
-        if (!manager.HasStarted)
-            return startLine;
-
-        if (manager.AllDelivered)
-            return string.Format(runCompleteLine, manager.LastRunScore);
-
-        if (manager.RunActive && manager.RunRemaining <= hurrySeconds)
-            return hurryLine;
-
-        if (manager.CroustyLeft == 1)
-            return lastOrderLine;
-
-        if (manager.CroustyLeft > 1)
-            return string.Format(ordersLeftLine, manager.CroustyLeft);
-
-        return null;
-    }
-
     private void Update()
     {
         if (!HasTextBox())
@@ -232,8 +354,7 @@ public class GerantDialogue : MonoBehaviour
         if (authoredCanvas != null)
             authoredCanvas.enabled = Time.timeScale > 0f;
 
-        if (manager != null)
-            SetMessage(GetMessage());
+        ReactToGame();
 
         // Effet machine à écrire (temps réel : continue pendant le game over, qui met le jeu en pause)
         if (shownLetters < currentMessage.Length)
