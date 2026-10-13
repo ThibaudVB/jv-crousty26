@@ -14,7 +14,7 @@ public class BusRiceThrower : MonoBehaviour
     [Header("Touche et charges")]
     public Key activationKey = Key.E;
     [Tooltip("Nombre d'utilisations au début de la partie")]
-    [Range(0, 3)] public int startingCharges = 3;
+    [Range(0, 3)] public int startingCharges = 0;
 
     [Header("Flaque de riz")]
     [Tooltip("Rayon de la flaque de riz (m)")]
@@ -38,6 +38,7 @@ public class BusRiceThrower : MonoBehaviour
     // Charges restantes (lu par le HUD)
     public int UsesRemaining { get; private set; }
     public bool BonusEquipped { get; set; } = true;
+    public bool CanReceiveCharges => UsesRemaining < 3;
 
     // Un grain en train de voler vers la route
     private class FlyingGrain
@@ -131,6 +132,16 @@ public class BusRiceThrower : MonoBehaviour
     {
         if (bonusHud != null)
             bonusHud.SetRiceCharges(UsesRemaining);
+    }
+
+    public bool AddCharges(int amount, int max)
+    {
+        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        if (addedAmount <= 0) return false;
+        UsesRemaining += addedAmount;
+        BonusEquipped = true;
+        RefreshHud();
+        return true;
     }
 
     // Fait voler les grains en cloche jusqu'à la route

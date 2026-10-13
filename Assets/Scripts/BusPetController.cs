@@ -12,21 +12,32 @@ public sealed class BusPetController : MonoBehaviour
     [Min(1f)] public float speedMultiplier = 1.85f;
     [Min(1f)] public float accelerationMultiplier = 1.8f;
     [Min(0f)] public float cloudRange = 40f;
-    [Range(0, 3)] public int startingCharges = 3;
-    public int UsesRemaining { get; private set; } = 3;
+    [Range(0, 3)] public int startingCharges = 0;
+    public int UsesRemaining => inventory != null ? inventory.TotalCharges : usesRemaining;
+    public bool CanReceiveCharges => UsesRemaining < 3 &&
+                                    (inventory == null || inventory.CanAddCharges);
     public bool BonusEquipped { get; set; } = true;
     public float BoostRemaining { get; private set; }
     public bool IsBoosting => isActiveAndEnabled && BoostRemaining > 0f && drive != null &&
         drive.enabled && (flight == null || !flight.IsAirborne);
+    private PowerUpInventory inventory;
+    private int usesRemaining;
+
     private BusController drive;
     private BusFlightController flight;
     private PoliceChaseManager police;
     [SerializeField] private Text label;
     [SerializeField] private GameObject hud;
 
+    private void Awake()
+    {
+        inventory = GetComponent<PowerUpInventory>();
+        if (inventory != null) inventory.Initialize(startingCharges);
+        else usesRemaining = startingCharges;
+    }
+
     private void Start()
     {
-        UsesRemaining = startingCharges;
         drive = GetComponent<BusController>();
         flight = GetComponent<BusFlightController>();
         police = FindAnyObjectByType<PoliceChaseManager>();
@@ -69,9 +80,10 @@ public sealed class BusPetController : MonoBehaviour
     public bool TryActivate()
     {
         if (!BonusEquipped || !isActiveAndEnabled || Time.timeScale <= 0f || drive == null || !drive.enabled ||
-            UsesRemaining <= 0 || BoostRemaining > 0f || (flight != null && flight.IsAirborne) ||
+            (inventory != null ? !inventory.HasCharge : UsesRemaining <= 0) ||
             GetComponent<Rigidbody>().isKinematic) return false;
-        UsesRemaining--;
+        if (inventory != null) inventory.Consume();
+        else usesRemaining--;
         CroustySoundDesignManager.Play(CroustySound.Pet);
         BoostRemaining = Mathf.Max(0.1f, boostDuration);
         if (police != null) police.TryBlindWithPet(GetComponent<Rigidbody>(), blindDuration, cloudRange);
@@ -90,4 +102,16 @@ public sealed class BusPetController : MonoBehaviour
         BoostRemaining = 0f;
     }
 
+    public bool AddCharges(int amount, int max)
+    {
+        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        if (addedAmount <= 0) return false;
+        if (inventory != null)
+        {
+            if (!inventory.TryAdd(addedAmount)) return false;
+        }
+        else usesRemaining += addedAmount;
+        BonusEquipped = true;
+        return true;
+    }
 }

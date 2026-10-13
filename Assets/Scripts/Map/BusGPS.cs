@@ -9,8 +9,9 @@ public sealed class BusGPS : MonoBehaviour
     public DeliveryManager deliveries;
     [Tooltip("Racine des routes et obstacles. A renseigner apres generation procedurale.")]
     public Transform navigationRoot;
-    [Range(0, 3)] public int startingCharges = 3;
+    [Range(0, 3)] public int startingCharges = 0;
     public int Charges { get; private set; }
+    public bool CanReceiveCharges => Charges < 3;
     public bool BonusEquipped { get; set; } = true;
     public DeliveryPoint Target { get; private set; }
     public readonly List<Vector3> Route = new List<Vector3>();
@@ -40,6 +41,15 @@ public sealed class BusGPS : MonoBehaviour
     }
     // Appel par un futur pickup : un bonus recharge jusqu'a trois livraisons.
     public void GrantBonus() { Charges = 3; Status = "[G] GPS"; }
+    public bool AddCharges(int amount, int max)
+    {
+        int addedAmount = Mathf.Min(amount, max - Charges);
+        if (addedAmount <= 0) return false;
+        Charges += addedAmount;
+        Status = "[G] GPS";
+        BonusEquipped = true;
+        return true;
+    }
 
     // Appeler apres modification/remplacement de la carte procedurale.
     public void RebuildNavigation(Transform root)

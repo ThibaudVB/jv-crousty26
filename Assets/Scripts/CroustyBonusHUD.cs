@@ -40,6 +40,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
     public sealed class Card
     {
         public Image artwork;
+        [System.NonSerialized] public Sprite filledSprite;
         public TMP_Text nameText;
         public TMP_Text countText;
         public string englishName;
@@ -53,8 +54,9 @@ public sealed class CroustyBonusHUD : MonoBehaviour
     [SerializeField] private Card rice = new Card { englishName = "RICE", frenchName = "RIZ" };
     [SerializeField] private Card flight = new Card { englishName = "FLIGHT", frenchName = "VOL" };
     [SerializeField] private Material grayMaterial;
+    [SerializeField] private Sprite emptySprite;
     [SerializeField] private BonusLanguage language = BonusLanguage.English;
-    [SerializeField, Range(0, 3)] private int riceCharges = 3;
+    [SerializeField, Range(0, 3)] private int riceCharges = 0;
     [SerializeField] private BusGPS gpsController;
     [SerializeField] private BusPetController petController;
     [SerializeField] private BusFlightController flightController;
@@ -65,6 +67,8 @@ public sealed class CroustyBonusHUD : MonoBehaviour
 
     private void Awake()
     {
+        foreach (Card card in new[] { gps, pet, rice, flight })
+            if (card.artwork != null) card.filledSprite = card.artwork.sprite;
         if (gpsController == null) gpsController = FindAnyObjectByType<BusGPS>();
         if (petController == null) petController = FindAnyObjectByType<BusPetController>();
         if (flightController == null) flightController = FindAnyObjectByType<BusFlightController>();
@@ -101,10 +105,10 @@ public sealed class CroustyBonusHUD : MonoBehaviour
 
     public void Refresh()
     {
-        Show(gps, gpsController != null ? gpsController.Charges : 3);
-        Show(pet, petController != null ? petController.UsesRemaining : 3);
+        Show(gps, gpsController != null ? gpsController.Charges : 0);
+        Show(pet, petController != null ? petController.UsesRemaining : 0);
         Show(rice, riceCharges);
-        Show(flight, flightController != null ? flightController.UsesRemaining : 3);
+        Show(flight, flightController != null ? flightController.UsesRemaining : 0);
         if (singleCardMode)
         {
             if (petController != null) petController.BonusEquipped = selectedBonus == SelectedBonus.Pet;
@@ -129,7 +133,8 @@ public sealed class CroustyBonusHUD : MonoBehaviour
 
     private void ShowSelected(Card card, SelectedBonus kind, int charges)
     {
-        if (card.artwork != null) card.artwork.transform.parent.gameObject.SetActive(selectedBonus == kind && charges > 0);
+        if (card.artwork != null)
+            card.artwork.transform.parent.gameObject.SetActive(selectedBonus == kind || charges > 0);
     }
 
     private void Show(Card card, int charges)
@@ -137,8 +142,10 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         if (card.countText != null) card.countText.text = "x" + Mathf.Max(0, charges);
         if (card.artwork != null)
         {
-            card.artwork.material = charges > 0 ? null : grayMaterial;
-            card.artwork.color = charges > 0 ? ReadyTint : EmptyTint;
+            bool available = charges > 0;
+            card.artwork.sprite = available || emptySprite == null ? card.filledSprite : emptySprite;
+            card.artwork.material = available || emptySprite != null ? null : grayMaterial;
+            card.artwork.color = available || emptySprite != null ? ReadyTint : EmptyTint;
         }
         if (card.nameText != null) card.nameText.color = charges > 0 ? Color.white : new Color(0.65f, 0.65f, 0.65f);
         if (card.countText != null) card.countText.color = charges > 0 ? Color.white : new Color(0.68f, 0.68f, 0.68f);

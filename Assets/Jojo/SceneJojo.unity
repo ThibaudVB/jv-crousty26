@@ -228,7 +228,7 @@ MonoBehaviour:
   speedMultiplier: 1.85
   accelerationMultiplier: 1.8
   cloudRange: 40
-  startingCharges: 3
+  startingCharges: 0
   label: {fileID: 1700298416}
   hud: {fileID: 508823153}
 --- !u!114 &21662981
@@ -273,7 +273,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusRiceThrower
   activationKey: 19
-  startingCharges: 3
+  startingCharges: 0
   slickRadius: 6
   slickDuration: 10
   throwDistance: 6
@@ -5474,8 +5474,9 @@ MonoBehaviour:
     frenchName: VOL
     previewCharges: 3
   grayMaterial: {fileID: 0}
+  emptySprite: {fileID: 21300000, guid: ddefb119beeccd246a85fda46cca547c, type: 3}
   language: 0
-  riceCharges: 3
+  riceCharges: 0
   gpsController: {fileID: 0}
   petController: {fileID: 21662980}
   flightController: {fileID: 0}

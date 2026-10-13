@@ -15,9 +15,10 @@ public class BusFlightController : MonoBehaviour
 
     [Header("Activation")]
     public Key activationKey = Key.F;
-    [Range(0, 3)] public int startingCharges = 3;
-    public int UsesRemaining { get; private set; } = 3;
+    [Range(0, 3)] public int startingCharges = 0;
+    public int UsesRemaining { get; private set; }
     public bool BonusEquipped { get; set; } = true;
+    public bool CanReceiveCharges => UsesRemaining < 3;
     [Min(1f)] public float flightDuration = 15f;
 
     [Header("Impulsion initiale")]
@@ -93,6 +94,15 @@ public class BusFlightController : MonoBehaviour
         wheelRig = GetComponent<BusWheelRig>();
         if (GetComponent<BusFallSpeedEffect>() == null)
             gameObject.AddComponent<BusFallSpeedEffect>();
+    }
+
+    public bool AddCharges(int amount, int max)
+    {
+        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        if (addedAmount <= 0) return false;
+        UsesRemaining += addedAmount;
+        BonusEquipped = true;
+        return true;
     }
 
     private void Update()
