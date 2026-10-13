@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 // Boîte de dialogue du gérant en bas à gauche de l'écran :
 // portrait + étiquette "GÉRANT" + bandeau papier avec le texte qui s'écrit.
@@ -9,6 +10,9 @@ using UnityEngine.UI;
 public class GerantDialogue : MonoBehaviour
 {
     public DeliveryManager manager;
+    [SerializeField] private TMP_Text authoredMessage;
+    [SerializeField] private RectTransform authoredArrow;
+    [SerializeField] private Canvas authoredCanvas;
 
     [Header("Images (auto depuis Resources/Gerant si vides)")]
     public Sprite portrait;
@@ -29,10 +33,6 @@ public class GerantDialogue : MonoBehaviour
     public string runCompleteLine = "Nice job! {0} points! Come back to the shop for more orders!";
     [Tooltip("Temps écoulé ou arrêté par la police")]
     public string failedLine = "What a disaster... The customers are still waiting!";
-    [Tooltip("Après un choc contre un mur, une voiture ou une grosse chute")]
-    public string crashLine = "Hey! Watch my car!";
-    [Tooltip("Durée d'affichage d'une réplique de choc")]
-    public float crashLineSeconds = 3f;
     [Tooltip("Secondes restantes à partir desquelles le gérant presse le joueur")]
     public float hurrySeconds = 15f;
 
@@ -61,9 +61,7 @@ public class GerantDialogue : MonoBehaviour
     private RectTransform arrow;
     private string currentMessage = "";
     private float shownLetters;
-    private BusDamage damage;
-    private string crashMessage;
-    private float crashMessageUntil;
+    private float authoredArrowY;
 
     // Taille de la boîte, d'après la maquette
     private static readonly Vector2 BoxSize = new Vector2(740f, 410f);
@@ -75,11 +73,8 @@ public class GerantDialogue : MonoBehaviour
                 ? DeliveryManager.Instance
                 : FindAnyObjectByType<DeliveryManager>();
 
-        damage = FindAnyObjectByType<BusDamage>();
-        if (damage != null)
-            damage.Damaged += OnDamaged;
-
-        Build();
+        if (authoredMessage != null) { arrow = authoredArrow; authoredArrowY = arrow.anchoredPosition.y; }
+        else Build();
     }
 
     private void Build()
@@ -152,21 +147,9 @@ public class GerantDialogue : MonoBehaviour
         arrow.localRotation = Quaternion.Euler(0f, 0f, 180f);
     }
 
-    private void OnDestroy()
-    {
-        if (damage != null)
-            damage.Damaged -= OnDamaged;
-    }
-
-    private void OnDamaged()
-    {
-        crashMessage = crashLine;
-        crashMessageUntil = Time.time + crashLineSeconds;
-    }
-
     public void SetMessage(string message)
     {
-        if (messageText == null || message == null || message == currentMessage)
+        if ((messageText == null && authoredMessage == null) || message == null || message == currentMessage)
             return;
 
         currentMessage = message;
@@ -178,9 +161,6 @@ public class GerantDialogue : MonoBehaviour
     {
         if (manager.HasFailed)
             return failedLine;
-
-        if (Time.time < crashMessageUntil)
-            return crashMessage;
 
         if (!manager.HasStarted)
             return startLine;
@@ -201,8 +181,9 @@ public class GerantDialogue : MonoBehaviour
 
     private void Update()
     {
-        if (messageText == null)
+        if (messageText == null && authoredMessage == null)
             return;
+        if (authoredCanvas != null) authoredCanvas.enabled = Time.timeScale > 0;
 
         if (manager != null)
             SetMessage(GetMessage());
@@ -212,13 +193,14 @@ public class GerantDialogue : MonoBehaviour
             shownLetters += lettersPerSecond * Time.unscaledDeltaTime;
 
         int count = Mathf.Min(currentMessage.Length, Mathf.FloorToInt(shownLetters));
-        messageText.text = currentMessage.Substring(0, count);
+        if (authoredMessage != null) authoredMessage.text = currentMessage.Substring(0, count);
+        else messageText.text = currentMessage.Substring(0, count);
 
         // Le triangle n'apparaît (et sautille) qu'une fois le texte complet
         bool finished = count >= currentMessage.Length;
         arrow.gameObject.SetActive(finished && currentMessage.Length > 0);
         arrow.anchoredPosition = new Vector2(arrow.anchoredPosition.x,
-            38f + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) * 5f);
+            (authoredMessage != null ? authoredArrowY : 38f) + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) * 5f);
     }
 
     private static Image CreateImage(Transform parent, string name, Sprite sprite, Color fallbackColor,

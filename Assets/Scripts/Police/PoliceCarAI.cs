@@ -1,242 +1,233 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
-// Voiture de police qui conduit vraiment : elle suit le chemin pris par le bus (les memes rues),
-// accelere, ralentit dans les virages et fonce droit sur le bus quand elle le voit de pres.
-// Le manager decide quand elle apparait, abandonne ou capture.
-[DefaultExecutionOrder(-20)]
-[RequireComponent(typeof(Rigidbody), typeof(BoxCollider))]
+// One police car. On patrol it is an ordinary CityTrafficCar (lanes, lights, priorities);
+// in pursuit it drives itself: straight at the bus while it is in sight, otherwise along
+// the street graph to where the bus was last reported. PoliceChaseManager decides.
 public class PoliceCarAI : MonoBehaviour
 {
-    [SerializeField] private Transform target;
-    [SerializeField] private Rigidbody targetRigidbody;
-    [SerializeField] private LayerMask groundLayers = ~0;
-    [Tooltip("Vitesse de rotation du volant (degres par seconde)")]
-    [SerializeField, Min(30f)] private float turningSpeed = 160f;
+    public enum Mode { Patrol, Chase, Return }
 
-    [Header("Conduite")]
-    [SerializeField, Min(1f)] private float maxSpeedKmh = 82f;
-    [SerializeField, Min(1f)] private float acceleration = 16f;
-    [SerializeField, Min(1f)] private float brakeDeceleration = 30f;
-    [Tooltip("Vitesse maximale dans un virage a angle droit")]
-    [SerializeField, Min(1f)] private float cornerSpeedKmh = 35f;
-    [Tooltip("La voiture vise un point du chemin a cette distance devant elle")]
-    [SerializeField, Min(1f)] private float lookAhead = 7f;
-    [Tooltip("En dessous de cette distance, si rien ne gene, elle fonce droit sur le bus")]
-    [SerializeField, Min(1f)] private float directChaseDistance = 25f;
-    [Tooltip("Ecart garde entre son pare-chocs et l'arriere du bus")]
-    [SerializeField, Min(0f)] private float bumperGap = 1f;
+    public Mode State { get; private set; } = Mode.Patrol;
+    public float Speed { get; private set; }
+    public float HalfLength { get; private set; }
+    public float BlindRemaining => Mathf.Max(0f, blindUntil - Time.time);
+    public bool IsBlinded => Time.time < blindUntil;
+    public bool InPursuit => State == Mode.Chase;
+    // Cached by the manager at a few hertz.
+    public bool SeesBus { get; set; }
 
-    private readonly RaycastHit[] groundHits = new RaycastHit[32];
-    private readonly List<Vector3> path = new List<Vector3>(512);
-    private Rigidbody rb;
-    private BoxCollider body;
-    private BoxCollider busBox;
-    private float bottomOffset;
-    private float frontOffset;
-    private bool initialized;
-    private float speed;
-    private float yaw;
-    private float slowRemaining;
-    private float slowFactor = 1f;
-    private float wobbleTime;
+    private PoliceChaseManager manager;
+    private ProceduralCity city;
+    private CityTrafficCar patrol;
+    private Rigidbody body;
+    private Renderer[] beacons;
+    private Material beaconDark, beaconRed, beaconBlue;
+    private readonly List<Vector3> route = new List<Vector3>(32);
+    private readonly RaycastHit[] groundHits = new RaycastHit[8];
+    private int routeIndex;
+    private float nextRoute, blindUntil, yaw, wobble;
+    private Vector3 routeGoal, laneTarget;
+    private Vector2Int laneFrom, laneTo;
+    private bool hasLane;
 
-    public float SpeedKmh => speed * 3.6f;
-    public bool IsSlowed => slowRemaining > 0f;
-    // Distance a plat entre le centre de la voiture et celui du bus
-    public float DistanceToTarget { get; private set; }
-    // Distance a laquelle elle colle le bus
-    public float FollowDistance => BusHalfLength + frontOffset + bumperGap;
-
-    private float BusHalfLength => busBox != null
-        ? busBox.size.z * Mathf.Abs(busBox.transform.lossyScale.z) * 0.5f : 3f;
-
-    private void Awake() => InitializeBody();
-
-    public void InitializeBody()
+    public void Init(PoliceChaseManager owner, ProceduralCity streets, float halfLength,
+        Renderer[] lights, Material dark, Material red, Material blue)
     {
-        if (initialized) return;
-        initialized = true;
-        rb = GetComponent<Rigidbody>();
-        rb.isKinematic = true;
-        rb.useGravity = false;
-        rb.detectCollisions = true;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
-        rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
-        body = GetComponent<BoxCollider>();
-        Bounds localBounds = new Bounds(body.center, body.size);
-        bool hasMesh = false;
-        // Les bounds locales restent exactes meme si le prefab est inactif ou tourne.
-        foreach (var filter in GetComponentsInChildren<MeshFilter>(true))
+        manager = owner; city = streets; HalfLength = halfLength;
+        beacons = lights; beaconDark = dark; beaconRed = red; beaconBlue = blue;
+        body = GetComponent<Rigidbody>();
+        patrol = GetComponent<CityTrafficCar>();
+        patrol.IsPolice = true;
+        patrol.Init(city, halfLength);
+        patrol.cruiseSpeed = 10f;
+    }
+
+    public void StartPatrol(Vector2Int from, Vector2Int to, Vector3 at)
+    {
+        State = Mode.Patrol;
+        city.Pursuers.Remove(transform);
+        AddPatrol();
+        patrol.enabled = true;
+        patrol.Place(from, to, at);
+        SetBeacons(false, 0);
+    }
+
+    public void StartChase()
+    {
+        if (State == Mode.Chase) return;
+        Speed = State == Mode.Patrol ? patrol.Speed : Speed;
+        State = Mode.Chase;
+        patrol.enabled = false;
+        RemovePatrol();
+        if (!city.Pursuers.Contains(transform)) city.Pursuers.Add(transform);
+        yaw = transform.eulerAngles.y;
+        route.Clear(); nextRoute = 0f;
+    }
+
+    // Lost the bus: drive back into the nearest right-hand lane, then patrol again.
+    public void ReturnToPatrol()
+    {
+        if (State != Mode.Chase) return;
+        State = Mode.Return;
+        hasLane = city.NearestLane(transform.position, transform.forward, out laneFrom, out laneTo, out laneTarget);
+        route.Clear(); nextRoute = 0f;
+    }
+
+    public void Blind(float seconds)
+    {
+        blindUntil = Mathf.Max(blindUntil, Time.time + seconds);
+        wobble = Random.value < .5f ? -1f : 1f;
+    }
+
+    private void FixedUpdate()
+    {
+        if (manager == null || State == Mode.Patrol || Time.timeScale <= 0f) return;
+        float dt = Time.fixedDeltaTime;
+        Vector3 position = body.position;
+        Vector3 forward = Quaternion.Euler(0, yaw, 0) * Vector3.forward;
+        float top = manager.ChaseSpeed;
+        float desired;
+        Vector3 goal;
+
+        if (State == Mode.Return)
         {
-            if (filter.sharedMesh == null) continue;
-            Bounds mesh = filter.sharedMesh.bounds;
-            for (int i = 0; i < 8; i++)
-            {
-                Vector3 corner = mesh.center + Vector3.Scale(mesh.extents,
-                    new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
-                Vector3 point = transform.InverseTransformPoint(filter.transform.TransformPoint(corner));
-                if (!hasMesh) { localBounds = new Bounds(point, Vector3.zero); hasMesh = true; }
-                else localBounds.Encapsulate(point);
-            }
+            if (!hasLane) { manager.Recycle(this); return; }
+            Vector3 offset = laneTarget - position; offset.y = 0;
+            if (offset.magnitude < 3f) { StartPatrol(laneFrom, laneTo, laneTarget); return; }
+            goal = offset.magnitude > 25f ? RoutePoint(position, laneTarget, ref top) : laneTarget;
+            desired = Mathf.Min(12f, top);
         }
-        body.center = localBounds.center;
-        body.size = localBounds.size;
-        bottomOffset = -localBounds.min.y * Mathf.Abs(transform.lossyScale.y);
-        frontOffset = localBounds.max.z * Mathf.Abs(transform.lossyScale.z);
-        foreach (var collider in GetComponentsInChildren<Collider>(true)) collider.enabled = false;
-        // Un trigger permet de verifier le contact sans pousser ni bloquer le bus.
-        body.isTrigger = true;
-        body.enabled = true;
-    }
-
-    public void SetTarget(Transform newTarget, Rigidbody newTargetRigidbody)
-    {
-        target = newTarget;
-        targetRigidbody = newTargetRigidbody;
-        busBox = targetRigidbody != null ? targetRigidbody.GetComponent<BoxCollider>() : null;
-    }
-
-    // Place la voiture sur le chemin du bus. route = points du chemin a suivre ensuite (du plus ancien au plus recent).
-    public void Spawn(Vector3 position, Vector3 forward, IEnumerable<Vector3> route, float startSpeedKmh)
-    {
-        InitializeBody();
-        path.Clear();
-        path.AddRange(route);
-        forward = Vector3.ProjectOnPlane(forward, Vector3.up);
-        if (forward.sqrMagnitude < 0.01f) forward = target != null ? target.forward : Vector3.forward;
-        yaw = Quaternion.LookRotation(forward, Vector3.up).eulerAngles.y;
-        speed = Mathf.Min(startSpeedKmh, maxSpeedKmh) / 3.6f;
-        slowRemaining = 0f;
-        position.y = GroundHeight(position, position.y + 1f) + bottomOffset + 0.03f;
-        Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
-        transform.SetPositionAndRotation(position, rotation);
-        rb.position = position;
-        rb.rotation = rotation;
-        DistanceToTarget = target != null ? Flat(target.position - position).magnitude : 0f;
-    }
-
-    // Nouveau point du chemin du bus, enregistre par le manager.
-    public void AddWaypoint(Vector3 point) => path.Add(point);
-
-    // Riz : la voiture glisse et roule au ralenti pendant quelques secondes.
-    public void Slow(float duration, float factor)
-    {
-        if (!IsSlowed) speed *= 0.5f;
-        slowRemaining = Mathf.Max(slowRemaining, duration);
-        slowFactor = Mathf.Clamp01(factor);
-    }
-
-    // Un pas de conduite. speedFactor < 1 : la voiture roule moins vite (aveuglee, abandon...).
-    public void Drive(float dt, float speedFactor = 1f)
-    {
-        if (target == null || targetRigidbody == null || dt <= 0f) return;
-        InitializeBody();
-
-        Vector3 position = rb.position;
-        Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
-        Vector3 busCenter = busBox != null ? busBox.transform.TransformPoint(busBox.center) : target.position;
-        Vector3 busForward = Vector3.ProjectOnPlane(target.forward, Vector3.up).normalized;
-        float busSpeed = Mathf.Max(0f, Vector3.Dot(targetRigidbody.linearVelocity, busForward));
-        DistanceToTarget = Flat(busCenter - position).magnitude;
-
-        // Oublie les points deja depasses
-        while (path.Count > 0)
+        else if (IsBlinded)
         {
-            Vector3 toPoint = Flat(path[0] - position);
-            if (toPoint.magnitude > 3f && Vector3.Dot(toPoint, forward) > 0f) break;
-            path.RemoveAt(0);
+            // Inside the cloud: brake hard and swerve.
+            goal = position + Quaternion.Euler(0, 35f * wobble, 0) * forward * 10f;
+            desired = 0f;
+        }
+        else if (SeesBus)
+        {
+            // Aim slightly ahead of the bus, more when it is far.
+            Vector3 bus = manager.BusPosition;
+            float lead = Mathf.Clamp((bus - position).magnitude / Mathf.Max(8f, Speed), 0f, 1.2f);
+            goal = bus + manager.BusVelocity * lead;
+            desired = top;
+        }
+        else
+        {
+            goal = RoutePoint(position, manager.TrackedPosition, ref top);
+            desired = top;
         }
 
-        // Cible : de pres et sans obstacle, droit derriere le bus. Sinon, un point du chemin.
-        Vector3 chasePoint = busCenter - busForward * FollowDistance;
-        bool direct = path.Count == 0 ||
-            (DistanceToTarget < directChaseDistance && CanSee(position, busCenter));
-        Vector3 aim = direct ? chasePoint : PointAhead(position, lookAhead);
+        AvoidTraffic(position, forward, ref goal, ref desired);
+        KeepOffBus(position, forward, ref desired);
 
-        // Vitesse voulue : plein gaz, moins dans les virages, et on cale sa vitesse sur celle du bus de pres
-        Vector3 toAim = Flat(aim - position);
-        float turnAngle = toAim.sqrMagnitude > 0.01f ? Vector3.Angle(forward, toAim) : 0f;
-        float maxSpeed = maxSpeedKmh / 3.6f * speedFactor * (IsSlowed ? slowFactor : 1f);
-        float desired = Mathf.Min(maxSpeed, Mathf.Lerp(maxSpeed, cornerSpeedKmh / 3.6f, turnAngle / 90f));
-        float gap = DistanceToTarget - FollowDistance;
-        if (gap < 15f)
-            desired = Mathf.Min(desired, busSpeed + gap * 1.5f);
-        desired = Mathf.Max(0f, desired);
-        speed = Mathf.MoveTowards(speed, desired, (desired > speed ? acceleration : brakeDeceleration) * dt);
-
-        // Volant : on tourne vers la cible, d'autant moins qu'on roule doucement
-        if (toAim.sqrMagnitude > 0.01f)
+        // Steering: a car cannot turn on the spot, less so at speed.
+        Vector3 to = goal - position; to.y = 0;
+        if (to.sqrMagnitude > .01f)
         {
-            float aimYaw = Quaternion.LookRotation(toAim, Vector3.up).eulerAngles.y;
-            yaw = Mathf.MoveTowardsAngle(yaw, aimYaw, turningSpeed * Mathf.Clamp01(speed / 4f) * dt);
+            float angle = Vector3.SignedAngle(forward, to, Vector3.up);
+            float rate = Mathf.Lerp(160f, 80f, Speed / Mathf.Max(1f, manager.ChaseSpeed));
+            yaw += Mathf.Clamp(angle, -rate * dt, rate * dt);
+            if (Mathf.Abs(angle) > 55f) desired = Mathf.Min(desired, 9f);
         }
-        forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+        float braking = manager.ChaseAcceleration * (IsBlinded ? 2.5f : 1.6f);
+        Speed = Mathf.MoveTowards(Speed, desired, (desired > Speed ? manager.ChaseAcceleration : braking) * dt);
+        forward = Quaternion.Euler(0, yaw, 0) * Vector3.forward;
+        position += forward * Speed * dt;
+        position.y = Ground(position, body.position.y);
+        body.MovePosition(position);
+        body.MoveRotation(Quaternion.Euler(0, yaw, 0));
+    }
 
-        position += forward * speed * dt;
-        float reference = path.Count > 0 ? Mathf.Max(position.y - bottomOffset, path[0].y) : target.position.y;
-        position.y = GroundHeight(position, reference + 0.8f) + bottomOffset + 0.03f;
+    private void Update()
+    {
+        if (beacons == null) return;
+        SetBeacons(State != Mode.Patrol, Mathf.FloorToInt(Time.time * 6f));
+    }
 
-        // Sur le riz, la voiture zigzague
-        float wobble = 0f;
-        if (IsSlowed)
+    private void SetBeacons(bool on, int phase)
+    {
+        if (beacons == null || beacons.Length < 2) return;
+        beacons[0].sharedMaterial = on && phase % 2 == 0 ? beaconRed : beaconDark;
+        beacons[1].sharedMaterial = on && phase % 2 == 1 ? beaconBlue : beaconDark;
+    }
+
+    // Follows the street graph (the GPS search) and slows down before corners.
+    private Vector3 RoutePoint(Vector3 position, Vector3 destination, ref float top)
+    {
+        if (Time.time >= nextRoute || (routeGoal - destination).sqrMagnitude > 64f)
         {
-            slowRemaining = Mathf.Max(0f, slowRemaining - dt);
-            wobbleTime += dt;
-            wobble = Mathf.Sin(wobbleTime * 14f) * 25f * Mathf.Clamp01(slowRemaining);
+            if (!city.TryBuildRoute(position, destination, route)) route.Clear();
+            routeIndex = 1; routeGoal = destination;
+            nextRoute = Time.time + .8f;
         }
-
-        rb.MovePosition(position);
-        rb.MoveRotation(Quaternion.Euler(0f, yaw + wobble, 0f));
-    }
-
-    public bool IsChasingTarget(Rigidbody candidate)
-        => isActiveAndEnabled && target != null && targetRigidbody == candidate;
-
-    public bool IsTouchingCaptureZone(BoxCollider captureZone)
-    {
-        return body != null && captureZone != null && Physics.ComputePenetration(
-            body, rb.position, rb.rotation,
-            captureZone, captureZone.transform.position, captureZone.transform.rotation,
-            out _, out _);
-    }
-
-    // Rien entre la voiture et le bus (murs, batiments) ?
-    private bool CanSee(Vector3 from, Vector3 to)
-    {
-        from.y += 1f;
-        to.y = Mathf.Max(to.y, from.y);
-        if (!Physics.Linecast(from, to, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore)) return true;
-        return hit.rigidbody == targetRigidbody;
-    }
-
-    // Point du chemin a "distance" metres devant la voiture
-    private Vector3 PointAhead(Vector3 position, float distance)
-    {
-        Vector3 previous = position;
-        foreach (Vector3 point in path)
+        if (route.Count < 2) return destination;
+        while (routeIndex < route.Count - 1 && Flat(route[routeIndex] - position).magnitude < 7f) routeIndex++;
+        routeIndex = Mathf.Min(routeIndex, route.Count - 1);
+        Vector3 corner = route[routeIndex];
+        if (routeIndex < route.Count - 1)
         {
-            float length = Flat(point - previous).magnitude;
-            if (distance <= length)
-                return Vector3.Lerp(previous, point, length > 0.001f ? distance / length : 1f);
-            distance -= length;
-            previous = point;
+            Vector3 incoming = Flat(corner - position), outgoing = Flat(route[routeIndex + 1] - corner);
+            if (Vector3.Angle(incoming, outgoing) > 30f)
+                top = Mathf.Min(top, Mathf.Sqrt(11f * 11f + 2f * 9f * incoming.magnitude));
         }
-        return previous;
+        return corner;
     }
 
-    // Sol le plus haut sous la voiture, sans monter sur les toits
-    private float GroundHeight(Vector3 position, float maxHeight)
+    // Overtakes slower cars on the left instead of driving through them.
+    private void AvoidTraffic(Vector3 position, Vector3 forward, ref Vector3 goal, ref float desired)
     {
-        int count = Physics.RaycastNonAlloc(new Vector3(position.x, maxHeight + 3f, position.z), Vector3.down,
-            groundHits, 12f, groundLayers, QueryTriggerInteraction.Ignore);
-        float highest = float.NegativeInfinity;
+        Vector3 left = new Vector3(-forward.z, 0, forward.x);
+        foreach (var car in city.Traffic)
+        {
+            if (car == null || car.transform == transform) continue;
+            Vector3 offset = Flat(car.transform.position - position);
+            float ahead = Vector3.Dot(offset, forward);
+            if (ahead <= 0f || ahead > 16f || Mathf.Abs(Vector3.Dot(offset, left)) > 2.8f) continue;
+            goal += left * 4.5f;
+            desired = Mathf.Min(desired, ahead < HalfLength + car.HalfLength + 2f ? car.Speed : 17f);
+        }
+    }
+
+    // Presses the bus without shoving it through the scenery.
+    private void KeepOffBus(Vector3 position, Vector3 forward, ref float desired)
+    {
+        Vector3 offset = Flat(manager.BusPosition - position);
+        float ahead = Vector3.Dot(offset, forward);
+        if (ahead <= 0f || Mathf.Abs(Vector3.Dot(offset, new Vector3(forward.z, 0, -forward.x))) > 3.2f) return;
+        float room = ahead - HalfLength - manager.BusHalfLength - 1f;
+        float busAlong = Mathf.Max(0f, Vector3.Dot(manager.BusVelocity, forward));
+        if (room < 6f) desired = Mathf.Min(desired, busAlong + Mathf.Max(0f, room));
+        if (room < .3f) desired = Mathf.Min(desired, busAlong * .9f);
+    }
+
+    private float Ground(Vector3 position, float current)
+    {
+        int count = Physics.RaycastNonAlloc(position + Vector3.up * 3f, Vector3.down, groundHits, 8f, ~0, QueryTriggerInteraction.Ignore);
+        float best = float.NegativeInfinity;
         for (int i = 0; i < count; i++)
-            if (groundHits[i].rigidbody == null && groundHits[i].normal.y > 0.65f &&
-                groundHits[i].point.y <= maxHeight)
-                highest = Mathf.Max(highest, groundHits[i].point.y);
-        return float.IsNegativeInfinity(highest) ? position.y - bottomOffset - 0.03f : highest;
+        {
+            var hit = groundHits[i];
+            // Ramps are climbed, walls and roofs above the car are not.
+            if (hit.rigidbody != null || hit.normal.y < .6f || hit.point.y > current + 1.2f) continue;
+            if (hit.point.y > best) best = hit.point.y;
+        }
+        return float.IsNegativeInfinity(best) ? city.Origin.y + .02f : best + .02f;
     }
 
-    private static Vector3 Flat(Vector3 v) => Vector3.ProjectOnPlane(v, Vector3.up);
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (manager != null && collision.rigidbody != null && collision.rigidbody == manager.BusBody) manager.Provoked(this);
+    }
+
+    private void AddPatrol() => city.AddPolicePatrol(patrol);
+    private void RemovePatrol() => city.RemovePolicePatrol(patrol);
+    private static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
+
+    private void OnDestroy()
+    {
+        if (city == null) return;
+        city.Pursuers.Remove(transform);
+        if (patrol != null) RemovePatrol();
+    }
 }

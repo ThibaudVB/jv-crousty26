@@ -11,6 +11,7 @@ public sealed class BusGPS : MonoBehaviour
     public Transform navigationRoot;
     [Range(0, 3)] public int startingCharges = 3;
     public int Charges { get; private set; }
+    public bool BonusEquipped { get; set; } = true;
     public DeliveryPoint Target { get; private set; }
     public readonly List<Vector3> Route = new List<Vector3>();
     public string Status { get; private set; } = "[G] GPS";
@@ -102,7 +103,7 @@ public sealed class BusGPS : MonoBehaviour
     }
     public bool SelectNext()
     {
-        if (!isActiveAndEnabled || Time.timeScale <= 0f || Charges <= 0 || deliveries == null) return false;
+        if (!BonusEquipped || !isActiveAndEnabled || Time.timeScale <= 0f || Charges <= 0 || deliveries == null) return false;
         if (Target != null && !Target.IsWaiting) return false; // Colis en vol.
         if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         var candidates = new List<DeliveryPoint>();

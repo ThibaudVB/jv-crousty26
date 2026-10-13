@@ -7,6 +7,11 @@ using UnityEngine.UI;
 public sealed class CroustyBonusHUD : MonoBehaviour
 {
     public enum BonusLanguage { English, French }
+    public enum SelectedBonus { Pet, GPS, Rice, Flight }
+    [SerializeField] private bool singleCardMode;
+    [SerializeField] private SelectedBonus selectedBonus = SelectedBonus.Pet;
+
+    public void SelectBonus(SelectedBonus value) { selectedBonus = value; Refresh(); }
 
     [Serializable]
     public sealed class Card
@@ -53,7 +58,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
                 card.nameText.text = language == BonusLanguage.English ? card.englishName : card.frenchName;
     }
 
-    // Called by BusRiceThrower when the rice charges change.
+    // Ready for the rice mechanic when it is implemented.
     public void SetRiceCharges(int count)
     {
         riceCharges = Mathf.Clamp(count, 0, 3);
@@ -66,6 +71,29 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         Show(pet, petController != null ? petController.UsesRemaining : 3);
         Show(rice, riceCharges);
         Show(flight, flightController != null ? flightController.UsesRemaining : 3);
+        if (singleCardMode)
+        {
+            if (petController != null) petController.BonusEquipped = selectedBonus == SelectedBonus.Pet;
+            if (gpsController != null) gpsController.BonusEquipped = selectedBonus == SelectedBonus.GPS;
+            if (flightController != null) flightController.BonusEquipped = selectedBonus == SelectedBonus.Flight;
+            ShowSelected(pet, SelectedBonus.Pet, petController != null ? petController.UsesRemaining : 0);
+            ShowSelected(gps, SelectedBonus.GPS, gpsController != null ? gpsController.Charges : 0);
+            ShowSelected(rice, SelectedBonus.Rice, riceCharges);
+            ShowSelected(flight, SelectedBonus.Flight, flightController != null ? flightController.UsesRemaining : 0);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (!singleCardMode) return;
+        if (petController != null) petController.BonusEquipped = true;
+        if (gpsController != null) gpsController.BonusEquipped = true;
+        if (flightController != null) flightController.BonusEquipped = true;
+    }
+
+    private void ShowSelected(Card card, SelectedBonus kind, int charges)
+    {
+        if (card.artwork != null) card.artwork.transform.parent.gameObject.SetActive(selectedBonus == kind && charges > 0);
     }
 
     private void Show(Card card, int charges)

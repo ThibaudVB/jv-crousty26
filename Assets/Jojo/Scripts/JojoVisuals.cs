@@ -15,24 +15,6 @@ public static class JojoVisuals
         if (material != null) renderer.sharedMaterial = material;
     }
 
-    // Forme simple sans collision ni ombre (flammes, fumée, débris)
-    public static GameObject CreateShape(PrimitiveType type, Transform parent, Color color)
-    {
-        GameObject shape = GameObject.CreatePrimitive(type);
-        var collider = shape.GetComponent<Collider>();
-        collider.enabled = false;
-        Object.Destroy(collider);
-
-        shape.transform.SetParent(parent, false);
-
-        Renderer renderer = shape.GetComponent<Renderer>();
-        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        renderer.receiveShadows = false;
-
-        SetColor(shape, color);
-        return shape;
-    }
-
     // Faisceau lumineux vertical, visible au-dessus des bâtiments (sans collision)
     public static GameObject CreateBeacon(Transform parent, Color color, float height, float width)
     {
@@ -118,6 +100,7 @@ public static class JojoVisuals
 
     public static Sprite ArrowSprite =>
         arrowSprite != null ? arrowSprite : arrowSprite = CreateSprite(IsInArrow);
+
     private static Sprite CreateSprite(System.Func<float, float, float> shape)
     {
         const int size = 64;

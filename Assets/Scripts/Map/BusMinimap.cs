@@ -22,6 +22,7 @@ public sealed class BusMinimap : MonoBehaviour
     [Tooltip("Resolution minimale ; adaptee automatiquement a la taille du HUD en pixels.")]
     [Range(512, 2048)] public int textureSize = 1024;
     [Range(120f, 360f)] public float sizeOnScreen = 260f;
+    [SerializeField] private bool compactHud;
 
     [SerializeField] private Image deliveryIconTemplate;
     private Camera mapCamera;
@@ -32,6 +33,7 @@ public sealed class BusMinimap : MonoBehaviour
     [SerializeField] private Image shopIcon;
     [SerializeField] private Image policeIcon;
     private readonly List<Image> deliveryIcons = new List<Image>();
+    private readonly List<Image> policeIcons = new List<Image>();
     private float nextReferenceSearch;
     [SerializeField] private Sprite circleSprite;
     [SerializeField] private Sprite arrowSprite;
@@ -56,6 +58,8 @@ public sealed class BusMinimap : MonoBehaviour
             return;
         }
         BuildCamera();
+        if (compactHud && maskRect != null)
+            MinimapSpeedBadge.Ensure(maskRect.parent as RectTransform);
 
         if (radarShader != null) radar = new RadarMapRenderer(radarShader);
         RefreshMap(mapRoot);
@@ -286,7 +290,7 @@ public sealed class BusMinimap : MonoBehaviour
 
     private void UpdateGPS()
     {
-        gpsLabel.gameObject.SetActive(gps != null);
+        gpsLabel.gameObject.SetActive(gps != null && (!compactHud || gps.Target != null));
         if (gps != null) gpsLabel.text = $"{gps.Status}\n{gps.Charges}/3 livraisons";
         routeGraphic.UpdateRoute(mapCamera,
             gps != null && gps.isActiveAndEnabled ? gps.Route : null,
@@ -318,14 +322,33 @@ public sealed class BusMinimap : MonoBehaviour
         for (int i = used; i < deliveryIcons.Count; i++)
             deliveryIcons[i].gameObject.SetActive(false);
 
-        bool showPolice = police != null && police.ActivePolice != null &&
-            police.ActivePolice.gameObject.activeInHierarchy;
-        policeIcon.gameObject.SetActive(showPolice);
-        if (showPolice)
-            PlaceIcon(policeIcon, police.ActivePolice.transform.position, 19f);
+        // Pursuers are always shown (on the border when far); patrols only once on the map.
+        int shown = 0;
+        if (police != null)
+            foreach (PoliceCarAI car in police.Cars)
+            {
+                if (car == null || !car.gameObject.activeInHierarchy) continue;
+                if (!car.InPursuit && !IsOnMap(car.transform.position, 16f)) continue;
+                while (policeIcons.Count <= shown)
+                    policeIcons.Add(shown == 0 ? policeIcon : Instantiate(policeIcon, maskRect));
+                Image icon = policeIcons[shown++];
+                icon.gameObject.SetActive(true);
+                icon.color = car.InPursuit ? new Color(1f, 0.24f, 0.2f) : new Color(0.35f, 0.55f, 1f);
+                PlaceIcon(icon, car.transform.position, car.InPursuit ? 19f : 15f);
+            }
+        if (shown == 0) policeIcon.gameObject.SetActive(false);
+        for (int i = Mathf.Max(1, shown); i < policeIcons.Count; i++)
+            policeIcons[i].gameObject.SetActive(false);
 
         // Le bus reste au-dessus des autres marqueurs.
         busIcon.transform.SetAsLastSibling();
+    }
+
+    private bool IsOnMap(Vector3 targetPosition, float size)
+    {
+        float radius = Mathf.Min(maskRect.rect.width, maskRect.rect.height) * 0.5f - size * 0.8f;
+        Vector2 position = ProjectToMap(targetPosition);
+        return Mathf.Max(Mathf.Abs(position.x), Mathf.Abs(position.y)) <= radius;
     }
 
     private void PlaceIcon(Image icon, Vector3 targetPosition, float size)

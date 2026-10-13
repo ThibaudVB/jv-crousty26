@@ -13,15 +13,6 @@ public sealed partial class ProceduralCity
     private Material signalHousing, signalDark, signalRed, signalAmber, signalGreen, stopRed;
     private GameObject stopSignModel;
     private Bounds stopSignBounds;
-    private readonly Dictionary<CarFollowPoints, StopProgress> stopProgress = new Dictionary<CarFollowPoints, StopProgress>();
-
-    private sealed class StopProgress
-    {
-        public Vector2Int junction;
-        public Vector2Int approach;
-        public float stoppedAt = -1f;
-        public bool released;
-    }
 
     private sealed class SignalDisplay
     {
@@ -102,8 +93,11 @@ public sealed partial class ProceduralCity
 
     private static Material GlowingMaterial(Color color)
     {
-        var result = Material(color);
-        result.EnableKeyword("_EMISSION");
+        var template = Resources.Load<Material>("Crousty/ProceduralSignal");
+        if (template == null)
+            throw new System.InvalidOperationException("Materiau des feux manquant : Resources/Crousty/ProceduralSignal.");
+        var result = new Material(template);
+        result.color = color;
         result.SetColor("_EmissionColor", color * 3f);
         return result;
     }
@@ -321,65 +315,5 @@ public sealed partial class ProceduralCity
                 LightAspect aspect = LightAt(display.junction, display.approach, Time.time);
                 if (aspect != display.lastAspect) SetSignalAspect(display, aspect);
             }
-    }
-
-    // Called only by cars attached to generated routes; their other scene routes are untouched.
-    public float AllowedTrafficStep(CarFollowPoints car, Vector3 position, Vector3 target, float requestedStep)
-    {
-        var junction = new Vector2Int(Mathf.RoundToInt((target.x - Origin.x) / BlockSize),
-            Mathf.RoundToInt((target.z - Origin.z) / BlockSize));
-        Vector3 node = Origin + new Vector3(junction.x * BlockSize, 0, junction.y * BlockSize);
-        if (Mathf.Abs(target.x - node.x) > 9f || Mathf.Abs(target.z - node.z) > 9f) return requestedStep;
-        Vector2Int approach = Mathf.Abs(target.x - position.x) > Mathf.Abs(target.z - position.z)
-            ? new Vector2Int(position.x < target.x ? -1 : 1, 0)
-            : new Vector2Int(0, position.z < target.z ? -1 : 1);
-        RoadRule rule = RuleAt(junction, approach);
-        if (rule == RoadRule.None) return requestedStep;
-        if (!stopProgress.TryGetValue(car, out var state)) stopProgress[car] = state = new StopProgress();
-        if (state.junction != junction || state.approach != approach)
-        {
-            state.junction = junction; state.approach = approach;
-            state.stoppedAt = -1f; state.released = false;
-        }
-        if (state.released) return requestedStep;
-        float distance = approach.x != 0 ? Mathf.Abs(position.x - node.x) : Mathf.Abs(position.z - node.z);
-        // The car centre waits two metres before the painted line (front bumper).
-        const float centreStop = StopLineDistance + 2f;
-        // A car already inside the junction must be allowed to clear it even if
-        // the signal changes while it turns.
-        if (distance < centreStop - 1f) { state.released = true; return requestedStep; }
-        if (distance > centreStop + .01f)
-            return Mathf.Min(requestedStep, distance - centreStop);
-        if (rule == RoadRule.TrafficLight)
-        {
-            if (LightAt(junction, approach, Time.time) != LightAspect.Green) return 0f;
-            state.released = true;
-            return requestedStep;
-        }
-        if (state.stoppedAt < 0f) state.stoppedAt = Time.time;
-        if (rule == RoadRule.Stop && Time.time - state.stoppedAt < .8f) return 0f;
-        if (PriorityTrafficNear(car, junction, approach)) return 0f;
-        state.released = true;
-        return requestedStep;
-    }
-
-    private bool PriorityTrafficNear(CarFollowPoints car, Vector2Int junction, Vector2Int approach)
-    {
-        Vector3 node = Origin + new Vector3(junction.x * BlockSize, 0, junction.y * BlockSize);
-        foreach (var other in cars)
-        {
-            if (other == null || other == car || other.proceduralCity != this || other.CurrentPoint == null) continue;
-            Vector3 delta = other.transform.position - node;
-            if (delta.x * delta.x + delta.z * delta.z > 25f * 25f) continue;
-            Vector3 target = other.CurrentPoint.position;
-            if (Mathf.Abs(target.x - node.x) > 9f || Mathf.Abs(target.z - node.z) > 9f) continue;
-            Vector2Int otherApproach = Mathf.Abs(target.x - other.transform.position.x) > Mathf.Abs(target.z - other.transform.position.z)
-                ? new Vector2Int(other.transform.position.x < target.x ? -1 : 1, 0)
-                : new Vector2Int(0, other.transform.position.z < target.z ? -1 : 1);
-            if (otherApproach.x == approach.x && otherApproach.y == approach.y) continue;
-            if (otherApproach.x != approach.x && otherApproach.y != approach.y &&
-                RuleAt(junction, otherApproach) == RoadRule.None) return true;
-        }
-        return false;
     }
 }

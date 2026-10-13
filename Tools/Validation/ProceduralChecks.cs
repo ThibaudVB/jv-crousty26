@@ -44,13 +44,13 @@ public sealed class ProceduralChecks : MonoBehaviour
    bool nsGreen=false,ewGreen=false,safe=true;for(int second=0;second<30;second++){var ns=city.LightAt(signalNode,Vector2Int.up,second);var ew=city.LightAt(signalNode,Vector2Int.right,second);nsGreen|=ns==ProceduralCity.LightAspect.Green;ewGreen|=ew==ProceduralCity.LightAspect.Green;if(ns==ProceduralCity.LightAspect.Green&&ew==ProceduralCity.LightAspect.Green)safe=false;}
    Check(nsGreen&&ewGreen&&safe,"signal phases alternate with no conflicting greens");
    var redArm=city.LightAt(signalNode,Vector2Int.up,Time.time)==ProceduralCity.LightAspect.Red?Vector2Int.up:Vector2Int.right;
-   var redWorld=city.Origin+new Vector3(signalNode.x*64,0,signalNode.y*64);var redCar=redWorld+new Vector3(redArm.x*20,0,redArm.y*20);
-   Check(city.AllowedTrafficStep(FindObjectsByType<CarFollowPoints>()[0],redCar,redWorld+new Vector3(5,0,5),1f)==0f,"AI cars stop before a red traffic light");
+   var probe=city.Traffic[0];probe.Place(signalNode+redArm,signalNode,city.LanePoint(signalNode,-redArm,-(18.25f+probe.HalfLength)));
+   Check(city.ClearanceAhead(probe,probe.transform.position)==0f,"AI cars stop before a red traffic light");
    var stopNode=new Vector2Int(int.MaxValue,int.MaxValue);var stopArm=Vector2Int.zero;for(int sx=-3;sx<=5&&stopNode.x==int.MaxValue;sx++)for(int sz=-3;sz<=5;sz++)foreach(var arm in new[]{Vector2Int.right,Vector2Int.left})if(city.RuleAt(new Vector2Int(sx,sz),arm)==ProceduralCity.RoadRule.Stop){stopNode=new Vector2Int(sx,sz);stopArm=arm;break;}
    Check(stopNode.x!=int.MaxValue,"unsignalled junctions include actual STOP situations");
-   var sampleCar=FindObjectsByType<CarFollowPoints>()[0];var stopWorld=city.Origin+new Vector3(stopNode.x*64,0,stopNode.y*64);var carAtLine=stopWorld+new Vector3(stopArm.x*20,0,stopArm.y*20);var cornerTarget=stopWorld+new Vector3(5,0,5);
-   Check(city.AllowedTrafficStep(sampleCar,carAtLine,cornerTarget,1f)==0f,"STOP holds an approaching car at the painted line");
-   var loop=city.WorldRoot.GetComponentsInChildren<CarPointRoute>()[0].transform;Check(loop.GetChild(1).localPosition.x==loop.GetChild(0).localPosition.x&&loop.GetChild(1).localPosition.z>loop.GetChild(0).localPosition.z,"procedural traffic circulates on the right");
+   probe.Place(stopNode+stopArm,stopNode,city.LanePoint(stopNode,-stopArm,-(18.25f+probe.HalfLength)));
+   Check(city.ClearanceAhead(probe,probe.transform.position)==0f,"STOP holds an approaching car at the painted line");
+   var lane=city.LanePoint(Vector2Int.zero,Vector2Int.up,10)-city.Origin;Check(Mathf.Abs(lane.x-ProceduralCity.LaneOffset)<.01f,"procedural traffic circulates on the right");
    Check(meshes.Count(m=>m.name=="Visuel CROUSTY_Shop")==city.WorldRoot.GetComponentsInChildren<CroustyShop>().Length,"every visible Crousty is a real pickup, none in random buildings");
    Check(city.NativeBlockCount>=8&&city.StreetSetCount>=20,"native block and street furniture libraries retained");
    foreach(string required in new[]{"Route_Depart_Ramp","Route_Gradins_Ramp","BankedTrack_001__Route_Oval_Deck","Route_Helix_Tower","FireRing_001__Route_FireRing_GrandPlongeon","HalfPipeWall_001__Route_HalfPipe_Deck","LongRamp_001__Route_Descent_LongRamp"})
@@ -107,7 +107,7 @@ public sealed class ProceduralChecks : MonoBehaviour
    Check(Fingerprint(city.WorldRoot.Cast<Transform>().First(t=>t.name=="Quartier 0,0"&&t.gameObject.activeInHierarchy))==fingerprint,"revisiting regenerates identical buildings and positions");
    Physics.SyncTransforms();
    for(int i=-1;i<=1;i++){var pos=city.Origin+new Vector3(i*128,2,0);Check(Physics.Raycast(pos,Vector3.down,out var hit,4)&&Mathf.Abs(hit.point.y-city.groundHeight)<.01f,"road surface has no height seam between chunks");}
-   Check(FindObjectsByType<CarFollowPoints>().All(c=>c.route!=null&&c.route.gameObject.activeInHierarchy&&!c.IsStopped),"existing traffic rebound to generated roads");
+   Check(city.Traffic.Count>0&&city.Traffic.All(c=>c!=null&&c.gameObject.activeInHierarchy)&&FindObjectsByType<CarFollowPoints>().Length==0,"city traffic replaces the scene waypoint cars");
    var store=manager.shop;manager.player.position=store.transform.position+Vector3.forward*9;Check(store.IsInRange(manager.player.position),"restaurant accessible from street");
    Call(manager,"LoadOrders");target=manager.deliveryPoints.First(p=>p.IsWaiting);manager.player.position=target.transform.position;Call(manager,"ThrowCrousty",target);
    Check(target.HasOpenOrder&&!target.IsWaiting,"thrown delivery is pending");

@@ -89,15 +89,6 @@ public class DeliveryManager : MonoBehaviour
 
         if (player == null)
             Debug.LogWarning("DeliveryManager : aucun joueur (BusController) trouvé.");
-
-        // Dégâts du bus : il s'abîme quand il se cogne
-        BusController playerBus = player != null ? player.GetComponentInParent<BusController>() : null;
-        if (playerBus != null && playerBus.GetComponent<BusDamage>() == null)
-            playerBus.gameObject.AddComponent<BusDamage>();
-
-        // Compétence riz (touche E) contre la police
-        if (playerBus != null && playerBus.GetComponent<BusRiceThrower>() == null)
-            playerBus.gameObject.AddComponent<BusRiceThrower>();
     }
 
     private void OnDestroy()

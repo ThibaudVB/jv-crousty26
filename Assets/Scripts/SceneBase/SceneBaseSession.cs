@@ -10,6 +10,7 @@ public sealed class SceneBaseSession : MonoBehaviour
     public BusPassengers passengers;
     [SerializeField] private Canvas hudCanvas;
     [SerializeField] private Text passengerText;
+    [SerializeField] private bool hideEmptyPassengerCounter;
     private bool suspendedDeliveries;
     private int displayedCount = -1;
 
@@ -51,6 +52,8 @@ public sealed class SceneBaseSession : MonoBehaviour
             deliveries.enabled = true;
         }
         if (hudCanvas != null) hudCanvas.enabled = !paused;
+        if (hideEmptyPassengerCounter && passengerText != null)
+            passengerText.gameObject.SetActive(passengers.passengerCount > 0);
         if (passengerText != null && displayedCount != passengers.passengerCount)
         {
             displayedCount = passengers.passengerCount;

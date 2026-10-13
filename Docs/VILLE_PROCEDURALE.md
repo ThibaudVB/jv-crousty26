@@ -4,7 +4,7 @@ SceneBase choisit une nouvelle seed à chaque partie. Le composant `ProceduralCi
 
 ## Bibliothèque et style
 
-La génération est répartie entre `ProceduralCity.cs` (streaming, trafic, navigation) et `ProceduralCity.Generation.cs` (catalogue et assemblage). Les meshes, matériaux, proportions et orientations proviennent du modèle d'origine. Les îlots ordinaires réemploient les ensembles de façades et ruelles complets, avec une préférence pour les compositions denses de quatre à six bâtiments. L'îlot entier tourne par quarts de tour ; ses façades ne sont plus orientées ou étirées indépendamment.
+La génération est répartie entre `ProceduralCity.cs` (streaming, navigation), `ProceduralCity.Generation.cs` (catalogue et assemblage), `ProceduralCity.RoadRules.cs` (signalisation) et `ProceduralCity.Traffic.cs` (trafic). Les meshes, matériaux, proportions et orientations proviennent du modèle d'origine. Les îlots ordinaires réemploient les ensembles de façades et ruelles complets, avec une préférence pour les compositions denses de quatre à six bâtiments. L'îlot entier tourne par quarts de tour ; ses façades ne sont plus orientées ou étirées indépendamment.
 
 Le catalogue reprend les 37 bâtiments ordinaires, les compositions d'îlots et les ensembles de mobilier des rues : lampadaires, feux, bancs, poubelles, arrêts de bus, colonnes Morris, supports à vélos, terrasses, jardinières et arbres. Les éléments placés au milieu d'un îlot sont écartés du mobilier générique pour ne pas empiéter sur ses bâtiments ou ses rampes. Les proportions du modèle sont conservées avec une échelle uniforme de 64/60 entre la grille d'origine et les rues procédurales.
 
@@ -32,13 +32,23 @@ Le déchargement retire au plus un quartier par passe de maintenance (0,2 s), pu
 
 La seed et les coordonnées déterminent les îlots indépendamment de l'ordre de chargement. Revenir dans un quartier reconstruit le même décor. Désactiver `randomSeed` et saisir la seed affichée dans la Console permet de retrouver une ville.
 
-Les adresses restent en bord de rue, hors des parcours et des grands ensembles. Les tournées comportent six commandes. Toute commande en attente ou tout colis en vol retient son chunk. Les voitures suivent les rues ordinaires ou le périmètre des grands ensembles. Le GPS cherche un chemin dans la grille et contourne les rues intérieures supprimées par un parc ou une place de cascades. La mini-carte indexe seulement le quartier terminé ou retiré, et écarte les empreintes hors champ lors du rendu. Les adresses sont enregistrées après la construction complète du quartier.
+Les adresses restent en bord de rue, hors des parcours et des grands ensembles. Les tournées comportent six commandes. Toute commande en attente ou tout colis en vol retient son chunk. Le GPS cherche un chemin dans la grille et contourne les rues intérieures supprimées par un parc ou une place de cascades. La mini-carte indexe seulement le quartier terminé ou retiré, et écarte les empreintes hors champ lors du rendu. Les adresses sont enregistrées après la construction complète du quartier.
 
 ## Signalisation et circulation
 
 `ProceduralCity.RoadRules.cs` utilise le même graphe de rues que le GPS. Il dessine des passages piétons zébrés aux approches ouvertes, des lignes d'arrêt sur la voie entrante, des dents de cédez-le-passage et des lignes médianes uniquement là où une rue existe. Les marquages d'un chunk forment un seul mesh sans collision avec les roues.
 
 Les carrefours à quatre branches alternent entre feux tricolores et priorité de l'axe nord-sud. Certains axes secondaires portent un STOP, les autres un cédez-le-passage ; le bras secondaire d'un carrefour en T suit la même règle. Les feux du FBX sont replacés du bon côté de la chaussée et leurs trois lampes changent réellement d'état. Les axes opposés ne passent jamais au vert simultanément et un bref temps de rouge intégral sépare les phases. Les voitures roulent à droite, s'arrêtent au rouge et à l'orange, marquent le STOP et laissent passer le trafic prioritaire. Cette logique régit les voitures autonomes ; le bus reste piloté librement par le joueur.
+
+## Trafic
+
+`ProceduralCity.Traffic.cs` crée `trafficCars` voitures (48 par défaut) à partir des modèles de `Resources/Crousty/Vehicles` (NormalCar2, repeinte dans la palette pastel, et 1377 Car). Les modèles regardent vers +Z ; ils sont mis à l'échelle `vehicleLength` (4,4 m), reçoivent le tag `voitures`, un `BoxCollider` et un Rigidbody kinematic : `BusCarCrash` les fait toujours klaxonner ou exploser.
+
+Chaque voiture (`CityTrafficCar`) roule dans la voie de droite, à 4 m de l'axe, sur le même graphe que le GPS. À chaque carrefour, elle choisit une sortie ouverte au hasard (tout droit deux fois plus probable, demi-tour seulement en impasse) et la traverse en courbe de Bézier. Elle s'arrête pare-chocs avant la ligne au rouge, à l'orange si elle peut freiner, marque le STOP une seconde, cède le passage aux axes prioritaires et aux voitures engagées, et laisse passer le trafic d'en face avant de tourner à gauche. Elle n'entre dans un carrefour ni tant qu'une voiture dont la trajectoire croise la sienne y est engagée, ni si sa sortie est bouchée ; deux virages à gauche opposés se croisent par l'intérieur. Elle garde 2,5 m derrière la voiture qui la précède ou derrière le bus, et klaxonne si le bus la bloque. Deux voitures bloquées l'une par l'autre plus de 4 s se dégagent.
+
+Les voitures apparaissent sur une rue d'un quartier terminé, entre 70 et 200 m du bus, hors du champ de la caméra ; une voiture sortie du rayon de streaming est replacée de la même façon et une voiture détruite est remplacée au bout de 0,4 s. Les voitures à points de passage posées dans la scène (`CarFollowPoints`) sont désactivées : leurs routes n'existent pas dans la ville procédurale.
+
+Validation du 13 octobre 2026 dans une copie isolée sous Unity 6000.4.0f1 : `Tools/Validation/TrafficChecks.cs` (lancé par `TrafficChecksSetup.Run`) passe 14 contrôles avec 48 voitures sur 3 600 frames à pas fixe, seed 26011. Aucun écart de voie sur 133 922 mesures, 286 virages à gauche et 295 à droite, 192 engagements aux feux dont aucun au rouge, 58 STOP marqués, aucun chevauchement, attente derrière le bus, recyclage après téléportation et remplacement d'une voiture détruite. `ProceduralChecks` passe sans échec (87 contrôles ; le nombre varie avec la longueur de l'itinéraire GPS tiré). Le rendu des voitures et leur ressenti en jeu restent à apprécier en Play.
 
 ## Validation
 

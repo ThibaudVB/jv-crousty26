@@ -1,16 +1,17 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-// Le delai commence au spawn; la defaite exige aussi le contact avec cette zone.
+// Arrest meter of the bus. PoliceChaseManager fills it while officers pin the bus
+// down; when it is full the defeat event fires once.
 [RequireComponent(typeof(BoxCollider))]
 public class PoliceCatchZone : MonoBehaviour
 {
     [SerializeField, Min(0.1f)] private float timeBeforeCaught = 5f;
     [SerializeField] private UnityEvent onPlayerCaught = new UnityEvent();
     public BoxCollider CaptureCollider => GetComponent<BoxCollider>();
-    private float catchTimer;
+    private float progress;
     private bool caught;
-    public float CatchProgress01 => caught ? 1f : Mathf.Clamp01(catchTimer / Mathf.Max(0.1f, timeBeforeCaught));
+    public float CatchProgress01 => caught ? 1f : progress;
     public bool IsCaught => caught;
     public float CaptureDurationSeconds => Mathf.Max(0.1f, timeBeforeCaught);
 
@@ -20,23 +21,25 @@ public class PoliceCatchZone : MonoBehaviour
         CaptureCollider.enabled = true;
     }
 
-    public void AdvanceCapture(bool belowSafeSpeed, float deltaTime, bool touchingCaptureZone = false)
+    public void SetProgress(float value)
     {
         if (caught || !isActiveAndEnabled) return;
-        if (!belowSafeSpeed)
-        {
-            catchTimer = 0f;
-            return;
-        }
-        catchTimer += Mathf.Max(0f, deltaTime);
-        if (catchTimer + 0.0001f < Mathf.Max(0.1f, timeBeforeCaught)) return;
-        if (!touchingCaptureZone) return;
+        progress = Mathf.Clamp01(value);
+        if (progress < 1f) return;
         caught = true;
         onPlayerCaught.Invoke();
     }
 
+    // Former API: a timer that only completes while touching the capture zone.
+    public void AdvanceCapture(bool belowSafeSpeed, float deltaTime, bool touchingCaptureZone = false)
+    {
+        if (!belowSafeSpeed) { SetProgress(0f); return; }
+        float next = progress + Mathf.Max(0f, deltaTime) / CaptureDurationSeconds;
+        SetProgress(touchingCaptureZone ? next : Mathf.Min(next, .999f));
+    }
+
     private void OnDisable()
     {
-        if (!caught) catchTimer = 0f;
+        if (!caught) progress = 0f;
     }
 }

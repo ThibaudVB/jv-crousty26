@@ -21,6 +21,8 @@ public class CroustyHUD : MonoBehaviour
     [SerializeField] private TMP_Text scoreGain;
 
     public int fontSize = 32;
+    [SerializeField] private bool referenceHudStyle;
+    [SerializeField, HideInInspector] private int referenceLayoutRevision;
 
     [Header("Repères à l'écran")]
     public bool showWaypoints = true;
@@ -82,7 +84,12 @@ public class CroustyHUD : MonoBehaviour
         if (objectiveValue != null)
         {
             int remaining = Mathf.Max(0, manager.OrdersTotal - manager.Delivered);
-            objectiveValue.text = manager.HasFailed
+            objectiveValue.text = referenceHudStyle
+                ? manager.HasFailed ? "Tournée échouée ! Retourne au restaurant."
+                : !manager.HasStarted ? "Récupère les commandes au\nrestaurant de Crousty (0/1)"
+                : remaining > 0 ? $"Livre les commandes aux clients\n({manager.Delivered}/{manager.OrdersTotal})"
+                : "Tournée terminée ! Retourne\nau restaurant de Crousty."
+                : manager.HasFailed
                 ? "Run failed!"
                 : !manager.HasStarted
                 ? "Pick up your orders at the restaurant"
@@ -92,7 +99,9 @@ public class CroustyHUD : MonoBehaviour
         }
         if (busBody == null) FindBusBody();
         float kmh = busBody != null ? Vector3.ProjectOnPlane(busBody.linearVelocity, Vector3.up).magnitude * 3.6f : 0f;
-        if (speedValue != null) speedValue.text = $"{Mathf.RoundToInt(kmh)} <size=48%>km/h</size>";
+        if (speedValue != null) speedValue.text = referenceHudStyle
+            ? $"{Mathf.RoundToInt(kmh)}\n<size=48%>km/h</size>"
+            : $"{Mathf.RoundToInt(kmh)} <size=48%>km/h</size>";
         if (speedFill != null) speedFill.fillAmount = Mathf.Clamp01(kmh / 160f);
 
         UpdateWaypoints();
@@ -121,7 +130,13 @@ public class CroustyHUD : MonoBehaviour
         int value = Mathf.RoundToInt(shownScore);
         if (scoreValue != null)
         {
-            if (value != displayedScore) { displayedScore = value; scoreValue.text = value.ToString(); }
+            if (value != displayedScore)
+            {
+                displayedScore = value;
+                scoreValue.text = referenceHudStyle && value >= 1000
+                    ? (value / 1000m).ToString("0.#", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + "k"
+                    : value.ToString();
+            }
             scoreValue.rectTransform.localScale = scoreBaseScale * (1 + Mathf.Sin(Mathf.Clamp01(scorePulse / .35f) * Mathf.PI) * .14f);
         }
         if (scoreGain != null)
@@ -134,6 +149,7 @@ public class CroustyHUD : MonoBehaviour
         }
         scorePulse += dt;
         if (timerValue == null) return;
+        if (referenceHudStyle) timerValue.gameObject.SetActive(manager.RunActive || manager.HasFailed);
         int seconds = Mathf.CeilToInt(manager.RunActive ? manager.RunRemaining : manager.HasStarted ? 0 : manager.RunTimeLimit);
         int state = manager.RunActive ? 1 : manager.AllDelivered ? 2 : manager.HasFailed ? 3 : 0;
         if (seconds != displayedSeconds || state != displayedRunState)
@@ -141,7 +157,7 @@ public class CroustyHUD : MonoBehaviour
             displayedSeconds = seconds;
             displayedRunState = state;
             string label = manager.RunActive ? "TIME LEFT" : manager.AllDelivered ? "RUN COMPLETE" : manager.HasFailed ? "OUT OF TIME" : "DELIVERY RUN";
-            timerValue.text = $"{seconds / 60:00}:{seconds % 60:00}\n<size=48%>{label}</size>";
+            timerValue.text = referenceHudStyle ? $"{seconds / 60:00}:{seconds % 60:00}" : $"{seconds / 60:00}:{seconds % 60:00}\n<size=48%>{label}</size>";
         }
         bool urgent = manager.RunActive && seconds <= 15;
         timerValue.color = urgent ? Color.Lerp(timerColor,new Color(1,.65f,.2f),.5f + .5f * Mathf.Sin(Time.unscaledTime * 8)) : timerColor;
@@ -161,7 +177,7 @@ public class CroustyHUD : MonoBehaviour
         int hour = minute / 60;
         int twelveHour = hour % 12;
         if (twelveHour == 0) twelveHour = 12;
-        timeValue.text = $"{twelveHour:00}:{minute % 60:00} {(hour < 12 ? "AM" : "PM")}\n<size=52%>{cycle.Phase.ToString().ToUpperInvariant()}</size>";
+        timeValue.text = referenceHudStyle ? $"{hour:00}:{minute % 60:00}" : $"{twelveHour:00}:{minute % 60:00} {(hour < 12 ? "AM" : "PM")}\n<size=52%>{cycle.Phase.ToString().ToUpperInvariant()}</size>";
     }
 
 #if UNITY_EDITOR
