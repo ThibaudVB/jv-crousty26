@@ -10,6 +10,7 @@ public sealed class SceneBaseSession : MonoBehaviour
     public BusPassengers passengers;
     [SerializeField] private Canvas hudCanvas;
     [SerializeField] private Text passengerText;
+    [SerializeField] private bool hideEmptyPassengerCounter;
     private bool suspendedDeliveries;
     private int displayedCount = -1;
 
@@ -22,7 +23,7 @@ public sealed class SceneBaseSession : MonoBehaviour
         var label = new GameObject("Passagers", typeof(RectTransform), typeof(Text), typeof(Outline));
         label.transform.SetParent(hudCanvas.transform, false);
         passengerText = label.GetComponent<Text>();
-        passengerText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        passengerText.font = (CroustyTypography.LegacyFont != null ? CroustyTypography.LegacyFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
         passengerText.fontSize = 26;
         passengerText.fontStyle = FontStyle.Bold;
         passengerText.color = Color.white;
@@ -30,7 +31,7 @@ public sealed class SceneBaseSession : MonoBehaviour
         passengerText.raycastTarget = false;
         var rect = passengerText.rectTransform;
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
-        rect.anchoredPosition = new Vector2(30, -78);
+        rect.anchoredPosition = new Vector2(30, -230);
         rect.sizeDelta = new Vector2(500, 50);
         label.GetComponent<Outline>().effectColor = Color.black;
     }
@@ -51,6 +52,8 @@ public sealed class SceneBaseSession : MonoBehaviour
             deliveries.enabled = true;
         }
         if (hudCanvas != null) hudCanvas.enabled = !paused;
+        if (hideEmptyPassengerCounter && passengerText != null)
+            passengerText.gameObject.SetActive(passengers.passengerCount > 0);
         if (passengerText != null && displayedCount != passengers.passengerCount)
         {
             displayedCount = passengers.passengerCount;

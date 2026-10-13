@@ -1,14 +1,33 @@
-// DÉSACTIVÉ avec le HUD de Jojo (CroustyHUDJojo.cs) : compilé seulement si CROUSTY_HUD_JOJO est défini.
-#if CROUSTY_HUD_JOJO
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 // Boîte de dialogue du gérant en bas à gauche de l'écran :
-// portrait + étiquette "GÉRANT" + bandeau papier avec le texte qui s'écrit.
-// Les images sont chargées depuis Resources/Gerant si les champs sont vides.
+// portrait + étiquette "GÉRANT" + bandeau papier avec le texte qui s'écrit lettre par lettre.
+// Le gérant commente la tournée en lisant le DeliveryManager, et râle quand le bus se cogne.
+//
+// A placer à la main sur un GameObject vide de la scène (ex : "Gerant").
+// Deux façons de l'utiliser :
+// 1. Boîte déjà placée dans un Canvas : glisser son texte, sa flèche et son Canvas dans "Boîte placée dans la scène".
+// 2. Sinon, la boîte est créée au lancement : glisser les images de Jojo/Resources/Gerant dans "Images".
 public class GerantDialogue : MonoBehaviour
 {
-    [Header("Images (auto depuis Resources/Gerant si vides)")]
+    public event System.Action MessageChanged;
+    [Header("Références")]
+    [Tooltip("Si vide : le DeliveryManager de la scène")]
+    public DeliveryManager manager;
+    [Tooltip("Optionnel : le BusDamage du bus, pour que le gérant réagisse aux chocs")]
+    public BusDamage busDamage;
+
+    [Header("Boîte placée dans la scène (optionnel)")]
+    [Tooltip("Texte du message. Si rempli, la boîte n'est pas créée par le script.")]
+    [SerializeField] private TMP_Text authoredMessage;
+    [Tooltip("Petit triangle \"suite\"")]
+    [SerializeField] private RectTransform authoredArrow;
+    [Tooltip("Canvas de la boîte : caché quand le jeu est en pause")]
+    [SerializeField] private Canvas authoredCanvas;
+
+    [Header("Images (portrait, bandeau, etiquette, titre)")]
     public Sprite portrait;
     [Tooltip("Bandeau papier derrière le texte")]
     public Sprite banner;
@@ -16,6 +35,23 @@ public class GerantDialogue : MonoBehaviour
     public Sprite nameTag;
     [Tooltip("Titre GÉRANT en image. Si vide, il est écrit avec la police.")]
     public Sprite nameTitle;
+
+    [Header("Répliques ({0} = nombre ou points)")]
+    public string startLine = "Hop hop hop! The orders are waiting, get moving!";
+    public string ordersLeftLine = "{0} orders left, the customers are hungry!";
+    public string lastOrderLine = "Just one order left, don't give up!";
+    [Tooltip("Quand il reste peu de temps")]
+    public string hurryLine = "Hurry up, the clock is ticking!";
+    [Tooltip("{0} = points gagnés pendant la tournée")]
+    public string runCompleteLine = "Nice job! {0} points! Come back to the shop for more orders!";
+    [Tooltip("Temps écoulé ou arrêté par la police")]
+    public string failedLine = "What a disaster... The customers are still waiting!";
+    [Tooltip("Après un choc contre un mur, une voiture ou une grosse chute")]
+    public string crashLine = "Hey! Watch my car!";
+    [Tooltip("Durée d'affichage d'une réplique de choc")]
+    public float crashLineSeconds = 3f;
+    [Tooltip("Secondes restantes à partir desquelles le gérant presse le joueur")]
+    public float hurrySeconds = 15f;
 
     [Header("Texte")]
     public string speakerName = "GÉRANT";
@@ -25,12 +61,16 @@ public class GerantDialogue : MonoBehaviour
     public Color textColor = new Color32(0x26, 0x26, 0x31, 0xFF);
     [Tooltip("Lettres par seconde. 0 = texte affiché d'un coup.")]
     public float lettersPerSecond = 45f;
+    [Tooltip("Hauteur du petit sautillement du triangle \"suite\"")]
+    public float arrowBounce = 5f;
 
     [Header("Position (depuis le coin bas-gauche)")]
     public float scale = 1f;
     public Vector2 screenOffset = new Vector2(10f, 10f);
     [Tooltip("Décale le bandeau, l'étiquette et le texte vers la droite (pas le portrait)")]
     public float bannerShift = 50f;
+    [Tooltip("Au-dessus du HUD (100) et de la mini map (110), sous les menus (600)")]
+    public int sortingOrder = 105;
 
     [Header("Couleurs si pas d'image")]
     public Color bannerColor = new Color32(0xEC, 0xE7, 0xDE, 0xFF);
@@ -39,23 +79,66 @@ public class GerantDialogue : MonoBehaviour
     private Text messageText;
     private RectTransform arrow;
     private string currentMessage = "";
-    private float shownLetters;
+    private float shownLetters;         // nombre de lettres déjà écrites
+    private float crashMessageUntil;    // la réplique de choc reste affichée jusqu'à ce moment
+    private float arrowBaseY = 38f;     // hauteur du triangle quand il ne sautille pas
 
     // Taille de la boîte, d'après la maquette
     private static readonly Vector2 BoxSize = new Vector2(740f, 410f);
 
-    public void Build(Transform canvas)
+    private void Start()
+    {
+        if (manager == null)
+            manager = DeliveryManager.Instance;
+
+        // On s'abonne à l'événement : OnDamaged sera appelé à chaque choc du bus
+        if (busDamage != null)
+            busDamage.Damaged += OnDamaged;
+
+        if (authoredMessage != null)
+        {
+            // Boîte déjà dans la scène : rien à créer
+            arrow = authoredArrow;
+            if (arrow != null)
+                arrowBaseY = arrow.anchoredPosition.y;
+        }
+        else
+        {
+            Build();
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (busDamage != null)
+            busDamage.Damaged -= OnDamaged;
+    }
+
+    private void OnDamaged()
+    {
+        crashMessageUntil = Time.time + crashLineSeconds;
+    }
+
+    // Crée tous les éléments de la boîte
+    private void Build()
     {
         if (font == null)
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = (CroustyTypography.LegacyFont != null ? CroustyTypography.LegacyFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
 
-        if (portrait == null) portrait = Resources.Load<Sprite>("Gerant/portrait");
-        if (banner == null) banner = Resources.Load<Sprite>("Gerant/bandeau");
-        if (nameTag == null) nameTag = Resources.Load<Sprite>("Gerant/etiquette");
-        if (nameTitle == null) nameTitle = Resources.Load<Sprite>("Gerant/titre");
+        // Canvas à part pour ne pas toucher au HUD enregistré dans la scène
+        GameObject canvasObject = new GameObject("Canvas Gerant", typeof(Canvas), typeof(CanvasScaler));
+        canvasObject.transform.SetParent(transform, false);
+
+        Canvas canvas = canvasObject.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = sortingOrder;
+
+        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
 
         GameObject root = new GameObject("Dialogue Gerant", typeof(RectTransform));
-        root.transform.SetParent(canvas, false);
+        root.transform.SetParent(canvas.transform, false);
 
         RectTransform rect = root.GetComponent<RectTransform>();
         rect.anchorMin = rect.anchorMax = Vector2.zero;
@@ -102,32 +185,81 @@ public class GerantDialogue : MonoBehaviour
         arrow.localRotation = Quaternion.Euler(0f, 0f, 180f);
     }
 
+    // Affiche une nouvelle réplique (elle s'écrit lettre par lettre)
     public void SetMessage(string message)
     {
-        if (messageText == null || message == currentMessage)
+        if (!HasTextBox() || message == null || message == currentMessage)
             return;
 
         currentMessage = message;
         shownLetters = lettersPerSecond > 0f ? 0f : message.Length;
+        MessageChanged?.Invoke();
+    }
+
+    // Réplique selon l'état de la tournée. null = on garde la réplique actuelle.
+    private string GetMessage()
+    {
+        if (manager.HasFailed)
+            return failedLine;
+
+        if (Time.time < crashMessageUntil)
+            return crashLine;
+
+        if (!manager.HasStarted)
+            return startLine;
+
+        if (manager.AllDelivered)
+            return string.Format(runCompleteLine, manager.LastRunScore);
+
+        if (manager.RunActive && manager.RunRemaining <= hurrySeconds)
+            return hurryLine;
+
+        if (manager.CroustyLeft == 1)
+            return lastOrderLine;
+
+        if (manager.CroustyLeft > 1)
+            return string.Format(ordersLeftLine, manager.CroustyLeft);
+
+        return null;
     }
 
     private void Update()
     {
-        if (messageText == null)
+        if (!HasTextBox())
             return;
 
-        // Effet machine à écrire
+        // La boîte placée dans la scène se cache pendant la pause
+        if (authoredCanvas != null)
+            authoredCanvas.enabled = Time.timeScale > 0f;
+
+        if (manager != null)
+            SetMessage(GetMessage());
+
+        // Effet machine à écrire (temps réel : continue pendant le game over, qui met le jeu en pause)
         if (shownLetters < currentMessage.Length)
-            shownLetters += lettersPerSecond * Time.deltaTime;
+            shownLetters += lettersPerSecond * Time.unscaledDeltaTime;
 
         int count = Mathf.Min(currentMessage.Length, Mathf.FloorToInt(shownLetters));
-        messageText.text = currentMessage.Substring(0, count);
+        string visibleText = currentMessage.Substring(0, count);
+        if (authoredMessage != null)
+            authoredMessage.text = visibleText;
+        else
+            messageText.text = visibleText;
+
+        if (arrow == null)
+            return;
 
         // Le triangle n'apparaît (et sautille) qu'une fois le texte complet
         bool finished = count >= currentMessage.Length;
         arrow.gameObject.SetActive(finished && currentMessage.Length > 0);
         arrow.anchoredPosition = new Vector2(arrow.anchoredPosition.x,
-            38f + Mathf.Abs(Mathf.Sin(Time.time * 4f)) * 5f);
+            arrowBaseY + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) * arrowBounce);
+    }
+
+    // Vrai s'il y a un texte où écrire (boîte de la scène ou boîte créée par le script)
+    private bool HasTextBox()
+    {
+        return authoredMessage != null || messageText != null;
     }
 
     private static Image CreateImage(Transform parent, string name, Sprite sprite, Color fallbackColor,
@@ -176,4 +308,3 @@ public class GerantDialogue : MonoBehaviour
         rect.sizeDelta = area.size;
     }
 }
-#endif

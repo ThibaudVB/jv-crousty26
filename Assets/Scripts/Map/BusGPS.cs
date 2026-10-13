@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.InputSystem;
 
 [DisallowMultipleComponent]
 public sealed class BusGPS : MonoBehaviour
@@ -9,23 +8,41 @@ public sealed class BusGPS : MonoBehaviour
     public DeliveryManager deliveries;
     [Tooltip("Racine des routes et obstacles. A renseigner apres generation procedurale.")]
     public Transform navigationRoot;
-    [Range(0, 3)] public int startingCharges = 3;
+    [Range(0, 3)] public int startingCharges = 0;
     public int Charges { get; private set; }
+    public bool CanReceiveCharges => Charges < 3 &&
+        (Inventory == null || Inventory.CanAddPower(PowerUpInventory.PowerUpType.GPS));
+    public bool BonusEquipped { get; set; } = true;
     public DeliveryPoint Target { get; private set; }
     public readonly List<Vector3> Route = new List<Vector3>();
-    public string Status { get; private set; } = "[G] GPS";
+    public string Status { get; private set; } = "[E] GPS";
     private NavMeshData data;
     private NavMeshDataInstance instance;
     private int agentType = -1;
     private NavMeshQueryFilter filter;
     private NavMeshPath path;
     private float nextRepath;
+    private ProceduralCity proceduralCity;
+    private readonly List<Vector3> proceduralRoute = new List<Vector3>();
+    private PowerUpInventory inventory;
+    private PowerUpInventory Inventory
+    {
+        get
+        {
+            if (inventory == null && deliveries != null && deliveries.player != null)
+                inventory = PowerUpInventory.EnsureFor(deliveries.player.gameObject);
+            return inventory;
+        }
+    }
 
     private void Awake()
     {
         path = new NavMeshPath();
         Charges = startingCharges;
         if (deliveries == null) deliveries = GetComponent<DeliveryManager>();
+        if (Inventory != null && Charges > 0)
+            Inventory.TryAddPower(PowerUpInventory.PowerUpType.GPS, Charges);
+        proceduralCity = FindAnyObjectByType<ProceduralCity>();
     }
     private void OnEnable() { if (deliveries != null) deliveries.DeliveryCompleted += OnDelivered; }
     private void OnDisable()
@@ -35,7 +52,18 @@ public sealed class BusGPS : MonoBehaviour
         Route.Clear();
     }
     // Appel par un futur pickup : un bonus recharge jusqu'a trois livraisons.
-    public void GrantBonus() { Charges = 3; Status = "[G] GPS"; }
+    public void GrantBonus() { Charges = 3; Status = "[E] GPS"; }
+    public bool AddCharges(int amount, int max)
+    {
+        int addedAmount = Mathf.Min(amount, max - Charges);
+        if (addedAmount <= 0) return false;
+        if (Inventory != null && !Inventory.TryAddPower(PowerUpInventory.PowerUpType.GPS, addedAmount))
+            return false;
+        Charges += addedAmount;
+        Status = "[E] GPS";
+        BonusEquipped = true;
+        return true;
+    }
 
     // Appeler apres modification/remplacement de la carte procedurale.
     public void RebuildNavigation(Transform root)
@@ -89,6 +117,8 @@ public sealed class BusGPS : MonoBehaviour
     private bool Calculate(DeliveryPoint point)
     {
         if (deliveries == null || deliveries.player == null || point == null) return false;
+        if (proceduralCity != null && proceduralCity.WorldRoot != null)
+            return proceduralCity.TryBuildRoute(deliveries.player.position, point.transform.position, proceduralRoute);
         // Echantillonnage court : ne jamais accrocher un toit ou une rue de l'autre cote d'un mur.
         return NavMesh.SamplePosition(deliveries.player.position, out var start, 6f, filter) &&
             NavMesh.SamplePosition(point.transform.position, out var end, 4f, filter) &&
@@ -97,9 +127,11 @@ public sealed class BusGPS : MonoBehaviour
     }
     public bool SelectNext()
     {
-        if (!isActiveAndEnabled || Time.timeScale <= 0f || Charges <= 0 || deliveries == null) return false;
+        if (!isActiveAndEnabled || Time.timeScale <= 0f || Charges <= 0 ||
+            (Inventory != null && Inventory.PrimaryPower != PowerUpInventory.PowerUpType.GPS) ||
+            deliveries == null) return false;
         if (Target != null && !Target.IsWaiting) return false; // Colis en vol.
-        if (!EnsureNavigation()) return false;
+        if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         var candidates = new List<DeliveryPoint>();
         foreach (var point in deliveries.deliveryPoints)
             if (point != null && point.IsWaiting) candidates.Add(point);
@@ -113,6 +145,7 @@ public sealed class BusGPS : MonoBehaviour
             if (!Calculate(candidate)) continue;
             Target = candidate;
             Charges--;
+            Inventory?.Consume(PowerUpInventory.PowerUpType.GPS);
             SetRoute();
             return true;
         }
@@ -124,7 +157,6 @@ public sealed class BusGPS : MonoBehaviour
     private void Update()
     {
         if (Time.timeScale <= 0f) return;
-        if (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame) SelectNext();
         if (Target == null || !Target.IsWaiting || Time.time < nextRepath) return;
         nextRepath = Time.time + 0.75f;
         if (Calculate(Target)) SetRoute();
@@ -133,7 +165,8 @@ public sealed class BusGPS : MonoBehaviour
     private void SetRoute()
     {
         Route.Clear();
-        Route.AddRange(path.corners);
+        if (proceduralCity != null && proceduralCity.WorldRoot != null) Route.AddRange(proceduralRoute);
+        else Route.AddRange(path.corners);
         float distance = 0;
         for (int i=1; i<Route.Count; i++) distance += Vector3.Distance(Route[i-1], Route[i]);
         Status = $"GPS : {distance:0} m  [G] changer";
@@ -143,7 +176,7 @@ public sealed class BusGPS : MonoBehaviour
         if (point != Target) return;
         Target = null;
         Route.Clear();
-        Status = Charges > 0 ? "[G] GPS : prochaine livraison" : "GPS epuise";
+        Status = Charges > 0 ? "[E] GPS : prochaine livraison" : "GPS epuise";
     }
     private void ReleaseNavigation()
     {

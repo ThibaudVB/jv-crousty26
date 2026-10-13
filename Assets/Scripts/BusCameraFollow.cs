@@ -182,7 +182,7 @@ public class BusCameraFollow : MonoBehaviour
         if (chaseManager == null)
         {
             chaseManager =
-                FindFirstObjectByType<PoliceChaseManager>();
+                FindAnyObjectByType<PoliceChaseManager>();
         }
 
         yaw = target.eulerAngles.y;
@@ -259,7 +259,7 @@ public class BusCameraFollow : MonoBehaviour
         }
 
         // MODE TERRESTRE NORMAL
-        if (cameraLocked)
+        if (cameraLocked || Gamepad.current != null)
         {
             yaw = target.eulerAngles.y;
             pitch = defaultPitch;
@@ -293,24 +293,19 @@ public class BusCameraFollow : MonoBehaviour
             return;
         }
 
-        if (cameraLocked)
+        if (cameraLocked || Gamepad.current != null)
             return;
 
-        if (Mouse.current == null)
-            return;
+        Vector2 mouseDelta = Mouse.current != null && Cursor.lockState == CursorLockMode.Locked
+            ? Mouse.current.delta.ReadValue() : Vector2.zero;
+        Vector2 orbit = mouseDelta * mouseSensitivity;
 
-        if (Cursor.lockState != CursorLockMode.Locked)
-            return;
-
-        Vector2 mouseDelta =
-            Mouse.current.delta.ReadValue();
-
-        if (mouseDelta.sqrMagnitude > 0.01f)
+        if (orbit.sqrMagnitude > 0.0001f)
         {
-            yaw += mouseDelta.x * mouseSensitivity;
+            yaw += orbit.x;
 
             float verticalInput =
-                mouseDelta.y * mouseSensitivity;
+                orbit.y;
 
             if (invertY)
                 pitch += verticalInput;
@@ -571,7 +566,7 @@ public class BusCameraFollow : MonoBehaviour
 
     private void HandleCursor()
     {
-        if (Keyboard.current != null &&
+        if (!CroustyPauseMenu.ToggledThisFrame && Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             Cursor.lockState = CursorLockMode.None;

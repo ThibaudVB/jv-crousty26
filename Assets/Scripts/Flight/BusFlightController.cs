@@ -15,8 +15,11 @@ public class BusFlightController : MonoBehaviour
 
     [Header("Activation")]
     public Key activationKey = Key.F;
-    [Range(0, 3)] public int startingCharges = 3;
-    public int UsesRemaining { get; private set; } = 3;
+    [Range(0, 3)] public int startingCharges = 0;
+    public int UsesRemaining { get; private set; }
+    public bool BonusEquipped { get; set; } = true;
+    public bool CanReceiveCharges => UsesRemaining < 3 &&
+        (inventory == null || inventory.CanAddPower(PowerUpInventory.PowerUpType.Flight));
     [Min(1f)] public float flightDuration = 15f;
 
     [Header("Impulsion initiale")]
@@ -61,6 +64,7 @@ public class BusFlightController : MonoBehaviour
     private Rigidbody rb;
     private BusController busController;
     private BusWheelRig wheelRig;
+    private PowerUpInventory inventory;
 
     private WheelCollider[] wheelColliders;
     private bool[] originalWheelStates;
@@ -87,6 +91,9 @@ public class BusFlightController : MonoBehaviour
     private void Awake()
     {
         UsesRemaining = startingCharges;
+        inventory = PowerUpInventory.EnsureFor(gameObject);
+        if (inventory != null && UsesRemaining > 0)
+            inventory.TryAddPower(PowerUpInventory.PowerUpType.Flight, UsesRemaining);
         rb = GetComponent<Rigidbody>();
         busController = GetComponent<BusController>();
         wheelRig = GetComponent<BusWheelRig>();
@@ -94,47 +101,42 @@ public class BusFlightController : MonoBehaviour
             gameObject.AddComponent<BusFallSpeedEffect>();
     }
 
+    public bool AddCharges(int amount, int max)
+    {
+        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        if (addedAmount <= 0) return false;
+        if (inventory != null && !inventory.TryAddPower(PowerUpInventory.PowerUpType.Flight, addedAmount))
+            return false;
+        UsesRemaining += addedAmount;
+        BonusEquipped = true;
+        return true;
+    }
+
     private void Update()
     {
-        if (Time.timeScale <= 0f)
+        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame)
             return;
 
         Keyboard keyboard = Keyboard.current;
 
-        if (keyboard == null)
-        {
-            turnInput = pitchInput = 0f;
-            boostInput = false;
-            return;
-        }
-
-        // Chaque envol consomme une charge.
-        if (!IsAirborne &&
-            keyboard[activationKey].wasPressedThisFrame)
-        {
-            ActivateFlight();
-        }
+        var pad = Gamepad.current;
 
         if (!IsAirborne)
             return;
 
-        bool left =
-            keyboard.qKey.isPressed ||
+        bool left = keyboard != null && (keyboard.qKey.isPressed ||
             keyboard.aKey.isPressed ||
-            keyboard.leftArrowKey.isPressed;
+            keyboard.leftArrowKey.isPressed);
 
-        bool right =
-            keyboard.dKey.isPressed ||
-            keyboard.rightArrowKey.isPressed;
+        bool right = keyboard != null && (keyboard.dKey.isPressed ||
+            keyboard.rightArrowKey.isPressed);
 
-        bool noseDown =
-            keyboard.zKey.isPressed ||
+        bool noseDown = keyboard != null && (keyboard.zKey.isPressed ||
             keyboard.wKey.isPressed ||
-            keyboard.upArrowKey.isPressed;
+            keyboard.upArrowKey.isPressed);
 
-        bool noseUp =
-            keyboard.sKey.isPressed ||
-            keyboard.downArrowKey.isPressed;
+        bool noseUp = keyboard != null && (keyboard.sKey.isPressed ||
+            keyboard.downArrowKey.isPressed);
 
         turnInput =
             (right ? 1f : 0f) -
@@ -144,7 +146,14 @@ public class BusFlightController : MonoBehaviour
             (noseUp ? 1f : 0f) -
             (noseDown ? 1f : 0f);
 
-        boostInput = keyboard.spaceKey.isPressed;
+        if (pad != null)
+        {
+            Vector2 stick = pad.leftStick.ReadValue();
+            if (Mathf.Abs(stick.x) > Mathf.Abs(turnInput)) turnInput = stick.x;
+            if (Mathf.Abs(stick.y) > Mathf.Abs(pitchInput)) pitchInput = -stick.y;
+        }
+        boostInput = (keyboard != null && keyboard.spaceKey.isPressed) ||
+            (pad != null && (pad.buttonSouth.isPressed || pad.rightTrigger.isPressed));
     }
 
     private void FixedUpdate()
@@ -185,9 +194,10 @@ public class BusFlightController : MonoBehaviour
     // ACTIVATION DU BONUS
     // =====================================================
 
-    private void ActivateFlight()
+    public void ActivateFlight()
     {
         if (IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
+            (inventory != null && inventory.PrimaryPower != PowerUpInventory.PowerUpType.Flight) ||
             rb.isKinematic || !busController.enabled)
             return;
 
@@ -242,6 +252,7 @@ public class BusFlightController : MonoBehaviour
         boostInput = false;
 
         timeRemaining = Mathf.Max(0.1f, flightDuration);
+        CroustySoundDesignManager.Play(CroustySound.Flight);
 
         boostRemaining = boostDuration;
         // Une impulsion unique degage les roues, sans trajectoire ni delai imposes.
@@ -249,6 +260,7 @@ public class BusFlightController : MonoBehaviour
         velocity.y = Mathf.Max(velocity.y, launchUpSpeed);
         rb.linearVelocity = velocity;
         UsesRemaining--;
+        inventory?.Consume(PowerUpInventory.PowerUpType.Flight);
         mode = FlightMode.Flying;
     }
 

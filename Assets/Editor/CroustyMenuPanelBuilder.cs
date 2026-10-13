@@ -117,7 +117,6 @@ public sealed class CroustyMenuPanelBuilder
     private CanvasGroup optionsGroup;
     private CanvasGroup contentGroup;
     private CroustyMenuHover[] tabs;
-    private RectTransform busArt;
 
 
 
@@ -157,10 +156,7 @@ public sealed class CroustyMenuPanelBuilder
 
     private void BuildMain()
     {
-        Solid(mainRoot, "Fond bleu", Blue);
-        DrawRoad(mainRoot);
-        busArt = FullRoot(mainRoot, "Illustration du bus");
-        DrawBus(busArt);
+        mainRoot.gameObject.AddComponent<CroustyMenuVideoBackground>();
         DrawLogo(mainRoot);
         MainRibbon("JOUER", 210, true, null);
         MainRibbon("RÉGLAGES", 285, false, null);

@@ -2,6 +2,8 @@
 
 ## Minimap dynamique
 
+SceneBase utilise désormais une ville chargée par chunks avec une nouvelle seed à chaque partie. Voir [VILLE_PROCEDURALE.md](VILLE_PROCEDURALE.md) pour la génération et l'intégration des livraisons, du GPS et du trafic. Les placements fixes décrits plus bas restent documentés comme état antérieur.
+
 `BusMinimap` est attaché au `DeliveryManager` de SceneBase. En Play, il crée une caméra orthographique inclinée à 55° et un HUD carré en haut à droite : le bus reste au centre et orienté vers le haut, la carte tourne avec son cap, et les marqueurs indiquent le magasin, les livraisons en attente et la police. Les objectifs hors de la zone visible restent indiqués sur le bord. Le radar dessine les silhouettes de la géométrie active avec des rues claires et des îlots sombres ; aucune image fixe de la ville ni coordonnées de carte ne sont nécessaires.
 
 Pour une future carte générée par seed, les routes et bâtiments doivent avoir des MeshFilter classés avec RadarMapElement, puis appeler BusMinimap.RefreshMap avec la racine générée. Les nouvelles adresses doivent aussi être enregistrées dans `DeliveryManager.deliveryPoints` pour apparaître comme objectifs actifs. Le rayon affiché (`worldRadius`), la hauteur de la caméra et la taille du HUD se règlent sur le composant.

@@ -19,7 +19,7 @@ public static class CroustyArcadeTuningRefresh
             EditorApplication.delayCall += ApplyLoadedScene;
             return;
         }
-        foreach (var controller in Object.FindObjectsByType<BusController>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var controller in Object.FindObjectsByType<BusController>(FindObjectsInactive.Include))
         {
             if (!controller.gameObject.scene.IsValid() || !controller.gameObject.scene.isLoaded) continue;
             var rig = controller.GetComponent<BusWheelRig>();

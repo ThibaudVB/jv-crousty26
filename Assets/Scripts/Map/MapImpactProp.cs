@@ -186,6 +186,7 @@ public class MapImpactProp : MonoBehaviour
         Vector3 rotationAxis = Vector3.Cross(Vector3.up, direction).normalized;
         Vector3 fallPivot = transform.TransformPoint(localBase + transform.InverseTransformDirection(direction) * poleRadius);
         HasBeenHit = true;
+        foreach (var fixture in GetComponentsInChildren<CroustyNightFixture>()) fixture.CutPower();
         foreach (Collider trigger in hitTriggers) trigger.enabled = false;
 
         if (impactType == ImpactType.FallingLamppost)
