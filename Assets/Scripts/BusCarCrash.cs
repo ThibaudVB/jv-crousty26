@@ -90,6 +90,7 @@ public class BusCarCrash : MonoBehaviour
     public bool TryResolvePoliceCollision(Collision collision)
     {
         if (!isActiveAndEnabled) return false;
+        if (collision.collider.GetComponentInParent<PoliceRoadblock>() != null) return false;
         var police = collision.collider.GetComponentInParent<PoliceCarAI>();
         if (police == null) return false;
         if (police.IsDestroyed) return true;
@@ -117,6 +118,7 @@ public class BusCarCrash : MonoBehaviour
 
     private bool TryDestroyCar(Collider hit, Vector3 point, float impactKmh)
     {
+        if (hit.GetComponentInParent<PoliceRoadblock>() != null) return false;
         var police = hit.GetComponentInParent<PoliceCarAI>();
         GameObject car = police != null ? police.gameObject : FindCarWithTag(hit.transform);
         if (car == null) return false;

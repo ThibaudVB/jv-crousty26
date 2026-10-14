@@ -146,6 +146,7 @@ public class BusDamage : MonoBehaviour
     {
         if (!CanTakeHit() || collision.transform.IsChildOf(transform))
             return;
+        if (TryRoadblockHit(collision)) return;
         var garage = GetComponent<BusGarageRepair>();
         if (garage != null && garage.IsGarage(collision.collider.transform)) return;
         var police = collision.collider.GetComponentInParent<PoliceCarAI>();
@@ -193,6 +194,20 @@ public class BusDamage : MonoBehaviour
         bool cooldownOver = Time.time - lastHitTime >= hitCooldown;
         bool gameLost = DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed;
         return cooldownOver && HitsTaken < Mathf.Max(1, hitsToDestroy) && !gameLost && (catchZone == null || !catchZone.IsCaught);
+    }
+
+    private bool TryRoadblockHit(Collision collision)
+    {
+        if (collision.collider.GetComponentInParent<PoliceRoadblock>() == null) return false;
+        // Even nudging or pushing a barricade costs health. Shared hitCooldown prevents
+        // multiple colliders from charging several hits in the same physics step.
+        TakeHit(collision.contactCount > 0 ? collision.GetContact(0).point : rb.position);
+        return true;
+    }
+
+    private void OnCollisionStay(Collision collision)
+    {
+        if (CanTakeHit()) TryRoadblockHit(collision);
     }
 
     private void TakeHit(Vector3 point)

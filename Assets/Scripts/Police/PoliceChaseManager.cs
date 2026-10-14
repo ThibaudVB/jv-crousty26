@@ -15,7 +15,7 @@ public class PoliceChaseManager : MonoBehaviour
     [SerializeField] private BusFlightController flightController;
 
     [Header("Patrouilles")]
-    [SerializeField, Range(0, 10)] private int patrolCount = 7;
+    [SerializeField, Range(0, 10)] private int patrolCount = 3;
     [SerializeField, Min(0f)] private float startupGraceSeconds = 3f;
     [SerializeField, Min(50f)] private float patrolRadius = 115f;
 
@@ -28,8 +28,8 @@ public class PoliceChaseManager : MonoBehaviour
     [SerializeField, Min(0f)] private float spottingSeconds = .35f;
 
     [Header("Poursuite")]
-    [SerializeField, Min(10f)] private float chaseSpeedKmh = 88f;
-    [SerializeField, Min(1f)] private float chaseAcceleration = 9f;
+    [SerializeField, Min(10f)] private float chaseSpeedKmh = 138f;
+    [SerializeField, Min(1f)] private float chaseAcceleration = 10f;
     [SerializeField, Range(1, 5)] private int maxChasers = 5;
     [SerializeField, Min(0f)] private float backupRadius = 260f;
     [SerializeField, Min(10f)] private float pursuitVisionRange = 90f;
@@ -42,12 +42,44 @@ public class PoliceChaseManager : MonoBehaviour
     [Header("Escalade")]
     [SerializeField, Range(1, 5)] private int maximumHeat = 5;
     [SerializeField, Min(5f)] private float escalationSeconds = 30f;
-    [SerializeField, Range(3, 12)] private int maximumReinforcements = 10;
+    [SerializeField, Range(3, 12)] private int maximumReinforcements = 12;
+    [Header("Progression par livraisons reussies")]
+    [SerializeField, Min(1)] private int deliveriesPerDifficultyLevel = 1;
+    [SerializeField, Range(1, 8)] private int maximumDifficultyLevel = 4;
+    [SerializeField, Range(0, 10)] private int latePatrolCount = 10;
+    [SerializeField, Min(0f)] private float lateChaseSpeedBonusKmh = 42f;
+    [Header("Barrages solides")]
+    [SerializeField, Range(1, 8)] private int maximumRoadblocks = 6;
+    [SerializeField, Min(5f)] private float roadblockLifetime = 90f;
+    private readonly List<PoliceRoadblock> roadblocks = new List<PoliceRoadblock>();
+    private readonly Collider[] roadblockOverlaps = new Collider[64];
+    private float nextRoadblock;
+    private int lastRoadblockOrders;
+    private Material barricadeWhite, barricadeRed;
+    private int CompletedOrders => DeliveryManager.Instance != null ? DeliveryManager.Instance.TotalDelivered : 0;
+    private int RoadblockLimit => Mathf.Min(maximumRoadblocks, CompletedOrders);
+    private float RoadblockInterval => Mathf.Lerp(24f, 5f, Mathf.Clamp01((CompletedOrders - 1) / 3f));
+    public int ActiveRoadblockCount => roadblocks.Count;
+    // Session progress survives pickup/round changes and escapes, but resets with the game.
+    public int DifficultyLevel => DeliveryManager.Instance == null ? 0 :
+        Mathf.Clamp(DeliveryManager.Instance.TotalDelivered / Mathf.Max(1, deliveriesPerDifficultyLevel),
+            0, Mathf.Max(1, maximumDifficultyLevel));
+    private float Difficulty => DifficultyLevel / (float)Mathf.Max(1, maximumDifficultyLevel);
+    private int CurrentPatrolCount => patrolCount == 0 ? 0 :
+        Mathf.RoundToInt(Mathf.Lerp(patrolCount, Mathf.Max(patrolCount, latePatrolCount), Difficulty));
+    private float EscalationInterval => escalationSeconds * Mathf.Lerp(1f, .3f, Difficulty);
+    private float SpottingDuration => spottingSeconds * Mathf.Lerp(1f, .3f, Difficulty);
+    private float RadioTrackingDuration => radioTrackingSeconds + Difficulty * 3.5f;
+    private int StartingHeat => Mathf.Min(maximumHeat, 1 + Mathf.FloorToInt(Difficulty * 4f));
+    private float ArrestDuration => bustSeconds * Mathf.Lerp(1f, .4f, Difficulty);
+    private float BaseChaseSpeed => (chaseSpeedKmh + lateChaseSpeedBonusKmh * Difficulty) / 3.6f;
     private int heat;
     private float nextEscalation, nextBackup;
     public int HeatLevel => heat;
-    private int PursuitLimit => Mathf.Min(maximumReinforcements, Mathf.Min(2, maxChasers) + Mathf.Max(0, heat - 1) * 2);
-    private float SearchDuration => loseSightSeconds + Mathf.Max(0, heat - 1) * 1.5f;
+    private int PursuitLimit => Mathf.Min(maximumReinforcements,
+        Mathf.Min(maxChasers, 2 + Mathf.FloorToInt(Difficulty * 6f)) + Mathf.Max(0, heat - 1) * 2,
+        Mathf.RoundToInt(Mathf.Lerp(4f, maximumReinforcements, Difficulty)));
+    private float SearchDuration => loseSightSeconds + Difficulty * 9f + Mathf.Max(0, heat - 1) * 1.5f;
 
     [Header("Arrestation")]
     [SerializeField, Min(1f)] private float bustDistance = 9f;
@@ -76,11 +108,12 @@ public class PoliceChaseManager : MonoBehaviour
     public bool BusInSight { get; private set; }
     public float SecondsOutOfSight => chasing ? Time.time - lastSeen : 0f;
     public float ArrestProgress => arrest;
-    public float ChaseSpeed => Mathf.Min(chaseSpeedKmh / 3.6f + 12f,
-        Mathf.Max(chaseSpeedKmh / 3.6f + heat * 1.2f,
-            chasing && BusInSight ? BusVelocity.magnitude + 2.5f + heat * .5f : 0f));
-    public float ChaseAcceleration => chaseAcceleration + heat * .75f;
-    public float RamClosingSpeed => 2.5f + Mathf.Max(0, heat - 1) * .5f;
+    public float ChaseSpeed => Mathf.Min(BaseChaseSpeed + Mathf.Lerp(20f, 24f, Difficulty) / 3.6f,
+        Mathf.Max(BaseChaseSpeed + heat * 1.2f,
+            chasing && BusInSight ? BusVelocity.magnitude + 5f + Difficulty * 6f + heat * .5f : 0f));
+    public float ChaseAcceleration => chaseAcceleration + Difficulty * 10f + heat * .75f;
+    public float RamClosingSpeed => 3.5f + Difficulty * 3f + Mathf.Max(0, heat - 1) * .5f;
+    public float RearRamCooldown => Mathf.Lerp(3.5f, 1.5f, Difficulty);
     public bool CanAttemptRearRam(PoliceCarAI candidate)
     {
         if (Time.time < nextRearRam || BusHidden) return false;
@@ -88,13 +121,13 @@ public class PoliceChaseManager : MonoBehaviour
             if (car != null && car != candidate && car.IsRammingBus) return false;
         return true;
     }
-    public void RearRamContact() => nextRearRam = Time.time + 3.5f;
+    public void RearRamContact() => nextRearRam = Time.time + RearRamCooldown;
     public Rigidbody BusBody => busRigidbody;
     public Vector3 BusPosition => busRigidbody.position;
     public Vector3 BusVelocity { get { var v = busRigidbody.linearVelocity; v.y = 0; return v; } }
     public float BusHalfLength { get; private set; } = 3f;
     // Where pursuers head when they cannot see the bus: radio fix first, then the last sighting.
-    public Vector3 TrackedPosition => lastKnown + lastKnownVelocity * Mathf.Clamp(Time.time - lastSeen, 0f, radioTrackingSeconds);
+    public Vector3 TrackedPosition => lastKnown + lastKnownVelocity * Mathf.Clamp(Time.time - lastSeen, 0f, RadioTrackingDuration);
 
     // Nearest pursuer close enough for the camera to frame it.
     public PoliceCarAI ActivePolice
@@ -134,6 +167,8 @@ public class PoliceChaseManager : MonoBehaviour
         beaconDark = Glow(signal, new Color(.12f, .12f, .16f), 0f);
         beaconRed = Glow(signal, new Color(1f, .1f, .08f), 4f);
         beaconBlue = Glow(signal, new Color(.15f, .35f, 1f), 4f);
+        barricadeWhite = Glow(signal, new Color(.85f, .88f, .9f), 0f);
+        barricadeRed = Glow(signal, new Color(.9f, .08f, .06f), .3f);
         calmUntil = Time.time + startupGraceSeconds;
         BuildHud();
     }
@@ -151,6 +186,10 @@ public class PoliceChaseManager : MonoBehaviour
         if (city == null || city.WorldRoot == null || Time.timeScale <= 0f || catchZone != null && catchZone.IsCaught) return;
         float dt = Time.fixedDeltaTime;
         cars.RemoveAll(car => car == null || car.IsDestroyed);
+        // A delivery completed during an existing chase raises pressure immediately.
+        // Progress alone never starts a chase against a legally driven bus.
+        if (chasing) heat = Mathf.Max(heat, StartingHeat);
+        MaintainRoadblocks();
         MaintainPatrols();
 
         bool look = Time.time >= nextSight;
@@ -163,11 +202,13 @@ public class PoliceChaseManager : MonoBehaviour
             bool spotted = false;
             if (Time.time >= calmUntil && !hidden)
                 foreach (var car in cars)
-                    if (car.State == PoliceCarAI.Mode.Patrol && !car.IsBlinded &&
+                    if ((car.State == PoliceCarAI.Mode.Patrol || car.IsRoadblock) && !car.IsBlinded &&
                         busKmh > speedLimitKmh &&
                         CanSee(car, visionRange, visionHalfAngle))
-                    { spotted = true; if ((suspicion += dt) >= spottingSeconds) BeginChase(car); break; }
-            if (!spotted) suspicion = Mathf.Max(0f, suspicion - dt);
+                    { spotted = true; if ((suspicion += dt) >= SpottingDuration) BeginChase(car); break; }
+            // Driving legally never carries partial suspicion into a later encounter.
+            if (busKmh <= speedLimitKmh || hidden) suspicion = 0f;
+            else if (!spotted) suspicion = Mathf.Max(0f, suspicion - dt);
             SetArrest(Mathf.MoveTowards(arrest, 0f, dt));
             return;
         }
@@ -176,7 +217,7 @@ public class PoliceChaseManager : MonoBehaviour
         if (Time.time >= nextEscalation && BusInSight)
         {
             RaiseHeat();
-            nextEscalation = Time.time + escalationSeconds;
+            nextEscalation = Time.time + EscalationInterval;
         }
         RequestBackup();
         for (int i = backup.Count - 1; i >= 0; i--)
@@ -192,7 +233,7 @@ public class PoliceChaseManager : MonoBehaviour
         int pinning = 0;
         foreach (var car in cars)
         {
-            if (!car.InPursuit) continue;
+            if (!car.InPursuit && !car.IsRoadblock) continue;
             if (look) car.SeesBus = !hidden && !car.IsBlinded && CanSee(car, pursuitVisionRange, 180f);
             if (car.SeesBus) BusInSight = true;
             Vector3 offset = car.transform.position - BusPosition; offset.y = 0;
@@ -206,7 +247,7 @@ public class PoliceChaseManager : MonoBehaviour
 
         // Arrest: slow (or stuck) next to an officer. Two officers are quicker.
         if (pinning > 0 && busKmh < bustSpeedKmh)
-            SetArrest(arrest + dt / bustSeconds * (1f + .5f * Mathf.Min(2, pinning - 1)));
+            SetArrest(arrest + dt / ArrestDuration * (1f + .5f * Mathf.Min(2, pinning - 1)));
         else
             SetArrest(Mathf.Max(0f, arrest - dt * .5f));
     }
@@ -232,8 +273,8 @@ public class PoliceChaseManager : MonoBehaviour
     private void BeginChase(PoliceCarAI first)
     {
         chasing = true; suspicion = 0f;
-        heat = Mathf.Max(1, heat);
-        nextEscalation = Time.time + escalationSeconds;
+        heat = Mathf.Max(StartingHeat, heat);
+        nextEscalation = Time.time + EscalationInterval;
         nextBackup = 0f;
         lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
         first.StartChase();
@@ -245,7 +286,8 @@ public class PoliceChaseManager : MonoBehaviour
             if (car != first && car.State == PoliceCarAI.Mode.Patrol &&
                 Vector3.Distance(car.transform.position, BusPosition) < backupRadius) others.Add(car);
         others.Sort((a, b) => Vector3.Distance(a.transform.position, BusPosition).CompareTo(Vector3.Distance(b.transform.position, BusPosition)));
-        for (int i = 0; i < others.Count && i < PursuitLimit - 1; i++) backup.Add((others[i], Time.time + 2f + 1.5f * i));
+        for (int i = 0; i < others.Count && i < PursuitLimit - 1; i++)
+            backup.Add((others[i], Time.time + Mathf.Lerp(2f, .5f, Difficulty) + Mathf.Lerp(1.5f, .2f, Difficulty) * i));
     }
 
     public void CarDestroyed(PoliceCarAI car)
@@ -256,11 +298,11 @@ public class PoliceChaseManager : MonoBehaviour
         if (!chasing)
         {
             chasing = true;
-            heat = 1;
+            heat = StartingHeat;
         }
         RaiseHeat();
         lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
-        nextEscalation = Time.time + escalationSeconds;
+        nextEscalation = Time.time + EscalationInterval;
         nextBackup = nextSpawn = 0f;
         Flash("POLICE CAR DESTROYED! WANTED LEVEL " + heat + " - BACKUP INCOMING!");
     }
@@ -274,7 +316,7 @@ public class PoliceChaseManager : MonoBehaviour
 
     private void RequestBackup()
     {
-        if (!BusInSight && SecondsOutOfSight > radioTrackingSeconds) return;
+        if (!BusInSight && SecondsOutOfSight > RadioTrackingDuration) return;
         if (Time.time < nextBackup) return;
         nextBackup = Time.time + 1f;
         int assigned = backup.Count;
@@ -282,9 +324,9 @@ public class PoliceChaseManager : MonoBehaviour
         foreach (var car in cars)
         {
             if (assigned >= PursuitLimit) break;
-            if (car.IsDestroyed || car.InPursuit || backup.Exists(entry => entry.car == car)) continue;
+            if (car.IsDestroyed || car.IsRoadblock || car.InPursuit || backup.Exists(entry => entry.car == car)) continue;
             if (Vector3.Distance(car.transform.position, BusPosition) > backupRadius) continue;
-            backup.Add((car, Time.time + Mathf.Max(.5f, 2.5f - heat * .35f)));
+            backup.Add((car, Time.time + Mathf.Max(.5f, 2.5f - heat * .35f - Difficulty * .75f)));
             assigned++;
         }
     }
@@ -296,7 +338,7 @@ public class PoliceChaseManager : MonoBehaviour
         BusInSight = false;
         backup.Clear();
         foreach (var car in cars) { car.SeesBus = false; car.ReturnToPatrol(); }
-        calmUntil = Time.time + escapeCooldownSeconds;
+        calmUntil = Time.time + escapeCooldownSeconds * Mathf.Lerp(1f, .25f, Difficulty);
         SetArrest(0f);
         Flash("You lost the police!");
     }
@@ -325,8 +367,10 @@ public class PoliceChaseManager : MonoBehaviour
     {
         if (Time.time < nextSpawn) return;
         nextSpawn = Time.time + .5f;
-        bool reinforcing = chasing && (BusInSight || SecondsOutOfSight < radioTrackingSeconds);
-        if (cars.Count < (reinforcing ? Mathf.Max(patrolCount, PursuitLimit + 2) : patrolCount))
+        bool reinforcing = chasing && (BusInSight || SecondsOutOfSight < RadioTrackingDuration);
+        int mobileCars = 0;
+        foreach (var car in cars) if (!car.IsRoadblock) mobileCars++;
+        if (mobileCars < (reinforcing ? Mathf.Max(CurrentPatrolCount, PursuitLimit + 2) : CurrentPatrolCount))
         {
             if (city.TryFindStreetSpawn(null, 55f, patrolRadius, true, 40, out var from, out var to, out var at))
             { var car = CreateCar(); car.StartPatrol(from, to, at); cars.Add(car); }
@@ -334,10 +378,11 @@ public class PoliceChaseManager : MonoBehaviour
         }
         foreach (var car in cars)
         {
+            if (car.IsRoadblock) continue;
             Vector3 offset = car.transform.position - BusPosition; offset.y = 0;
             if (VisibleToPlayer(car.transform.position)) continue;
             if (car.InPursuit && !reinforcing) continue;
-            if (!chasing && cars.Count > patrolCount && offset.magnitude > 90f)
+            if (!chasing && mobileCars > CurrentPatrolCount && offset.magnitude > 90f)
             {
                 cars.Remove(car);
                 Destroy(car.gameObject);
@@ -349,6 +394,7 @@ public class PoliceChaseManager : MonoBehaviour
 
     public void Recycle(PoliceCarAI car)
     {
+        if (car.IsRoadblock) return;
         if (VisibleToPlayer(car.transform.position)) return;
         if (city.TryFindStreetSpawn(car.GetComponent<CityTrafficCar>(), 55f, patrolRadius, true, 40, out var from, out var to, out var at))
         {
@@ -483,6 +529,130 @@ public class PoliceChaseManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        foreach (var material in new[] { beaconDark, beaconRed, beaconBlue }) if (material != null) Destroy(material);
+        foreach (var block in roadblocks) if (block != null) Destroy(block.gameObject);
+        foreach (var material in new[] { beaconDark, beaconRed, beaconBlue, barricadeWhite, barricadeRed })
+            if (material != null) Destroy(material);
+    }
+
+    private void MaintainRoadblocks()
+    {
+        if (CompletedOrders > lastRoadblockOrders) nextRoadblock = Time.time;
+        lastRoadblockOrders = CompletedOrders;
+        for (int i = roadblocks.Count - 1; i >= 0; i--)
+        {
+            var block = roadblocks[i];
+            if (block == null) { roadblocks.RemoveAt(i); continue; }
+            float distance = Vector3.Distance(block.transform.position, BusPosition);
+            bool retire = distance > 320f || !city.IsAreaReady(block.transform.position) ||
+                Time.time - block.CreatedAt > roadblockLifetime;
+            // Never remove an obstacle while the player is touching or looking at it.
+            if (!retire || distance < 75f || VisibleToPlayer(block.transform.position)) continue;
+            foreach (var officer in block.GetComponentsInChildren<PoliceCarAI>()) cars.Remove(officer);
+            Destroy(block.gameObject);
+            roadblocks.RemoveAt(i);
+        }
+        if (RoadblockLimit == 0 || roadblocks.Count >= RoadblockLimit || Time.time < nextRoadblock) return;
+        // Retry soon when streaming or occupied roads prevent a safe placement.
+        nextRoadblock = Time.time + 1f;
+        if (!TryRoadblockPosition(out var position, out var heading)) return;
+        CreateRoadblock(position, heading);
+        nextRoadblock = Time.time + RoadblockInterval;
+        Flash("POLICE ROADBLOCK AHEAD - TAKE ANOTHER STREET!");
+    }
+
+    private bool TryRoadblockPosition(out Vector3 position, out Vector3 heading)
+    {
+        position = heading = default;
+        Vector3 forward = busRigidbody.rotation * Vector3.forward;
+        forward.y = 0f;
+        forward.Normalize();
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+        for (int attempt = 0; attempt < 48; attempt++)
+        {
+            // Prefer the current direction, then streets beyond the next turns.
+            Vector3 probe = BusPosition + forward * Random.Range(110f, 240f) +
+                right * (attempt < 16 ? 0f : Random.Range(-2, 3) * ProceduralCity.BlockSize);
+            if (!city.NearestLane(probe, forward, out var from, out var to, out _)) continue;
+            Vector3 along = ProceduralCity.Flat(to - from);
+            Vector3 center = city.JunctionPosition(from) + along * (ProceduralCity.BlockSize * .5f) + Vector3.up * .02f;
+            Vector3 offset = center - BusPosition; offset.y = 0f;
+            float distance = offset.magnitude;
+            if (distance < 110f || distance > 260f || Vector3.Dot(offset, forward) < 65f) continue;
+            // Hidden placements first. Distant visible placements still leave at least
+            // four seconds to react at 130 km/h, with a HUD warning.
+            if (VisibleToPlayer(center) && (attempt < 32 || distance < 170f)) continue;
+            if (!RoadblockFootprintClear(center, along)) continue;
+            bool nearby = false;
+            foreach (var block in roadblocks)
+                if (block != null && (block.transform.position - center).sqrMagnitude < 48f * 48f) { nearby = true; break; }
+            if (nearby) continue;
+            position = center; heading = along;
+            return true;
+        }
+        return false;
+    }
+
+    private bool RoadblockFootprintClear(Vector3 center, Vector3 heading)
+    {
+        Quaternion rotation = Quaternion.LookRotation(heading);
+        Vector3 side = rotation * Vector3.right;
+        // The asphalt is 16 m wide. Cover both lanes and the shoulders; leave
+        // intersections free so there is always another street to take.
+        foreach (float x in new[] { -9f, 0f, 9f })
+            foreach (float z in new[] { -2f, 14f })
+                if (!city.IsAreaReady(center + side * x + heading * z)) return false;
+        int count = Physics.OverlapBoxNonAlloc(center + heading * 6f + Vector3.up * 1.4f,
+            new Vector3(9.5f, 1.1f, 9f), roadblockOverlaps, rotation, ~0, QueryTriggerInteraction.Ignore);
+        if (count == roadblockOverlaps.Length) return false;
+        for (int i = 0; i < count; i++)
+        {
+            var collider = roadblockOverlaps[i];
+            // Low road surfaces and kerbs are allowed; vehicles and scenery are not.
+            if (collider.bounds.max.y <= center.y + .25f) continue;
+            return false;
+        }
+        return true;
+    }
+
+    private PoliceRoadblock CreateRoadblock(Vector3 position, Vector3 heading)
+    {
+        var group = new GameObject("Barrage de police - " + CompletedOrders + " livraisons");
+        group.transform.SetParent(city.WorldRoot, false);
+        group.transform.SetPositionAndRotation(position, Quaternion.LookRotation(heading));
+        var block = group.AddComponent<PoliceRoadblock>();
+        roadblocks.Add(block);
+        int rows = CompletedOrders >= 4 ? 3 : CompletedOrders >= 2 ? 2 : 1;
+        for (int row = 0; row < rows; row++)
+        {
+            for (int segment = 0; segment < 6; segment++)
+            {
+                float x = -7.5f + segment * 3f;
+                var barrier = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                barrier.name = "Barriere solide";
+                barrier.transform.SetParent(group.transform, false);
+                barrier.transform.localPosition = new Vector3(x, .7f, row * 4f);
+                barrier.transform.localScale = new Vector3(3f, 1.4f, 1.2f);
+                barrier.GetComponent<Renderer>().sharedMaterial = barricadeWhite;
+                for (int stripe = 0; stripe < 3; stripe++)
+                {
+                    var mark = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    mark.name = "Bande rouge reflechissante";
+                    Destroy(mark.GetComponent<Collider>());
+                    mark.transform.SetParent(barrier.transform, false);
+                    mark.transform.localPosition = new Vector3((stripe - 1) * .32f, 0f, -.51f);
+                    mark.transform.localScale = new Vector3(.12f, .75f, .025f);
+                    mark.GetComponent<Renderer>().sharedMaterial = barricadeRed;
+                }
+            }
+        }
+        for (int i = 0; i < 2; i++)
+        {
+            var officer = CreateCar();
+            officer.transform.SetParent(group.transform, false);
+            Vector3 at = group.transform.TransformPoint(new Vector3(i == 0 ? -4.5f : 4.5f, 0f, rows * 4f));
+            officer.ParkAtRoadblock(at, group.transform.rotation * Quaternion.Euler(0f, 90f, 0f));
+            cars.Add(officer);
+        }
+        return block;
     }
 }
