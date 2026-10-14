@@ -43,6 +43,7 @@ public class DeliveryPoint : MonoBehaviour
     private Transform ring;
     private float lastRingSide;
     private bool ringPrimed;
+    private bool ringShown; // le cercle est affiché : le faisceau est caché
     private float ringHeight = -1f; // tirée au hasard entre ringMinHeight et ringMaxHeight
 
     public Vector3 RingCenter
@@ -120,7 +121,15 @@ public class DeliveryPoint : MonoBehaviour
     // show = le bus vole et peut livrer. Renvoie vrai quand le bus vient de passer dans le cercle.
     public bool UpdateRing(Vector3 busPosition, bool show)
     {
-        if (!show || state != State.Waiting)
+        // Le faisceau disparaît tant que le cercle est affiché, et revient quand on ne vole plus
+        bool visible = show && state == State.Waiting;
+        if (visible != ringShown)
+        {
+            ringShown = visible;
+            RefreshMarker();
+        }
+
+        if (!visible)
         {
             if (ring != null) ring.gameObject.SetActive(false);
             ringPrimed = false;
@@ -153,16 +162,11 @@ public class DeliveryPoint : MonoBehaviour
         return crossed;
     }
 
-    // Le faisceau n'est visible que quand une commande attend
+    // Le faisceau n'est visible que quand une commande attend (et pas pendant que le cercle est affiché)
     private void RefreshMarker()
     {
         if (marker != null)
-            marker.SetActive(state == State.Waiting && markerVisible);
-        if (state != State.Waiting || !markerVisible)
-        {
-            if (ring != null) ring.gameObject.SetActive(false);
-            ringPrimed = false;
-        }
+            marker.SetActive(state == State.Waiting && !ringShown);
     }
 
     // Dessine la zone dans la vue Scene

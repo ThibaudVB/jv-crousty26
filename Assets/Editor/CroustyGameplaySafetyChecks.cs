@@ -118,14 +118,14 @@ public static class CroustyGameplaySafetyChecks
             Check(ringPoint.UpdateRing(ringPoint.RingCenter - ring.forward * 2f, true), "Traverser un anneau declenche la livraison");
             var removed = visible[0];
             removed.MarkPending();
-            Check(!ring.gameObject.activeSelf, "L'anneau disparait au lancer du colis");
+            UpdateRings(manager);
+            Check(!ring.gameObject.activeSelf, "L'anneau disparait apres le lancer du colis");
             Refresh(manager);
             UpdateRings(manager);
             Check(visible.Count == 10 && !visible.Contains(removed), "Une destination est remplacee des qu'un colis part");
             Check(CountRings(manager) == 10, "Les anneaux se renouvellent sans depasser dix");
-            int markers = 0;
-            foreach (var point in manager.deliveryPoints) if (point.marker.activeSelf) markers++;
-            Check(markers == 10, "Dix balises maximum dans le monde");
+            foreach (var point in visible)
+                Check(!point.marker.activeSelf, "Les faisceaux des destinations visibles sont caches pendant le vol");
         }
         finally
         {

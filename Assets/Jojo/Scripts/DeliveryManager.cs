@@ -247,10 +247,32 @@ public class DeliveryManager : MonoBehaviour
         }
     }
 
+    // ---------- BOOST DE POINTS (figures du bus) ----------
+
+    private float boostMultiplier = 1f;
+    private float boostEndTime;
+
+    // Multiplicateur appliqué aux points gagnés (1 = pas de boost)
+    public float ScoreMultiplier => Time.time < boostEndTime ? boostMultiplier : 1f;
+    public float BoostRemaining => Mathf.Max(0f, boostEndTime - Time.time);
+    public event System.Action<float, float> ScoreBoostStarted; // (multiplicateur, durée)
+
+    // Appelé par BusAirTricks : on garde le meilleur multiplicateur et le temps le plus long
+    public void StartScoreBoost(float multiplier, float duration)
+    {
+        if (multiplier <= 1f || duration <= 0f)
+            return;
+        boostMultiplier = Mathf.Max(multiplier, ScoreMultiplier);
+        boostEndTime = Mathf.Max(boostEndTime, Time.time + duration);
+        ScoreBoostStarted?.Invoke(boostMultiplier, BoostRemaining);
+    }
+
     private void AddScore(int points)
     {
         if (points <= 0)
             return;
+
+        points = Mathf.RoundToInt(points * ScoreMultiplier);
 
         Score += points;
         LastRunScore += points;
