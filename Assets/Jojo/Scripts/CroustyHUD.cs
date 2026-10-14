@@ -68,12 +68,18 @@ public class CroustyHUD : MonoBehaviour
     [SerializeField] private RectTransform waypointTemplate;
     [Tooltip("Taille du texte des repères créés par l'outil de l'éditeur")]
     public int fontSize = 32;
+    [Tooltip("Optionnel : icône des adresses de livraison. Si vide : rond de la couleur de l'adresse.")]
+    public Sprite deliveryWaypointIcon;
+    [Tooltip("Optionnel : icône du restaurant. Si vide : rond de la couleur du restaurant.")]
+    public Sprite shopWaypointIcon;
 
     // Un repère à l'écran : un rond, une flèche (si la cible est hors écran) et la distance
     private class Waypoint
     {
         public RectTransform root;
         public Image icon;
+        public Sprite defaultSprite; // rond du modèle, utilisé quand il n'y a pas d'icône
+        public Outline outline;
         public RectTransform arrow;
         public Text label;
     }
@@ -327,7 +333,7 @@ public class CroustyHUD : MonoBehaviour
             // Magasin : seulement quand il faut y aller
             if (manager.shop != null && manager.NeedsPickup)
             {
-                ShowWaypoint(used, cam, manager.shop.transform.position, manager.shop.markerColor, manager.shop.screenLabel);
+                ShowWaypoint(used, cam, manager.shop.transform.position, manager.shop.markerColor, manager.shop.screenLabel, shopWaypointIcon);
                 used++;
             }
 
@@ -336,7 +342,7 @@ public class CroustyHUD : MonoBehaviour
             {
                 if (point != null && point.IsWaiting)
                 {
-                    ShowWaypoint(used, cam, point.transform.position, point.markerColor, null);
+                    ShowWaypoint(used, cam, point.transform.position, point.markerColor, null, deliveryWaypointIcon);
                     used++;
                 }
             }
@@ -347,7 +353,7 @@ public class CroustyHUD : MonoBehaviour
             waypoints[i].root.gameObject.SetActive(false);
     }
 
-    private void ShowWaypoint(int index, Camera cam, Vector3 worldPosition, Color color, string title)
+    private void ShowWaypoint(int index, Camera cam, Vector3 worldPosition, Color color, string title, Sprite customIcon)
     {
         // Crée un nouveau repère (copie du modèle) s'il en manque
         if (index >= waypoints.Count)
@@ -357,6 +363,8 @@ public class CroustyHUD : MonoBehaviour
             Waypoint created = new Waypoint();
             created.root = copy;
             created.icon = copy.Find("Icone").GetComponent<Image>();
+            created.defaultSprite = created.icon.sprite;
+            created.outline = created.icon.GetComponent<Outline>();
             created.arrow = copy.Find("Fleche").GetComponent<RectTransform>();
             created.label = copy.Find("Distance").GetComponent<Text>();
             waypoints.Add(created);
@@ -401,7 +409,11 @@ public class CroustyHUD : MonoBehaviour
 
         waypoint.arrow.gameObject.SetActive(!onScreen);
         waypoint.root.position = position;
-        waypoint.icon.color = color;
+        // Icône fournie : affichée avec ses vraies couleurs, sans le contour noir du rond
+        bool hasIcon = customIcon != null;
+        waypoint.icon.sprite = hasIcon ? customIcon : waypoint.defaultSprite;
+        waypoint.icon.color = hasIcon ? Color.white : color;
+        if (waypoint.outline != null) waypoint.outline.enabled = !hasIcon;
         waypoint.arrow.GetComponent<Image>().color = color;
 
         float distance = Vector3.Distance(manager.player.position, worldPosition);
