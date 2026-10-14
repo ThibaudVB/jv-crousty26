@@ -14,6 +14,18 @@ public class BusBuildingCrash : MonoBehaviour
     [Tooltip("Ce qui tombe avec les tours (la passerelle entre les deux)")]
     public string[] attachedNamePrefixes = { "Visuel Passerelle_Aerienne" };
 
+    [Header("Chute des routes posées sur les tours")]
+    [Tooltip("Ce qui tombe par terre quand la tour qui le porte explose")]
+    public string[] fallingNamePrefixes = { "Visuel Route_Aerienne", "Visuel Rampe_Aerienne" };
+    [Tooltip("Distance (m) autour de la tour pour considérer qu'une route est posée dessus")]
+    [Min(0f)] public float supportMargin = 4f;
+    [Tooltip("Masse des morceaux qui tombent (kg)")]
+    [Min(1f)] public float fallingMass = 8000f;
+    [Tooltip("Petite rotation au hasard pendant la chute (pour que ça ne tombe pas tout droit)")]
+    [Min(0f)] public float fallTumble = 0.4f;
+    [Tooltip("Les morceaux tombés disparaissent après ce temps (s). 0 = ils restent par terre")]
+    [Min(0f)] public float debrisLifetime = 30f;
+
     [Header("Vitesse minimale pour exploser un bâtiment")]
     public float explosionSpeedKmh = 40f;
 
@@ -115,10 +127,19 @@ public class BusBuildingCrash : MonoBehaviour
         // Les autres morceaux de la même tour (ex : "Tour_Aerienne_Nord" et "Tour_Aerienne_Nord_Mesh"),
         // et la passerelle accrochée aux tours, tombent avec elle
         string towerName = building.name.EndsWith("_Mesh") ? building.name.Substring(0, building.name.Length - 5) : building.name;
+        Bounds support = bounds;
+        support.Expand(supportMargin * 2f);
         if (building.transform.parent != null)
             foreach (Transform sibling in building.transform.parent)
             {
                 if (sibling.gameObject == building) continue;
+                // Route posée sur cette tour : elle tombe par terre
+                if (FindBuilding(sibling, fallingNamePrefixes) == sibling.gameObject &&
+                    GetBounds(sibling.gameObject).Intersects(support) && destroyedBuildings.Add(sibling.gameObject))
+                {
+                    MakeFall(sibling.gameObject);
+                    continue;
+                }
                 bool samePiece = sibling.name.StartsWith(towerName, System.StringComparison.OrdinalIgnoreCase);
                 bool attached = FindBuilding(sibling, attachedNamePrefixes) == sibling.gameObject;
                 if (!samePiece && !attached || !destroyedBuildings.Add(sibling.gameObject)) continue;
@@ -127,6 +148,30 @@ public class BusBuildingCrash : MonoBehaviour
             }
 
         Remove(building);
+    }
+
+    // La route garde son apparence mais devient un objet physique qui tombe.
+    // Le collider exact de la ville ne peut pas tomber (MeshCollider non convexe) : on le remplace par une boîte.
+    private void MakeFall(GameObject piece)
+    {
+        foreach (var meshCollider in piece.GetComponentsInChildren<MeshCollider>())
+            Destroy(meshCollider);
+
+        var filter = piece.GetComponent<MeshFilter>();
+        var box = piece.AddComponent<BoxCollider>();
+        if (filter != null && filter.sharedMesh != null)
+        {
+            box.center = filter.sharedMesh.bounds.center;
+            box.size = filter.sharedMesh.bounds.size;
+        }
+
+        var body = piece.AddComponent<Rigidbody>();
+        body.mass = fallingMass;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.angularVelocity = Random.insideUnitSphere * fallTumble;
+
+        if (debrisLifetime > 0f)
+            Destroy(piece, debrisLifetime);
     }
 
     private void SpawnExplosions(Bounds bounds)
