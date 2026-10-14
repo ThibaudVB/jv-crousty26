@@ -49,6 +49,12 @@ public class DeliveryManager : MonoBehaviour
              "Décoché : le bus doit être à moins de \"Max Height Difference\" de l'adresse.")]
     public bool deliverFromAnyHeight = true;
 
+    [Header("Livraison en vol : cercles")]
+    [Tooltip("Coché : pendant le vol, un cercle apparaît au-dessus de chaque adresse et on ne livre " +
+             "qu'en passant dedans (avec un son). Au sol, la livraison ne change pas. " +
+             "La hauteur et la taille du cercle se règlent sur chaque DeliveryPoint.")]
+    public bool flightDeliveryNeedsRing = false;
+
     [Header("Parachute")]
     [Tooltip("Le crousty ouvre un parachute quand il est lancé de haut")]
     public bool useParachute = true;
@@ -121,6 +127,7 @@ public class DeliveryManager : MonoBehaviour
     private bool alarmPlayed;
     private bool mustLeaveShop;      // après un chargement, il faut sortir du magasin avant de recharger
     private PoliceGameOverManager gameOver;
+    private BusFlightController flight;
 
     private void Awake()
     {
@@ -176,7 +183,21 @@ public class DeliveryManager : MonoBehaviour
         if (atShop && NeedsPickup && !mustLeaveShop)
             LoadOrders();
 
-        // 2. Livraison en passant devant une adresse
+        // 2. En vol, avec les cercles : on livre seulement en passant dedans
+        if (flightDeliveryNeedsRing)
+        {
+            bool flying = IsBusFlying();
+            DeliveryPoint ringTarget = UpdateRings(flying);
+            if (ringTarget != null)
+            {
+                CroustySoundDesignManager.Play(CroustySound.FireRing);
+                ThrowCrousty(ringTarget);
+            }
+            if (flying)
+                return;
+        }
+
+        // 3. Livraison en passant devant une adresse
         DeliveryPoint target = FindDeliverablePoint();
         if (target != null)
             ThrowCrousty(target);
@@ -402,6 +423,30 @@ public class DeliveryManager : MonoBehaviour
             }
         }
         return best;
+    }
+
+    // Vrai pendant le pouvoir de vol (et la chute qui suit)
+    private bool IsBusFlying()
+    {
+        if (flight == null && player != null)
+            flight = player.GetComponent<BusFlightController>();
+        return flight != null && flight.IsAirborne;
+    }
+
+    // Affiche / cache les cercles et renvoie l'adresse dont le cercle vient d'être traversé
+    private DeliveryPoint UpdateRings(bool flying)
+    {
+        bool show = flying && RunActive && CroustyLeft > 0;
+        DeliveryPoint crossed = null;
+        foreach (DeliveryPoint point in deliveryPoints)
+        {
+            if (point == null)
+                continue;
+            // Tous les cercles sont mis à jour, même après en avoir trouvé un, pour bien cacher les autres
+            if (point.UpdateRing(player.position, show) && crossed == null)
+                crossed = point;
+        }
+        return crossed;
     }
 
     private void ThrowCrousty(DeliveryPoint target)

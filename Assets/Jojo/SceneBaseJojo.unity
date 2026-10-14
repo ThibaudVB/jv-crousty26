@@ -12671,6 +12671,7 @@ MonoBehaviour:
   croustyProjectilePrefab: {fileID: 0}
   projectileColor: {r: 1, g: 0.6, b: 0.1, a: 1}
   projectileSize: 0.5
+  flightDeliveryNeedsRing: 1
 --- !u!1 &965852437
 GameObject:
   m_ObjectHideFlags: 0
