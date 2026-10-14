@@ -76,6 +76,7 @@ public sealed class CroustyMenu : MonoBehaviour
         volumeLabel.text = Mathf.RoundToInt(volume * 100f) + "%";
         RefreshFullscreenLabel(Screen.fullScreen);
         SetupTabHover();
+        if (pauseMenu != null) RestyleSectionLabels();
         SelectCategory(0);
         CloseOptions();
         if (leaderboardPanel != null) leaderboardPanel.SetActive(false);
@@ -197,7 +198,7 @@ public sealed class CroustyMenu : MonoBehaviour
                 tabs[i].hoverOffset = tabHoverOffset;
             }
 
-        var back = optionsPanel.transform.Find("RETOUR");
+        var back = FindDeep(optionsPanel.transform, "RETOUR");
         var settingsBack = back != null ? back.GetComponent<CroustyMenuHover>() : null;
 
         // Le Retour du classement reprend la mise en page et le survol de celui des réglages.
@@ -207,8 +208,84 @@ public sealed class CroustyMenu : MonoBehaviour
                 {
                     CopyBackLayout(settingsBack, hover);
                     SetupBackHover(hover);
+                    CroustyPinLeft.Pin(hover.transform);
+                }
+        // Pareil pour le Retour de l'écran « nom du joueur » (avant de lancer la partie).
+        if (nameEntry != null)
+            foreach (var hover in nameEntry.GetComponentsInChildren<CroustyMenuHover>(true))
+                if (hover.name == "Retour")
+                {
+                    CopyBackLayout(settingsBack, hover);
+                    SetupBackHover(hover);
+                    CroustyPinLeft.Pin(hover.transform);
                 }
         SetupBackHover(settingsBack);
+
+        // Les bandeaux de gauche (Retour + onglets) restent collés au bord de l'écran,
+        // même quand le cadre 848 x 480 est centré sur un écran plus large.
+        var pinned = new System.Collections.Generic.List<Transform>();
+        if (settingsBack != null) pinned.Add(settingsBack.transform);
+        if (tabs != null)
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                if (tabs[i] == null) continue;
+                if (tabShadows != null && i < tabShadows.Length && tabShadows[i] != null) pinned.Add(tabShadows[i].transform);
+                if (tabBackgrounds != null && i < tabBackgrounds.Length && tabBackgrounds[i] != null) pinned.Add(tabBackgrounds[i].transform);
+                pinned.Add(tabs[i].transform);
+            }
+        CroustyPinLeft.Pin(pinned.ToArray());
+    }
+
+    private static Transform FindDeep(Transform root, string childName)
+    {
+        foreach (var child in root.GetComponentsInChildren<Transform>(true))
+            if (child.name == childName) return child;
+        return null;
+    }
+
+    // Contour de l'étiquette « OPTIONS », ramené à un rectangle 0..1.
+    private static readonly Vector2[] SectionTagShape =
+    {
+        new Vector2(0f, 0.604167f), new Vector2(0.184397f, 0.979167f), new Vector2(0.58156f, 1f),
+        new Vector2(0.673759f, 0.895833f), new Vector2(0.964539f, 0.708333f), new Vector2(1f, 0.395833f),
+        new Vector2(0.808511f, 0f), new Vector2(0f, 0.0625f)
+    };
+
+    // Menu pause : les petits titres (SOURIS, AUDIO, VIDÉO...) prennent la même étiquette
+    // et le même centrage que dans le menu principal.
+    private void RestyleSectionLabels()
+    {
+        if (categoryPanels == null) return;
+        foreach (var panel in categoryPanels)
+        {
+            if (panel == null) continue;
+            foreach (var tag in panel.GetComponentsInChildren<CroustyVectorGraphic>(true))
+            {
+                const string suffix = " étiquette";
+                if (!tag.name.EndsWith(suffix)) continue;
+                string title = tag.name.Substring(0, tag.name.Length - suffix.Length);
+                var label = tag.transform.parent.Find(title + " texte")?.GetComponent<TMP_Text>();
+                if (label == null) continue;
+
+                // Ancienne mise en page : texte à (x + 7, y + 3) d'une étiquette de 28 px de haut.
+                Vector2 textPosition = label.rectTransform.anchoredPosition;
+                var tagRect = tag.rectTransform;
+                tagRect.anchorMin = tagRect.anchorMax = tagRect.pivot = new Vector2(0f, 1f);
+                tagRect.anchoredPosition = textPosition + new Vector2(-7f, 6f);
+                tagRect.sizeDelta = new Vector2(116f, 26f);
+                tag.points = SectionTagShape;
+                tag.SetVerticesDirty();
+
+                var labelRect = label.rectTransform;
+                labelRect.anchorMin = labelRect.anchorMax = labelRect.pivot = new Vector2(0f, 1f);
+                labelRect.anchoredPosition = tagRect.anchoredPosition + new Vector2(2f, -0.4f);
+                labelRect.sizeDelta = new Vector2(106f, 24f);
+                label.fontSize = 13f;
+                label.enableAutoSizing = false;
+                label.horizontalAlignment = HorizontalAlignmentOptions.Center;
+                label.verticalAlignment = VerticalAlignmentOptions.Geometry;
+            }
+        }
     }
 
     // Même place, même bandeau, même texte que le bouton Retour des réglages.
