@@ -30,6 +30,11 @@ public class BusAirTricks : MonoBehaviour
     [Header("Détection du saut")]
     [Tooltip("Temps en l'air (s) avant de pouvoir faire une figure : évite les petites bosses")]
     public float minAirTime = 0.15f;
+    [Tooltip("Hauteur minimale au-dessus du sol (m) pour faire une figure. En dessous, les touches ne font plus " +
+             "tourner le bus : la figure en cours se termine toute seule.")]
+    [Min(0f)] public float minHeightAboveGround = 4f;
+    [Tooltip("Couches considérées comme le sol pour mesurer la hauteur")]
+    public LayerMask groundLayers = ~0;
 
     // Nombre de figures réussies (un tour complet = une figure)
     public int TricksLanded { get; private set; }
@@ -41,6 +46,12 @@ public class BusAirTricks : MonoBehaviour
     private float airTime;
     private float pitch, yaw;              // angles de la figure en cours (en degrés, non limités à 360)
     private float pitchDirection, yawDirection; // sens de la dernière rotation, pour finir la figure dans le même sens
+    private readonly RaycastHit[] groundHits = new RaycastHit[16];
+
+    [Header("Debug")]
+    [Tooltip("Hauteur actuelle au-dessus du sol pendant un saut (m), pour aider à régler la hauteur minimale")]
+    [SerializeField] private float currentHeight;
+    public float HeightAboveGround => currentHeight;
 
     private void Awake()
     {
@@ -81,6 +92,11 @@ public class BusAirTricks : MonoBehaviour
     {
         ReadInputs(out float flipInput, out float spinInput);
 
+        // Trop près du sol : on ne peut plus lancer ou continuer une figure, elle se termine seule
+        currentHeight = MeasureHeight();
+        if (currentHeight < minHeightAboveGround)
+            flipInput = spinInput = 0f;
+
         if (Mathf.Abs(flipInput) > 0.2f)
         {
             pitchDirection = Mathf.Sign(flipInput);
@@ -94,6 +110,21 @@ public class BusAirTricks : MonoBehaviour
             yaw += spinInput * spinSpeed * dt;
         }
         else yaw = FinishTurn(yaw, yawDirection, dt);
+    }
+
+    // Rayon vers le bas depuis le bus, en ignorant ses propres colliders et les triggers
+    private float MeasureHeight()
+    {
+        const float maxDistance = 1000f;
+        int count = Physics.RaycastNonAlloc(transform.position, Vector3.down, groundHits, maxDistance,
+            groundLayers, QueryTriggerInteraction.Ignore);
+        float best = float.PositiveInfinity;
+        for (int i = 0; i < count; i++)
+        {
+            if (groundHits[i].collider.transform.IsChildOf(transform)) continue;
+            best = Mathf.Min(best, groundHits[i].distance);
+        }
+        return best;
     }
 
     // Continue dans le même sens jusqu'au prochain tour complet
