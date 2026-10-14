@@ -205,7 +205,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
 
     private void Show(Card card, int charges)
     {
-        if (card.countText != null) card.countText.text = "x" + Mathf.Max(0, charges);
+        if (card.countText != null) card.countText.text = "" + Mathf.Max(0, charges);
         if (card.artwork != null)
         {
             bool available = charges > 0;

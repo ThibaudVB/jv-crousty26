@@ -41,8 +41,7 @@ public sealed class PowerUpInventory : MonoBehaviour
 
     public bool HasCharge => primary != null && primary.charges > 0;
     public PowerUpType? PrimaryPower => primary != null && primary.occupied ? primary.powerUp : (PowerUpType?)null;
-    public int TotalCharges => (primary != null ? primary.charges : 0) +
-                               (secondary != null ? secondary.charges : 0);
+    public int TotalCharges => (primary != null ? primary.charges : 0) + (secondary != null ? secondary.charges : 0);
     public bool CanAddCharges => !primary.occupied || !secondary.occupied;
 
     public static PowerUpInventory EnsureFor(GameObject owner)
