@@ -117,7 +117,7 @@ public class CroustyHUD : MonoBehaviour
 
         if (manager != null)
         {
-            shownScore = manager.Score;
+            shownScore = manager.Money;
             manager.ScoreChanged += OnScoreChanged;
         }
     }
@@ -250,9 +250,9 @@ public class CroustyHUD : MonoBehaviour
         timeSinceGain += dt;
 
         // Le chiffre du score monte en douceur jusqu'au vrai score
-        shownScore = Mathf.SmoothDamp(shownScore, manager.Score, ref scoreSpeed, 0.2f, Mathf.Infinity, dt);
-        if (Mathf.Abs(shownScore - manager.Score) < 0.5f)
-            shownScore = manager.Score;
+        shownScore = Mathf.SmoothDamp(shownScore, manager.Money, ref scoreSpeed, 0.2f, Mathf.Infinity, dt);
+        if (Mathf.Abs(shownScore - manager.Money) < 0.5f)
+            shownScore = manager.Money;
         scoreValue.text = FormatScore(Mathf.RoundToInt(shownScore));
 
         // Le score grossit un peu juste après un gain
@@ -287,7 +287,7 @@ public class CroustyHUD : MonoBehaviour
         int used = 0;
         Camera cam = Camera.main;
 
-        if (showWaypoints && cam != null && manager.player != null)
+        if (showWaypoints && !PowerUnlockProgression.ChoiceOpen && cam != null && manager.player != null)
         {
             // Magasin : seulement quand il faut y aller
             if (manager.shop != null && manager.NeedsPickup)

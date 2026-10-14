@@ -100,7 +100,7 @@ public sealed class BusMinimap : MonoBehaviour
             nextReferenceSearch = Time.unscaledTime + 1f;
         }
 
-        bool visible = bus != null && Time.timeScale > 0f;
+        bool visible = bus != null && (Time.timeScale > 0f || PowerUnlockProgression.ChoiceOpen);
         mapCanvas.enabled = visible;
         mapCamera.enabled = false; // Rendu cartographique explicite, sans seconde vue du monde.
         if (!visible) return;

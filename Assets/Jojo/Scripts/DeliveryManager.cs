@@ -95,6 +95,8 @@ public class DeliveryManager : MonoBehaviour
     public bool HasFailed { get; private set; }    // partie perdue (police ou destruction)
     public float RunElapsed { get; private set; }  // secondes écoulées dans la tournée
     public int Score { get; private set; }
+    public int Money => Mathf.Max(0, Score - moneySpent);
+    private int moneySpent;
     public string PlayerName { get; private set; }
     public int LastRunScore { get; private set; }  // points gagnés pendant la tournée en cours
     public int BestScore { get; private set; }
@@ -105,6 +107,7 @@ public class DeliveryManager : MonoBehaviour
 
     // Commandes de la prochaine tournée : 3, puis 5, 10, 15...
     public int NextRunOrders => runsLoaded == 0 ? firstRunOrders : ordersStep * runsLoaded;
+    public int RunsLoaded => runsLoaded;
 
     // Tout est livré (aucun crousty restant ni en l'air)
     public bool AllDelivered =>
@@ -328,6 +331,20 @@ public class DeliveryManager : MonoBehaviour
             city?.FinishDeliveryPreparation();
             preparingOrders = false;
         }
+    }
+
+    public bool TrySpendMoney(int amount)
+    {
+        if (amount < 0 || amount > Money) return false;
+        moneySpent += amount;
+        return true;
+    }
+
+    // Unlock purchases advance immediately, without a second trip to the shop.
+    public void ContinueAfterPowerChoice()
+    {
+        if (!HasFailed && AllDelivered && !preparingOrders)
+            StartCoroutine(PrepareOrders());
     }
 
     private void LoadOrders()

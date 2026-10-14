@@ -58,6 +58,7 @@ public class BusController : MonoBehaviour
     private ProceduralCity city;
 
     private float throttleInput;
+    public float ThrottleInput => throttleInput;
     private float steeringInput;
     private float currentSteering;
 

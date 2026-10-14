@@ -69,8 +69,8 @@ MonoBehaviour:
     maximumDuration: 2.5
     startTime: 0
   - sound: 11
-    clip: {fileID: 8300000, guid: 35947462e1949a048a5ab8a695a394f6, type: 3}
-    volume: 0.35
+    clip: {fileID: 8300000, guid: 140ab1b7fff540b08b40ee0fec8a4ba4, type: 3}
+    volume: 0.18
     maximumDuration: 0
     startTime: 0
   - sound: 12
@@ -88,3 +88,20 @@ MonoBehaviour:
     volume: 0.8
     maximumDuration: 2.5
     startTime: 0
+  - sound: 15
+    clip: {fileID: 8300000, guid: c38f4f1e9000457f9a1eeb86ea83d7d6, type: 3}
+    volume: 0.38
+    maximumDuration: 0
+    startTime: 0
+  - sound: 16
+    clip: {fileID: 8300000, guid: 0a7b6e6f73bb4a99946d0adb5b3fbcd9, type: 3}
+    volume: 0.55
+    maximumDuration: 0
+    startTime: 0
+  engineIdlePitch: 0.68
+  engineMaxPitch: 1.85
+  sirenNearDistance: 8
+  sirenFarDistance: 150
+  sirenCrossfadeSeconds: 0.3
+  chaseIntroSeconds: 1.4
+  chaseFadeOutSeconds: 1.2

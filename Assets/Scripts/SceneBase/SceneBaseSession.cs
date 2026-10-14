@@ -51,7 +51,7 @@ public sealed class SceneBaseSession : MonoBehaviour
             suspendedDeliveries = false;
             deliveries.enabled = true;
         }
-        if (hudCanvas != null) hudCanvas.enabled = !paused;
+        if (hudCanvas != null) hudCanvas.enabled = !paused || PowerUnlockProgression.ChoiceOpen;
         if (hideEmptyPassengerCounter && passengerText != null)
             passengerText.gameObject.SetActive(passengers.passengerCount > 0);
         if (passengerText != null && displayedCount != passengers.passengerCount)

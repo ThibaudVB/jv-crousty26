@@ -58,6 +58,7 @@ public sealed class PowerUpBox : MonoBehaviour
         if (bus == null) return;
 
         PowerUpInventory.EnsureFor(bus.gameObject);
+        var progression = bus.GetComponent<PowerUnlockProgression>();
 
         var candidates = new List<System.Func<bool>>(4);
         var candidateTypes = new List<CroustyBonusHUD.SelectedBonus>(4);
@@ -67,22 +68,22 @@ public sealed class PowerUpBox : MonoBehaviour
         var flight = bus.GetComponent<BusFlightController>();
         if (gps == null) gps = FindAnyObjectByType<BusGPS>();
 
-        if (pet != null && pet.isActiveAndEnabled && pet.CanReceiveCharges)
+        if ((progression == null || progression.IsUnlocked(PowerUpInventory.PowerUpType.Pet)) && pet != null && pet.isActiveAndEnabled && pet.CanReceiveCharges)
         {
             candidates.Add(() => pet.AddCharges(3, 3));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Pet);
         }
-        if (gps != null && gps.isActiveAndEnabled && gps.CanReceiveCharges)
+        if ((progression == null || progression.IsUnlocked(PowerUpInventory.PowerUpType.GPS)) && gps != null && gps.isActiveAndEnabled && gps.CanReceiveCharges)
         {
             candidates.Add(() => gps.AddCharges(1, 1));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.GPS);
         }
-        if (rice != null && rice.isActiveAndEnabled && rice.CanReceiveCharges)
+        if ((progression == null || progression.IsUnlocked(PowerUpInventory.PowerUpType.Rice)) && rice != null && rice.isActiveAndEnabled && rice.CanReceiveCharges)
         {
             candidates.Add(() => rice.AddCharges(3, 3));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Rice);
         }
-        if (flight != null && flight.isActiveAndEnabled && flight.CanReceiveCharges)
+        if ((progression == null || progression.IsUnlocked(PowerUpInventory.PowerUpType.Flight)) && flight != null && flight.isActiveAndEnabled && flight.CanReceiveCharges)
         {
             candidates.Add(() => flight.AddCharges(1, 1));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Flight);

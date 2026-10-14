@@ -51,6 +51,7 @@ public class PoliceCarAI : MonoBehaviour
         Renderer[] lights, Material dark, Material red, Material blue)
     {
         manager = owner; city = streets; HalfLength = halfLength;
+        if (GetComponent<PoliceSirenEmitter>() == null) gameObject.AddComponent<PoliceSirenEmitter>();
         approachSide = owner.Cars.Count % 2 == 0 ? -1f : 1f;
         beacons = lights; beaconDark = dark; beaconRed = red; beaconBlue = blue;
         body = GetComponent<Rigidbody>();

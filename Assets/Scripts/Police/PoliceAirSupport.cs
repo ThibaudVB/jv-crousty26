@@ -9,14 +9,21 @@ public sealed class PoliceAirSupport : MonoBehaviour
     private BoxCollider busCollider;
     private GameObject helicopterPrefab, bombPrefab, dumpsterPrefab, helicopter;
     private Transform rotor;
-    private float nextSpawn, nextDrop, startedAt, suspicion, patrolPhase;
+    private float nextSpawn, nextDrop, suspicion, patrolPhase;
     private int drops;
     private Vector3 patrolCenter, previousRelative;
     private bool hasPrevious, wasAttacking;
+    private bool eligibleLastFrame;
+    private float leaveAt;
     private readonly RaycastHit[] sightHits = new RaycastHit[32];
     private bool Airborne => flight != null && flight.IsAirborne;
-    // Five minutes of play gradually turn occasional drops into sustained pressure.
-    private float Pressure => Mathf.Clamp01((Time.time - startedAt) / 300f);
+    private float Pressure => police != null ? police.ProgressionPressure : 0f;
+    private bool Eligible => DeliveryManager.Instance != null && DeliveryManager.Instance.RunsLoaded >= 2;
+    private float VisitDuration => Mathf.Lerp(22f, 32f, Pressure);
+    private float VisitCooldown => Mathf.Lerp(95f, 60f, Pressure);
+    // Keep the introductory drops gentle, then tighten the cadence each new round.
+    private float DropInterval => Mathf.Max(1f, 6f * Mathf.Pow(.75f,
+        Mathf.Max(0, (DeliveryManager.Instance != null ? DeliveryManager.Instance.RunsLoaded : 2) - 2)));
 
     private void Start()
     {
@@ -27,8 +34,6 @@ public sealed class PoliceAirSupport : MonoBehaviour
         helicopterPrefab = Resources.Load<GameObject>("Crousty/PoliceAir/Helicopter");
         bombPrefab = Resources.Load<GameObject>("Crousty/PoliceAir/Bomb");
         dumpsterPrefab = Resources.Load<GameObject>("Crousty/PoliceAir/Dumpster");
-        startedAt = Time.time;
-        nextSpawn = Time.time + 30f;
         if (helicopterPrefab == null || bombPrefab == null || dumpsterPrefab == null)
         { Debug.LogError("Police air support: missing imported models.", this); enabled = false; }
     }
@@ -38,6 +43,15 @@ public sealed class PoliceAirSupport : MonoBehaviour
         if (Time.timeScale <= 0f || police == null || police.BusBody == null) return;
         if (DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed)
         { ClearHelicopter(); return; }
+        if (!Eligible)
+        {
+            if (helicopter != null) ClearHelicopter();
+            eligibleLastFrame = false;
+            return;
+        }
+        if (!eligibleLastFrame) { nextSpawn = Time.time + 18f; eligibleLastFrame = true; }
+        if (helicopter != null && Time.time >= leaveAt)
+        { ClearHelicopter(); nextSpawn = Time.time + VisitCooldown; return; }
         if (helicopter == null)
         {
             if (Time.time >= nextSpawn && city != null && city.IsAreaReady(police.BusPosition)) Spawn();
@@ -54,7 +68,7 @@ public sealed class PoliceAirSupport : MonoBehaviour
         else suspicion = 0f;
         if (visible && police.ChaseStarted) police.ReportAirSight();
         bool attacking = visible && police.ChaseStarted;
-        if (attacking && !wasAttacking) nextDrop = Time.time + 2.5f;
+        if (attacking && !wasAttacking) nextDrop = Time.time + 5f;
         if (!attacking && wasAttacking) patrolCenter = helicopter.transform.position;
         wasAttacking = attacking;
 
@@ -82,11 +96,11 @@ public sealed class PoliceAirSupport : MonoBehaviour
         float speed = attacking ? police.BusVelocity.magnitude + Mathf.Min(12f, offset.magnitude * 2f) : 9f;
         helicopter.transform.position = Vector3.MoveTowards(helicopter.transform.position, target, speed * dt);
         if (!Airborne && !attacking && Vector3.Distance(helicopter.transform.position, police.BusPosition) > 320f)
-        { ClearHelicopter(); nextSpawn = Time.time + 20f; return; }
+        { ClearHelicopter(); nextSpawn = Time.time + VisitCooldown; return; }
         if (!attacking || Time.time < nextDrop || offset.magnitude > 15f) return;
         Vector3 drop = helicopter.transform.position - Vector3.up * 2f;
         if (!city.IsAreaReady(drop)) return;
-        nextDrop = Time.time + Mathf.Lerp(3.5f, .65f, Pressure);
+        nextDrop = Time.time + DropInterval;
         drop += helicopter.transform.right * Random.Range(-.6f, .6f);
         bool dumpster = ++drops % (Pressure < .5f ? 4 : 3) == 0;
         var hazard = new GameObject(dumpster ? "Poubelle incendiaire police" : "Bombe police");
@@ -127,7 +141,7 @@ public sealed class PoliceAirSupport : MonoBehaviour
                     Destroy(Instantiate(crash.explosionPrefab, helicopter.transform.position, Quaternion.identity), 5f);
                 CroustySoundDesignManager.Play(CroustySound.Explosion, helicopter.transform.position);
                 ClearHelicopter();
-                nextSpawn = Time.time + Mathf.Lerp(60f, 30f, Pressure);
+                nextSpawn = Time.time + VisitCooldown;
                 return;
             }
         }
@@ -146,6 +160,7 @@ public sealed class PoliceAirSupport : MonoBehaviour
         patrolCenter.y = city.Origin.y + 22f;
         helicopter.transform.SetPositionAndRotation(patrolCenter, Quaternion.LookRotation(heading));
         patrolPhase = 0f; drops = 0; suspicion = 0f; hasPrevious = false; wasAttacking = false;
+        leaveAt = Time.time + VisitDuration;
     }
 
     private void ClearHelicopter()

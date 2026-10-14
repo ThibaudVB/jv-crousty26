@@ -15,8 +15,8 @@ public class PoliceChaseManager : MonoBehaviour
     [SerializeField] private BusFlightController flightController;
 
     [Header("Patrouilles")]
-    [SerializeField, Range(0, 10)] private int patrolCount = 3;
-    [SerializeField, Min(0f)] private float startupGraceSeconds = 3f;
+    [SerializeField, Range(0, 10)] private int patrolCount = 1;
+    [SerializeField, Min(0f)] private float startupGraceSeconds = 15f;
     [SerializeField, Min(50f)] private float patrolRadius = 115f;
 
     [Header("Detection")]
@@ -25,31 +25,31 @@ public class PoliceChaseManager : MonoBehaviour
     [SerializeField, Range(10f, 180f)] private float visionHalfAngle = 95f;
     [Tooltip("En dessous de cette distance, la patrouille remarque le bus dans toutes les directions.")]
     [SerializeField, Min(0f)] private float closeAwareness = 22f;
-    [SerializeField, Min(0f)] private float spottingSeconds = .35f;
+    [SerializeField, Min(0f)] private float spottingSeconds = 1.2f;
 
     [Header("Poursuite")]
-    [SerializeField, Min(10f)] private float chaseSpeedKmh = 138f;
-    [SerializeField, Min(1f)] private float chaseAcceleration = 10f;
-    [SerializeField, Range(1, 5)] private int maxChasers = 5;
+    [SerializeField, Min(10f)] private float chaseSpeedKmh = 125f;
+    [SerializeField, Min(1f)] private float chaseAcceleration = 8f;
+    [SerializeField, Range(1, 5)] private int maxChasers = 4;
     [SerializeField, Min(0f)] private float backupRadius = 260f;
     [SerializeField, Min(10f)] private float pursuitVisionRange = 90f;
     [Tooltip("Apres la perte de vue, la radio donne encore la position du bus pendant ce delai.")]
     [SerializeField, Min(0f)] private float radioTrackingSeconds = 2.5f;
-    [SerializeField, Min(1f)] private float loseSightSeconds = 8f;
+    [SerializeField, Min(1f)] private float loseSightSeconds = 5f;
     [SerializeField, Min(30f)] private float escapeDistance = 170f;
     [SerializeField, Min(0f)] private float escapeCooldownSeconds = 8f;
 
     [Header("Escalade")]
     [SerializeField, Range(1, 5)] private int maximumHeat = 5;
-    [SerializeField, Min(5f)] private float escalationSeconds = 30f;
-    [SerializeField, Range(3, 12)] private int maximumReinforcements = 12;
+    [SerializeField, Min(5f)] private float escalationSeconds = 50f;
+    [SerializeField, Range(3, 12)] private int maximumReinforcements = 6;
     [Header("Progression par livraisons reussies")]
-    [SerializeField, Min(1)] private int deliveriesPerDifficultyLevel = 1;
-    [SerializeField, Range(1, 8)] private int maximumDifficultyLevel = 4;
-    [SerializeField, Range(0, 10)] private int latePatrolCount = 10;
-    [SerializeField, Min(0f)] private float lateChaseSpeedBonusKmh = 42f;
+    [SerializeField, Min(1)] private int deliveriesPerDifficultyLevel = 6;
+    [SerializeField, Range(1, 8)] private int maximumDifficultyLevel = 8;
+    [SerializeField, Range(0, 10)] private int latePatrolCount = 4;
+    [SerializeField, Min(0f)] private float lateChaseSpeedBonusKmh = 36f;
     [Header("Barrages solides")]
-    [SerializeField, Range(1, 8)] private int maximumRoadblocks = 6;
+    [SerializeField, Range(1, 8)] private int maximumRoadblocks = 3;
     [SerializeField, Min(5f)] private float roadblockLifetime = 90f;
     private readonly List<PoliceRoadblock> roadblocks = new List<PoliceRoadblock>();
     private readonly Collider[] roadblockOverlaps = new Collider[64];
@@ -58,28 +58,29 @@ public class PoliceChaseManager : MonoBehaviour
     private Material barricadeWhite, barricadeRed;
     private GameObject barrierPrefab;
     private int CompletedOrders => DeliveryManager.Instance != null ? DeliveryManager.Instance.TotalDelivered : 0;
-    private int RoadblockLimit => Mathf.Min(maximumRoadblocks, CompletedOrders);
-    private float RoadblockInterval => Mathf.Lerp(24f, 5f, Mathf.Clamp01((CompletedOrders - 1) / 3f));
+    private int RoadblockLimit => Mathf.Min(maximumRoadblocks, CompletedOrders / 8);
+    private float RoadblockInterval => Mathf.Lerp(40f, 12f, Difficulty);
     public int ActiveRoadblockCount => roadblocks.Count;
     // Session progress survives pickup/round changes and escapes, but resets with the game.
     public int DifficultyLevel => DeliveryManager.Instance == null ? 0 :
         Mathf.Clamp(DeliveryManager.Instance.TotalDelivered / Mathf.Max(1, deliveriesPerDifficultyLevel),
             0, Mathf.Max(1, maximumDifficultyLevel));
     private float Difficulty => DifficultyLevel / (float)Mathf.Max(1, maximumDifficultyLevel);
+    public float ProgressionPressure => Difficulty;
     private int CurrentPatrolCount => patrolCount == 0 ? 0 :
         Mathf.RoundToInt(Mathf.Lerp(patrolCount, Mathf.Max(patrolCount, latePatrolCount), Difficulty));
     private float EscalationInterval => escalationSeconds * Mathf.Lerp(1f, .3f, Difficulty);
     private float SpottingDuration => spottingSeconds * Mathf.Lerp(1f, .3f, Difficulty);
     private float RadioTrackingDuration => radioTrackingSeconds + Difficulty * 3.5f;
     private int StartingHeat => Mathf.Min(maximumHeat, 1 + Mathf.FloorToInt(Difficulty * 4f));
-    private float ArrestDuration => bustSeconds * Mathf.Lerp(1f, .4f, Difficulty);
+    private float ArrestDuration => bustSeconds * Mathf.Lerp(1.6f, .4f, Difficulty);
     private float BaseChaseSpeed => (chaseSpeedKmh + lateChaseSpeedBonusKmh * Difficulty) / 3.6f;
     private int heat;
     private float nextEscalation, nextBackup;
     public int HeatLevel => heat;
     private int PursuitLimit => Mathf.Min(maximumReinforcements,
-        Mathf.Min(maxChasers, 2 + Mathf.FloorToInt(Difficulty * 6f)) + Mathf.Max(0, heat - 1) * 2,
-        Mathf.RoundToInt(Mathf.Lerp(4f, maximumReinforcements, Difficulty)));
+        Mathf.Min(maxChasers, 1 + Mathf.FloorToInt(Difficulty * 3f)) + Mathf.Max(0, heat - 1),
+        Mathf.RoundToInt(Mathf.Lerp(2f, maximumReinforcements, Difficulty)));
     private float SearchDuration => loseSightSeconds + Difficulty * 9f + Mathf.Max(0, heat - 1) * 1.5f;
 
     [Header("Arrestation")]
@@ -95,12 +96,10 @@ public class PoliceChaseManager : MonoBehaviour
     private Transform root;
     private Material beaconDark, beaconRed, beaconBlue;
     private bool chasing;
-    private float suspicion, lastSeen, calmUntil, nextSpawn, nextSight, arrest, messageUntil;
+    private float suspicion, lastSeen, calmUntil, nextSpawn, nextSight, arrest;
     private Vector3 lastKnown;
     private Vector3 lastKnownVelocity;
     private float nextRearRam;
-    private string message = "";
-    private Text statusText;
     private Image arrestFill;
     private GameObject arrestBar;
 
@@ -109,12 +108,12 @@ public class PoliceChaseManager : MonoBehaviour
     public bool BusInSight { get; private set; }
     public float SecondsOutOfSight => chasing ? Time.time - lastSeen : 0f;
     public float ArrestProgress => arrest;
-    public float ChaseSpeed => Mathf.Min(BaseChaseSpeed + Mathf.Lerp(20f, 24f, Difficulty) / 3.6f,
-        Mathf.Max(BaseChaseSpeed + heat * 1.2f,
-            chasing && BusInSight ? BusVelocity.magnitude + 5f + Difficulty * 6f + heat * .5f : 0f));
-    public float ChaseAcceleration => chaseAcceleration + Difficulty * 10f + heat * .75f;
-    public float RamClosingSpeed => 3.5f + Difficulty * 3f + Mathf.Max(0, heat - 1) * .5f;
-    public float RearRamCooldown => Mathf.Lerp(3.5f, 1.5f, Difficulty);
+    public float ChaseSpeed => Mathf.Min(BaseChaseSpeed + Mathf.Lerp(6f, 20f, Difficulty) / 3.6f,
+        Mathf.Max(BaseChaseSpeed + heat * .6f,
+            chasing && BusInSight ? BusVelocity.magnitude + 3f + Difficulty * 5f + heat * .3f : 0f));
+    public float ChaseAcceleration => chaseAcceleration + Difficulty * 9f + heat * .5f;
+    public float RamClosingSpeed => 2.8f + Difficulty * 3f + Mathf.Max(0, heat - 1) * .4f;
+    public float RearRamCooldown => Mathf.Lerp(5f, 1.8f, Difficulty);
     public bool CanAttemptRearRam(PoliceCarAI candidate)
     {
         if (Time.time < nextRearRam || BusHidden) return false;
@@ -299,7 +298,6 @@ public class PoliceChaseManager : MonoBehaviour
         nextBackup = 0f;
         lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
         if (first != null) { first.StartChase(); first.SeesBus = true; }
-        Flash("POLICE! You've been spotted!");
         backup.Clear();
         var others = new List<PoliceCarAI>();
         foreach (var car in cars)
@@ -324,14 +322,12 @@ public class PoliceChaseManager : MonoBehaviour
         lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
         nextEscalation = Time.time + EscalationInterval;
         nextBackup = nextSpawn = 0f;
-        Flash("POLICE CAR DESTROYED! WANTED LEVEL " + heat + " - BACKUP INCOMING!");
     }
 
     private void RaiseHeat()
     {
         if (heat >= maximumHeat) return;
         heat++;
-        Flash("WANTED LEVEL " + heat + " - Police are calling for backup!");
     }
 
     private void RequestBackup()
@@ -360,7 +356,6 @@ public class PoliceChaseManager : MonoBehaviour
         foreach (var car in cars) { car.SeesBus = false; car.ReturnToPatrol(); }
         calmUntil = Time.time + escapeCooldownSeconds * Mathf.Lerp(1f, .25f, Difficulty);
         SetArrest(0f);
-        Flash("You lost the police!");
     }
 
     // The PET cloud blinds officers behind or right next to the bus; the bus stays hidden while boosting.
@@ -378,7 +373,6 @@ public class PoliceChaseManager : MonoBehaviour
             car.SeesBus = false;
             any = true;
         }
-        if (any) Flash("TOXIC GAS: the police can't see!");
         return any;
     }
 
@@ -390,7 +384,7 @@ public class PoliceChaseManager : MonoBehaviour
         bool reinforcing = chasing && (BusInSight || SecondsOutOfSight < RadioTrackingDuration);
         int mobileCars = 0;
         foreach (var car in cars) if (!car.IsRoadblock) mobileCars++;
-        if (mobileCars < (reinforcing ? Mathf.Max(CurrentPatrolCount, PursuitLimit + 2) : CurrentPatrolCount))
+        if (mobileCars < (reinforcing ? Mathf.Max(CurrentPatrolCount, PursuitLimit) : CurrentPatrolCount))
         {
             if (city.TryFindStreetSpawn(null, 55f, patrolRadius, true, 40, out var from, out var to, out var at))
             { var car = CreateCar(); car.StartPatrol(from, to, at); cars.Add(car); }
@@ -492,8 +486,6 @@ public class PoliceChaseManager : MonoBehaviour
         if (catchZone != null) catchZone.SetProgress(arrest);
     }
 
-    private void Flash(string text) { message = text; messageUntil = Time.time + 2.5f; }
-
     private void BuildHud()
     {
         var canvasObject = new GameObject("Police - HUD", typeof(Canvas), typeof(CanvasScaler));
@@ -504,16 +496,6 @@ public class PoliceChaseManager : MonoBehaviour
         var scaler = canvasObject.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920, 1080);
-        var textObject = new GameObject("Statut police", typeof(RectTransform), typeof(Text), typeof(Outline));
-        textObject.transform.SetParent(canvasObject.transform, false);
-        statusText = textObject.GetComponent<Text>();
-        statusText.font = (CroustyTypography.LegacyFont != null ? CroustyTypography.LegacyFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
-        statusText.fontSize = 34; statusText.fontStyle = FontStyle.Bold;
-        statusText.alignment = TextAnchor.MiddleCenter; statusText.raycastTarget = false;
-        textObject.GetComponent<Outline>().effectDistance = new Vector2(2, -2);
-        var rect = statusText.rectTransform;
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, 1f);
-        rect.anchoredPosition = new Vector2(0, -130); rect.sizeDelta = new Vector2(900, 50);
         arrestBar = new GameObject("Arrestation", typeof(RectTransform), typeof(Image));
         arrestBar.transform.SetParent(canvasObject.transform, false);
         var back = arrestBar.GetComponent<Image>(); back.color = new Color(0, 0, 0, .55f); back.raycastTarget = false;
@@ -531,12 +513,6 @@ public class PoliceChaseManager : MonoBehaviour
 
     private void UpdateHud()
     {
-        if (statusText == null) return;
-        string text = ""; Color color = Color.white;
-        if (Time.time < messageUntil) { text = message; color = chasing ? new Color(1f, .3f, .25f) : new Color(.55f, 1f, .45f); }
-        else if (chasing && BusInSight) { text = "WANTED LEVEL " + heat + "/" + maximumHeat + " - POLICE CHASE"; color = new Color(1f, .3f, .25f); }
-        else if (chasing) { text = "WANTED LEVEL " + heat + " - Out of sight... " + Mathf.CeilToInt(Mathf.Max(0f, SearchDuration - SecondsOutOfSight)) + " s"; color = new Color(1f, .8f, .3f); }
-        statusText.text = text; statusText.color = color;
         bool showBar = arrest > .001f;
         arrestBar.SetActive(showBar);
         if (showBar) arrestFill.rectTransform.offsetMax = new Vector2(2 + 416 * arrest, -2);
@@ -556,7 +532,8 @@ public class PoliceChaseManager : MonoBehaviour
 
     private void MaintainRoadblocks()
     {
-        if (CompletedOrders > lastRoadblockOrders) nextRoadblock = Time.time;
+        if (CompletedOrders > lastRoadblockOrders && RoadblockLimit > 0 && lastRoadblockOrders / 8 == 0)
+            nextRoadblock = Time.time + 10f;
         lastRoadblockOrders = CompletedOrders;
         for (int i = roadblocks.Count - 1; i >= 0; i--)
         {
@@ -577,7 +554,6 @@ public class PoliceChaseManager : MonoBehaviour
         if (!TryRoadblockPosition(out var position, out var heading)) return;
         CreateRoadblock(position, heading);
         nextRoadblock = Time.time + RoadblockInterval;
-        Flash("POLICE ROADBLOCK AHEAD - TAKE ANOTHER STREET!");
     }
 
     private bool TryRoadblockPosition(out Vector3 position, out Vector3 heading)
@@ -599,7 +575,7 @@ public class PoliceChaseManager : MonoBehaviour
             float distance = offset.magnitude;
             if (distance < 110f || distance > 260f || Vector3.Dot(offset, forward) < 65f) continue;
             // Hidden placements first. Distant visible placements still leave at least
-            // four seconds to react at 130 km/h, with a HUD warning.
+            // four seconds to react to the barriers at 130 km/h.
             if (VisibleToPlayer(center) && (attempt < 32 || distance < 170f)) continue;
             if (!RoadblockFootprintClear(center, along)) continue;
             bool nearby = false;
@@ -641,7 +617,7 @@ public class PoliceChaseManager : MonoBehaviour
         group.transform.SetPositionAndRotation(position, Quaternion.LookRotation(heading));
         var block = group.AddComponent<PoliceRoadblock>();
         roadblocks.Add(block);
-        int rows = CompletedOrders >= 4 ? 3 : CompletedOrders >= 2 ? 2 : 1;
+        int rows = Difficulty >= .75f ? 3 : Difficulty >= .375f ? 2 : 1;
         for (int row = 0; row < rows; row++)
         {
             for (int segment = 0; segment < 6; segment++)

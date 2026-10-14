@@ -523,7 +523,11 @@ public sealed partial class ProceduralCity
                 material.SetOverrideTag("RenderType", "Opaque");
                 if (material.HasProperty("_BaseColor"))
                 {
-                    Color color = material.GetColor("_BaseColor"); color.a = 1f;
+                    Color color = material.GetColor("_BaseColor");
+                    Color.RGBToHSV(color, out float hue, out float saturation, out float value);
+                    // Boost painted facades without tinting white walls or dark windows.
+                    color = Color.HSVToRGB(hue, Mathf.Clamp01(saturation * 1.35f), value);
+                    color.a = 1f;
                     material.SetColor("_BaseColor", color);
                 }
                 material.renderQueue = 2000;

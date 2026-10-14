@@ -151,6 +151,10 @@ public sealed class CroustyDayNightCycle : MonoBehaviour
         float daylight = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(5.5f, 8f, hour)) *
             (1f - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(17f, 20f, hour)));
         NightAmount = 1f - daylight;
+        // Keep neutral ambient lighting on the city while giving the visible
+        // daytime sky a vivid cyan blue. Dawn, sunset and night retain their hues.
+        Color visibleSky = Color.Lerp(sky, new Color(.035f, .64f, .94f), daylight);
+        Color visibleHorizon = Color.Lerp(sky, new Color(.055f, .72f, .96f), daylight);
         sun.color = Color.Lerp(SunColors[k], SunColors[k + 1], t);
         sun.intensity = Mathf.Lerp(Intensities[k], Intensities[k + 1], t);
         float elevation = Mathf.Sin((hour - 6f) / 24f * Mathf.PI * 2f);
@@ -161,18 +165,18 @@ public sealed class CroustyDayNightCycle : MonoBehaviour
         RenderSettings.ambientEquatorColor = Color.Lerp(new Color(.065f,.08f,.14f), sky * .7f, daylight);
         RenderSettings.ambientGroundColor = Color.Lerp(new Color(.035f,.04f,.07f), new Color(.28f,.26f,.24f), daylight);
         RenderSettings.reflectionIntensity = Mathf.Lerp(.2f, .8f, daylight);
-        RenderSettings.fogColor = sky;
+        RenderSettings.fogColor = visibleHorizon;
         Shader.SetGlobalFloat("_CroustyCityNight", NightAmount);
         Shader.SetGlobalFloat("_CroustyCityDaylight", Mathf.Lerp(.25f, 1f, daylight));
         Shader.SetGlobalFloat("_CroustySkyTime", (float)(elapsed % 10000));
         if (runtimeSkybox != null)
         {
-            if (runtimeSkybox.HasProperty("_SkyColor")) runtimeSkybox.SetColor("_SkyColor", sky);
-            if (runtimeSkybox.HasProperty("_HorizonColor")) runtimeSkybox.SetColor("_HorizonColor", sky);
+            if (runtimeSkybox.HasProperty("_SkyColor")) runtimeSkybox.SetColor("_SkyColor", visibleSky);
+            if (runtimeSkybox.HasProperty("_HorizonColor")) runtimeSkybox.SetColor("_HorizonColor", visibleHorizon);
             if (runtimeSkybox.HasProperty("_SunColor")) runtimeSkybox.SetColor("_SunColor", sun.color);
             if (runtimeSkybox.HasProperty("_SunDirection")) runtimeSkybox.SetVector("_SunDirection", -sun.transform.forward);
-            if (runtimeSkybox.HasProperty("_SkyTint")) runtimeSkybox.SetColor("_SkyTint", sky);
-            if (runtimeSkybox.HasProperty("_Tint")) runtimeSkybox.SetColor("_Tint", sky);
+            if (runtimeSkybox.HasProperty("_SkyTint")) runtimeSkybox.SetColor("_SkyTint", visibleSky);
+            if (runtimeSkybox.HasProperty("_Tint")) runtimeSkybox.SetColor("_Tint", visibleSky);
             if (runtimeSkybox.HasProperty("_GroundColor")) runtimeSkybox.SetColor("_GroundColor", RenderSettings.ambientGroundColor);
             if (runtimeSkybox.HasProperty("_Exposure")) runtimeSkybox.SetFloat("_Exposure", Mathf.Lerp(.25f, 1.15f, daylight));
         }
