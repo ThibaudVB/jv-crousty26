@@ -33,6 +33,8 @@ public class BusCarCrash : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         busCollider = GetComponent<BoxCollider>();
+        // Les grandes tours se détruisent pareil, mais seulement en volant
+        if (GetComponent<BusBuildingCrash>() == null) gameObject.AddComponent<BusBuildingCrash>();
     }
 
     private void FixedUpdate()

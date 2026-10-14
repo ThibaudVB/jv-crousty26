@@ -83,3 +83,8 @@ MonoBehaviour:
     volume: 0.55
     maximumDuration: 1.5
     startTime: 0.24
+  - sound: 14
+    clip: {fileID: 8300000, guid: de1fdbdebae8346418224ddaf93c215e, type: 3}
+    volume: 0.8
+    maximumDuration: 2.5
+    startTime: 0

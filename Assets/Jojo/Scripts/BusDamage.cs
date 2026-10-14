@@ -159,6 +159,8 @@ public class BusDamage : MonoBehaviour
             return;
         }
         if (crash != null && crash.WillDestroy(collision.collider)) return;
+        var buildingCrash = GetComponent<BusBuildingCrash>();
+        if (buildingCrash != null && buildingCrash.WillDestroy(collision.collider)) return;
 
         float floorY = (body != null ? body.bounds.min.y : rb.position.y) + curbHeight;
         float strongestImpact = 0f;

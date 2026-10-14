@@ -369,6 +369,23 @@ public sealed partial class ProceduralCity
         return root.gameObject;
     }
 
+    // Trigger invisible qui remplit l'anneau : le MeshCollider du cercle n'a que le contour.
+    private static void AddFireRingSoundZone(Transform ring, Bounds bounds)
+    {
+        var zone = new GameObject("Visuel FireRing - Zone son");
+        zone.transform.SetParent(ring, false);
+        zone.transform.localPosition = bounds.center;
+
+        BoxCollider trigger = zone.AddComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        // Épaisseur minimale pour que le bus lancé à fond ne passe pas au travers entre deux frames
+        Vector3 size = bounds.size * 0.85f;
+        Vector3 scale = ring.lossyScale;
+        for (int i = 0; i < 3; i++) size[i] = Mathf.Max(size[i], 4f / Mathf.Max(0.001f, Mathf.Abs(scale[i])));
+        trigger.size = size;
+        zone.AddComponent<FireRingSoundZone>();
+    }
+
     private static void AddGarageRepairZone(Transform garage)
     {
         GameObject zone = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -444,6 +461,7 @@ public sealed partial class ProceduralCity
         }
         if (solid && !streetProp && !part.name.Contains("Text") && !part.name.Contains("Sign"))
             mesh.AddComponent<MeshCollider>().sharedMesh = part.mesh;
+        if (part.name.StartsWith("FireRing_")) AddFireRingSoundZone(mesh.transform, part.mesh.bounds);
         if (solid) mesh.AddComponent<RadarMapElement>().kind = part.name.Contains("Ramp") || part.name.Contains("Deck") ||
             part.name.Contains("Bridge") ? RadarMapElement.Kind.Road : RadarMapElement.Kind.Building;
 
