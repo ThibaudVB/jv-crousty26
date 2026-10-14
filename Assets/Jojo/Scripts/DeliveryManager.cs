@@ -75,7 +75,7 @@ public class DeliveryManager : MonoBehaviour
     public GameObject croustyProjectilePrefab;
     [Tooltip("Couleur du cube si aucun objet n'est donné")]
     public Color projectileColor = new Color(1f, 0.6f, 0.1f);
-    [Tooltip("Taille du cube si aucun objet n'est donné (m)")]
+    [Tooltip("Taille de l'objet lancé (m) : le modèle est mis à cette taille")]
     public float projectileSize = 0.5f;
 
     // ---------- Infos lues par les autres scripts (HUD, gérant...) ----------
@@ -551,6 +551,7 @@ public class DeliveryManager : MonoBehaviour
             // Pas de collision : le crousty ne doit pas taper le bus
             foreach (Collider c in instance.GetComponentsInChildren<Collider>())
                 c.enabled = false;
+            FitToSize(instance, projectileSize);
             return instance;
         }
 
@@ -558,5 +559,21 @@ public class DeliveryManager : MonoBehaviour
         cube.name = "Crousty (projectile)";
         cube.transform.localScale = Vector3.one * projectileSize;
         return cube;
+    }
+
+    // Met le modèle à la bonne taille, quelles que soient les unités du fichier 3D
+    private static void FitToSize(GameObject instance, float size)
+    {
+        Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+            return;
+
+        Bounds bounds = renderers[0].bounds;
+        foreach (Renderer r in renderers)
+            bounds.Encapsulate(r.bounds);
+
+        float largest = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+        if (largest > 0.0001f)
+            instance.transform.localScale *= size / largest;
     }
 }
