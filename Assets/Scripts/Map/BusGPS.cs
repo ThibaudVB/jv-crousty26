@@ -13,7 +13,9 @@ public sealed class BusGPS : MonoBehaviour
     public bool CanReceiveCharges => Charges < 1 &&
         (Inventory == null || Inventory.CanAddPower(PowerUpInventory.PowerUpType.GPS));
     public bool BonusEquipped { get; set; } = true;
+    public bool ShowGarageMarkers { get; private set; } = true;
     public DeliveryPoint Target { get; private set; }
+    public bool RoutingToGarage { get; private set; }
     public readonly List<Vector3> Route = new List<Vector3>();
     public string Status { get; private set; } = "[E] GPS";
     private NavMeshData data;
@@ -22,6 +24,7 @@ public sealed class BusGPS : MonoBehaviour
     private NavMeshQueryFilter filter;
     private NavMeshPath path;
     private float nextRepath;
+    private Vector3 garageDestination;
     private ProceduralCity proceduralCity;
     private readonly List<Vector3> proceduralRoute = new List<Vector3>();
     private PowerUpInventory inventory;
@@ -52,6 +55,7 @@ public sealed class BusGPS : MonoBehaviour
     {
         if (deliveries != null) deliveries.DeliveryCompleted -= OnDelivered;
         Target = null;
+        RoutingToGarage = false;
         Route.Clear();
     }
     public void GrantBonus() => AddCharges(1, 1);
@@ -73,6 +77,7 @@ public sealed class BusGPS : MonoBehaviour
         ReleaseNavigation();
         navigationRoot = root;
         Target = null;
+        RoutingToGarage = false;
         Route.Clear();
     }
     private bool EnsureNavigation()
@@ -118,14 +123,63 @@ public sealed class BusGPS : MonoBehaviour
     }
     private bool Calculate(DeliveryPoint point)
     {
-        if (deliveries == null || deliveries.player == null || point == null) return false;
+        return point != null && Calculate(point.transform.position);
+    }
+    private bool Calculate(Vector3 destination)
+    {
+        if (deliveries == null || deliveries.player == null) return false;
         if (proceduralCity != null && proceduralCity.WorldRoot != null)
-            return proceduralCity.TryBuildRoute(deliveries.player.position, point.transform.position, proceduralRoute);
+            return proceduralCity.TryBuildRoute(deliveries.player.position, destination, proceduralRoute);
+        if (!EnsureNavigation()) return false;
         // Echantillonnage court : ne jamais accrocher un toit ou une rue de l'autre cote d'un mur.
         return NavMesh.SamplePosition(deliveries.player.position, out var start, 6f, filter) &&
-            NavMesh.SamplePosition(point.transform.position, out var end, 4f, filter) &&
+            NavMesh.SamplePosition(destination, out var end, 4f, filter) &&
             NavMesh.CalculatePath(start.position, end.position, filter, path) &&
             path.status == NavMeshPathStatus.PathComplete;
+    }
+    public bool SelectNearestGarageRoute()
+    {
+        if (!isActiveAndEnabled || deliveries == null || deliveries.player == null ||
+            Time.timeScale <= 0f)
+            return false;
+        if (proceduralCity == null)
+            proceduralCity = FindAnyObjectByType<ProceduralCity>();
+        if (proceduralCity == null || proceduralCity.WorldRoot == null)
+        {
+            Status = "GPS: garage route unavailable";
+            return false;
+        }
+
+        var garages = new List<Vector3>();
+        proceduralCity.GetNearbyGarages(deliveries.player.position, 5000f, garages);
+        for (int i = 0; i < garages.Count; i++)
+        {
+            Vector3 garage = garages[i];
+            if (!Calculate(garage))
+                continue;
+
+            Target = null;
+            RoutingToGarage = true;
+            garageDestination = garage;
+            SetRoute();
+            nextRepath = Time.time + 0.75f;
+            return true;
+        }
+
+        Target = null;
+        RoutingToGarage = false;
+        Route.Clear();
+        Status = "GPS: no reachable garage";
+        return false;
+    }
+    public void DisableGarageGuidance()
+    {
+        ShowGarageMarkers = false;
+        if (!RoutingToGarage) return;
+        RoutingToGarage = false;
+        Route.Clear();
+        Status = Target != null ? "[E] GPS: next delivery" :
+            Charges > 0 ? "[E] GPS: next delivery" : "GPS depleted";
     }
     public bool SelectNext()
     {
@@ -151,12 +205,14 @@ public sealed class BusGPS : MonoBehaviour
             var candidate = candidates[(index+i)%candidates.Count];
             if (!Calculate(candidate)) continue;
             Target = candidate;
+            RoutingToGarage = false;
             Charges--;
             Inventory?.Consume(PowerUpInventory.PowerUpType.GPS);
             SetRoute();
             return true;
         }
         Target = null;
+        RoutingToGarage = false;
         Route.Clear();
         Status = candidates.Count == 0 ? "GPS: pick up some orders" : "GPS: no route available";
         return false;
@@ -164,7 +220,15 @@ public sealed class BusGPS : MonoBehaviour
     private void Update()
     {
         if (Time.timeScale <= 0f) return;
-        if (Target == null || !Target.IsWaiting || Time.time < nextRepath) return;
+        if (Time.time < nextRepath) return;
+        if (RoutingToGarage)
+        {
+            nextRepath = Time.time + 0.75f;
+            if (Calculate(garageDestination)) SetRoute();
+            else { Route.Clear(); Status = "GPS: get back on the road"; }
+            return;
+        }
+        if (Target == null || !Target.IsWaiting) return;
         nextRepath = Time.time + 0.75f;
         if (Calculate(Target)) SetRoute();
         else { Route.Clear(); Status = "GPS: get back on the road"; }
@@ -176,12 +240,13 @@ public sealed class BusGPS : MonoBehaviour
         else Route.AddRange(path.corners);
         float distance = 0;
         for (int i=1; i<Route.Count; i++) distance += Vector3.Distance(Route[i-1], Route[i]);
-        Status = $"GPS: {distance:0} m";
+        Status = RoutingToGarage ? $"GPS: garage {distance:0} m" : $"GPS: {distance:0} m";
     }
     private void OnDelivered(DeliveryPoint point)
     {
         if (point != Target) return;
         Target = null;
+        RoutingToGarage = false;
         Route.Clear();
         Status = Charges > 0 ? "[E] GPS: next delivery" : "GPS depleted";
     }

@@ -87,6 +87,7 @@ public class DeliveryManager : MonoBehaviour
     public bool HasStarted { get; private set; }   // au moins une tournée a été chargée
     public bool RunActive { get; private set; }    // une tournée est en cours (chrono lancé)
     public bool HasFailed { get; private set; }    // partie perdue (chrono ou police)
+    public bool TutorialPickupMarkerHidden { get; private set; }
     public float RunElapsed { get; private set; }  // secondes écoulées dans la tournée
     public int Score { get; private set; }
     public string PlayerName { get; private set; }
@@ -98,7 +99,19 @@ public class DeliveryManager : MonoBehaviour
     public float RunRemaining => RunActive ? Mathf.Max(0f, RunTimeLimit - RunElapsed) : 0f;
 
     // Commandes de la prochaine tournée : 3, puis 5, 10, 15...
-    public int NextRunOrders => runsLoaded == 0 ? firstRunOrders : ordersStep * runsLoaded;
+    public int NextRunOrders => runsLoaded == 0 ? firstRunOrders :
+        runsLoaded == 1 && tutorialSecondRunOrders > 0 ? tutorialSecondRunOrders : ordersStep * runsLoaded;
+
+    public void ConfigureTutorialOrderCounts(int firstRun, int secondRun)
+    {
+        firstRunOrders = Mathf.Max(1, firstRun);
+        tutorialSecondRunOrders = Mathf.Max(1, secondRun);
+    }
+
+    public void SetTutorialPickupMarkerHidden(bool hidden)
+    {
+        TutorialPickupMarkerHidden = hidden;
+    }
 
     // Tout est livré (aucun crousty restant ni en l'air)
     public bool AllDelivered =>
@@ -117,6 +130,7 @@ public class DeliveryManager : MonoBehaviour
 
     private const string BestScoreKey = "Crousty.BestScore";
     private int runsLoaded;          // nombre de tournées déjà chargées
+    private int tutorialSecondRunOrders;
     private int inFlight;            // crousty en train de voler
     private bool alarmPlayed;
     private bool mustLeaveShop;      // après un chargement, il faut sortir du magasin avant de recharger

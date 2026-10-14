@@ -57,6 +57,7 @@ public class BusDamage : MonoBehaviour
     public float DamagePenalty { get; private set; }
     public float SpeedMultiplier => isActiveAndEnabled ? 1f - DamagePenalty : 1f;
     public event System.Action Damaged; // appelé à chaque choc (le gérant réagit)
+    public event System.Action Repaired;
 
     // Composants du bus
     private Rigidbody rb;
@@ -128,6 +129,7 @@ public class BusDamage : MonoBehaviour
     // Appelé par le garage
     public void ExtinguishFire()
     {
+        bool wasDamaged = IsDamaged;
         IsDamaged = false;
         HitsTaken = 0;
         DamagePenalty = 0f;
@@ -138,6 +140,17 @@ public class BusDamage : MonoBehaviour
         ShowFires(false);
         foreach (Puff puff in puffs)
             puff.transform.gameObject.SetActive(false);
+        if (wasDamaged)
+            Repaired?.Invoke();
+    }
+
+    public void ApplyTutorialImpact()
+    {
+        if (IsDamaged)
+            return;
+
+        lastHitTime = -999f;
+        TakeHit(transform.position);
     }
 
     // ---------- CHOCS ----------

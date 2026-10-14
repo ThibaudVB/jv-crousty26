@@ -325,7 +325,7 @@ public class CroustyHUD : MonoBehaviour
         if (showWaypoints && cam != null && manager.player != null)
         {
             // Magasin : seulement quand il faut y aller
-            if (manager.shop != null && manager.NeedsPickup)
+            if (manager.shop != null && manager.NeedsPickup && !manager.TutorialPickupMarkerHidden)
             {
                 ShowWaypoint(used, cam, manager.shop.transform.position, manager.shop.markerColor, manager.shop.screenLabel);
                 used++;

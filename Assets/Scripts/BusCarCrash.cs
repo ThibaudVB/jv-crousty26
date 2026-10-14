@@ -93,6 +93,7 @@ public class BusCarCrash : MonoBehaviour
         if (collision.collider.GetComponentInParent<PoliceRoadblock>() != null) return false;
         var police = collision.collider.GetComponentInParent<PoliceCarAI>();
         if (police == null) return false;
+        if (police.IsTutorialImpactCar) return false;
         if (police.IsDestroyed) return true;
         for (int i = 0; i < collision.contactCount; i++)
         {

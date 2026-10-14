@@ -296,7 +296,8 @@ public sealed class BusMinimap : MonoBehaviour
 
     private void UpdateGPS()
     {
-        gpsLabel.gameObject.SetActive(gps != null && (!compactHud || gps.Target != null || gps.Charges > 0 && gps.BonusEquipped));
+        gpsLabel.gameObject.SetActive(gps != null && (!compactHud || gps.Target != null ||
+            gps.RoutingToGarage || gps.Charges > 0 && gps.BonusEquipped));
         if (gps != null) gpsLabel.text = gps.Status;
         routeGraphic.UpdateRoute(mapCamera,
             gps != null && gps.isActiveAndEnabled ? gps.Route : null,
@@ -306,7 +307,8 @@ public sealed class BusMinimap : MonoBehaviour
     private void UpdateObjectives()
     {
         bool showShop = deliveries != null && deliveries.shop != null &&
-            (!deliveries.HasStarted || deliveries.AllDelivered);
+            (!deliveries.HasStarted || deliveries.AllDelivered) &&
+            !deliveries.TutorialPickupMarkerHidden;
         shopIcon.gameObject.SetActive(showShop);
         if (showShop)
             PlaceIcon(shopIcon, deliveries.shop.transform.position, 19f);
@@ -354,7 +356,10 @@ public sealed class BusMinimap : MonoBehaviour
     private void UpdateGarages()
     {
         nearbyGarages.Clear();
-        if (city != null) city.GetNearbyGarages(bus.position, 250f, nearbyGarages);
+        if (gps == null || gps.ShowGarageMarkers)
+        {
+            if (city != null) city.GetNearbyGarages(bus.position, 250f, nearbyGarages);
+        }
         int shown = Mathf.Min(3, nearbyGarages.Count);
         while (garageIcons.Count < shown)
         {

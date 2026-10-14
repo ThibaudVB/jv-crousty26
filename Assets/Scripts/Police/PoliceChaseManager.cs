@@ -94,6 +94,7 @@ public class PoliceChaseManager : MonoBehaviour
     private Transform root;
     private Material beaconDark, beaconRed, beaconBlue;
     private bool chasing;
+    private bool spawningEnabled = true;
     private float suspicion, lastSeen, calmUntil, nextSpawn, nextSight, arrest, messageUntil;
     private Vector3 lastKnown;
     private Vector3 lastKnownVelocity;
@@ -105,6 +106,36 @@ public class PoliceChaseManager : MonoBehaviour
 
     public IReadOnlyList<PoliceCarAI> Cars => cars;
     public bool ChaseStarted => chasing;
+    public void SetSpawningEnabled(bool enabled) => spawningEnabled = enabled;
+    public PoliceCarAI CreateTutorialPoliceCar(Vector3 position, Quaternion rotation)
+    {
+        if (city == null || city.WorldRoot == null || policePrefab == null)
+        {
+            Debug.LogError("Police : impossible de créer la voiture du tutoriel sans ville chargée.", this);
+            return null;
+        }
+
+        PoliceCarAI car = CreateCar();
+        cars.Add(car);
+        car.MarkAsTutorialImpactCar();
+        car.StartChase();
+        car.enabled = false;
+        car.transform.SetPositionAndRotation(position, rotation);
+        Rigidbody body = car.GetComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+        body.position = position;
+        body.rotation = rotation;
+        return car;
+    }
+
+    public void RemoveTutorialPoliceCar(PoliceCarAI car)
+    {
+        if (car == null) return;
+        cars.Remove(car);
+        Destroy(car.gameObject);
+    }
+
     public bool BusInSight { get; private set; }
     public float SecondsOutOfSight => chasing ? Time.time - lastSeen : 0f;
     public float ArrestProgress => arrest;
@@ -189,8 +220,11 @@ public class PoliceChaseManager : MonoBehaviour
         // A delivery completed during an existing chase raises pressure immediately.
         // Progress alone never starts a chase against a legally driven bus.
         if (chasing) heat = Mathf.Max(heat, StartingHeat);
-        MaintainRoadblocks();
-        MaintainPatrols();
+        if (spawningEnabled)
+        {
+            MaintainRoadblocks();
+            MaintainPatrols();
+        }
 
         bool look = Time.time >= nextSight;
         if (look) nextSight = Time.time + .1f;

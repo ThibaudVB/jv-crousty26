@@ -36,7 +36,7 @@ public class CroustyShop : MonoBehaviour
         // Le faisceau n'est visible que quand il faut venir chercher des commandes
         DeliveryManager manager = DeliveryManager.Instance;
         if (marker != null && manager != null)
-            marker.SetActive(manager.NeedsPickup);
+            marker.SetActive(manager.NeedsPickup && !manager.TutorialPickupMarkerHidden);
     }
 
     // Vrai si la position est assez près du magasin
