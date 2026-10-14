@@ -110,7 +110,7 @@ public static class ScoreAndNameChecks
                 Call(deliveries,"LoadOrders");
                 typeof(DeliveryManager).GetField("<RunElapsed>k__BackingField",Flags).SetValue(deliveries,10f);
                 expected=deliveries.Score+deliveries.OrdersTotal*deliveries.pointsPerDelivery+
-                    deliveries.completionBonus+Mathf.FloorToInt(deliveries.RunRemaining)*deliveries.pointsPerRemainingSecond;
+                    deliveries.completionBonus;
                 deliveries.throwDuration=.02f;
                 foreach(var target in deliveries.deliveryPoints.Where(p=>p!=null&&p.IsWaiting).ToArray())Call(deliveries,"ThrowCrousty",target);
                 ready=EditorApplication.timeSinceStartup+.5;SessionState.SetInt(Key,2);return;

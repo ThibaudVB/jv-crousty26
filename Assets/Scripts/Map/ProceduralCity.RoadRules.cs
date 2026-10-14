@@ -19,8 +19,6 @@ public sealed partial class ProceduralCity
         public Vector2Int junction;
         public Vector2Int approach;
         public Renderer[] bulbs;
-        public MapImpactProp impact;
-        public bool broken;
         public LightAspect lastAspect = (LightAspect)(-1);
     }
 
@@ -233,7 +231,7 @@ public sealed partial class ProceduralCity
         }
         chunk.signals.Add(display);
         SetSignalAspect(display, LightAt(junction, outward, Time.time));
-        display.impact = ConfigureImpact(post, true);
+        AddFixedStreetPhysics(post);
         post.SetActive(true);
     }
 
@@ -254,7 +252,7 @@ public sealed partial class ProceduralCity
             model.transform.localRotation = orientation;
             model.transform.localScale = Vector3.one * scale;
             model.transform.localPosition = -(orientation * new Vector3(stopSignBounds.center.x, stopSignBounds.min.y, stopSignBounds.center.z)) * scale;
-            ConfigureImpact(root, true);
+            AddFixedStreetPhysics(root);
             root.SetActive(true);
             return;
         }
@@ -286,7 +284,7 @@ public sealed partial class ProceduralCity
         text.transform.localPosition = new Vector3(0, 0, .015f);
         text.text = "STOP"; text.anchor = TextAnchor.MiddleCenter; text.alignment = TextAlignment.Center;
         text.fontSize = 64; text.characterSize = .27f; text.color = Color.white;
-        ConfigureImpact(root, true);
+        AddFixedStreetPhysics(root);
         root.SetActive(true);
     }
 
@@ -303,15 +301,6 @@ public sealed partial class ProceduralCity
         foreach (var chunk in chunks.Values)
             foreach (var display in chunk.signals)
             {
-                if (display.impact != null && display.impact.HasBeenHit)
-                {
-                    if (!display.broken)
-                    {
-                        foreach (var bulb in display.bulbs) if (bulb != null) bulb.sharedMaterial = signalDark;
-                        display.broken = true;
-                    }
-                    continue;
-                }
                 LightAspect aspect = LightAt(display.junction, display.approach, Time.time);
                 if (aspect != display.lastAspect) SetSignalAspect(display, aspect);
             }

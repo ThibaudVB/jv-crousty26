@@ -158,6 +158,8 @@ public class BusDamage : MonoBehaviour
             // Police only inflict damage with an actual rear-end pursuit impact.
             if (!police.IsRearRamCollision(collision)) return;
             TakeHit(collision.contactCount > 0 ? collision.GetContact(0).point : transform.position);
+            if (Camera.main != null && Camera.main.TryGetComponent<BusCameraFollow>(out var follow))
+                follow.ShakePoliceImpact();
             return;
         }
         if (crash != null && crash.WillDestroy(collision.collider)) return;
@@ -218,6 +220,14 @@ public class BusDamage : MonoBehaviour
     private void OnCollisionStay(Collision collision)
     {
         if (CanTakeHit()) TryRoadblockHit(collision);
+    }
+
+    public void TakePoliceProjectileHit(Vector3 point)
+    {
+        if (!CanTakeHit()) return;
+        TakeHit(point);
+        if (Camera.main != null && Camera.main.TryGetComponent<BusCameraFollow>(out var follow))
+            follow.ShakePoliceImpact();
     }
 
     private void TakeHit(Vector3 point)

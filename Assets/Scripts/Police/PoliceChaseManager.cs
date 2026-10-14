@@ -56,6 +56,7 @@ public class PoliceChaseManager : MonoBehaviour
     private float nextRoadblock;
     private int lastRoadblockOrders;
     private Material barricadeWhite, barricadeRed;
+    private GameObject barrierPrefab;
     private int CompletedOrders => DeliveryManager.Instance != null ? DeliveryManager.Instance.TotalDelivered : 0;
     private int RoadblockLimit => Mathf.Min(maximumRoadblocks, CompletedOrders);
     private float RoadblockInterval => Mathf.Lerp(24f, 5f, Mathf.Clamp01((CompletedOrders - 1) / 3f));
@@ -171,6 +172,8 @@ public class PoliceChaseManager : MonoBehaviour
         barricadeRed = Glow(signal, new Color(.9f, .08f, .06f), .3f);
         calmUntil = Time.time + startupGraceSeconds;
         BuildHud();
+        barrierPrefab = Resources.Load<GameObject>("Crousty/PoliceAir/Barrier");
+        if (GetComponent<PoliceAirSupport>() == null) gameObject.AddComponent<PoliceAirSupport>();
     }
 
     private static Material Glow(Material template, Color color, float intensity)
@@ -627,22 +630,16 @@ public class PoliceChaseManager : MonoBehaviour
             for (int segment = 0; segment < 6; segment++)
             {
                 float x = -7.5f + segment * 3f;
-                var barrier = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                barrier.name = "Barriere solide";
+                var barrier = new GameObject("Barriere solide - TrafficBarrier_2");
                 barrier.transform.SetParent(group.transform, false);
-                barrier.transform.localPosition = new Vector3(x, .7f, row * 4f);
-                barrier.transform.localScale = new Vector3(3f, 1.4f, 1.2f);
-                barrier.GetComponent<Renderer>().sharedMaterial = barricadeWhite;
-                for (int stripe = 0; stripe < 3; stripe++)
-                {
-                    var mark = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    mark.name = "Bande rouge reflechissante";
-                    Destroy(mark.GetComponent<Collider>());
-                    mark.transform.SetParent(barrier.transform, false);
-                    mark.transform.localPosition = new Vector3((stripe - 1) * .32f, 0f, -.51f);
-                    mark.transform.localScale = new Vector3(.12f, .75f, .025f);
-                    mark.GetComponent<Renderer>().sharedMaterial = barricadeRed;
-                }
+                barrier.transform.localPosition = new Vector3(x, 0f, row * 4f);
+                var solid = barrier.AddComponent<BoxCollider>();
+                solid.center = new Vector3(0f, .7f, 0f);
+                solid.size = new Vector3(3f, 1.4f, 1.2f);
+                if (barrierPrefab != null)
+                    PoliceModelVisual.Create(barrierPrefab, barrier.transform, solid.size);
+                else
+                    Debug.LogError("Modele TrafficBarrier_2 introuvable.", this);
             }
         }
         for (int i = 0; i < 2; i++)

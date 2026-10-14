@@ -33,12 +33,6 @@ public class BusFlightHUD : MonoBehaviour
             return;
         }
 
-        // Compte a rebours.
-        int seconds = Mathf.CeilToInt(
-            flightController.RemainingFlightSeconds
-        );
-
-        timerText.text =
-            $"BUS FIGHTER - {seconds} s";
+        timerText.text = CroustyInput.UsesController ? "BUS FIGHTER - PRESS X TO STOP" : "BUS FIGHTER - PRESS E TO STOP";
     }
 }

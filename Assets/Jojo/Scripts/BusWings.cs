@@ -169,6 +169,12 @@ public class BusWings : MonoBehaviour
     private void LateUpdate()
     {
         bool airborne = flight.isActiveAndEnabled && flight.IsAirborne;
+        if (!airborne)
+        {
+            deploy = 0f;
+            wingsRoot.gameObject.SetActive(false);
+            return;
+        }
 
         // deploy va doucement vers 1 en vol, vers 0 au sol
         float target = airborne ? 1f : 0f;

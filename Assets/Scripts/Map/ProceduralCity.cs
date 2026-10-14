@@ -225,6 +225,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
 
     private bool IsPinned(Vector2Int coordinate, Chunk chunk)
     {
+        if (deliveryPreparationChunks.Contains(coordinate)) return true;
         if (coordinate == nearestShopChunk) return true;
         foreach (var address in chunk.addresses)
             if (address != null && address.HasOpenOrder) return true;
@@ -253,6 +254,10 @@ public sealed partial class ProceduralCity : MonoBehaviour
             best = distance;
             next = candidate;
         }
+        while (deliveryChunkRequests.Count > 0 && IsAreaReady(JunctionPosition(deliveryChunkRequests.Peek() * 2) + Vector3.one))
+            deliveryChunkRequests.Dequeue();
+        if (deliveryChunkRequests.Count > 0 && best >= ChunkSize)
+        { next = deliveryChunkRequests.Peek(); return true; }
         if (float.IsPositiveInfinity(best) &&
             (!chunks.TryGetValue(nearestShopChunk, out var shopChunk) || !shopChunk.complete))
         { next = nearestShopChunk; return true; }
@@ -358,6 +363,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
         var roads = BuildRoadRuleSteps(chunk, coordinate);
         while (roads.MoveNext()) yield return null;
         chunk.complete = true;
+        Physics.SyncTransforms();
         foreach (var address in chunk.addresses) deliveries.RegisterPoint(address);
         yield return null; // the minimap indexing and the road markings each cost a few ms
         minimap?.AddMapGeometry(chunk.root.transform);
@@ -552,5 +558,6 @@ public sealed partial class ProceduralCity : MonoBehaviour
             if (material != null) Destroy(material);
         DisposeRoadMaterials();
         DisposeTraffic();
+        foreach (var material in safeBuildingMaterials.Values) if (material != null) Destroy(material);
     }
 }

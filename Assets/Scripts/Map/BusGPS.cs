@@ -134,7 +134,7 @@ public sealed class BusGPS : MonoBehaviour
             deliveries == null) return false;
         if (Target != null && !Target.IsWaiting) return false; // Colis en vol.
         var candidates = new List<DeliveryPoint>();
-        foreach (var point in deliveries.deliveryPoints)
+        foreach (var point in deliveries.VisibleDestinations)
             if (point != null && point.IsWaiting) candidates.Add(point);
         if (deliveries.player == null) return false;
         if (candidates.Count == 0)

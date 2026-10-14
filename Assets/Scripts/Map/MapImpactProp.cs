@@ -44,6 +44,11 @@ public class MapImpactProp : MonoBehaviour
 
     private void OnTriggerEnter(Collider other) => DetectBus(other);
     private void OnTriggerStay(Collider other) => DetectBus(other);
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.collider.GetComponentInParent<BusPropImpact>() != null)
+            TryHit(-collision.relativeVelocity);
+    }
     private void DetectBus(Collider other)
     {
         if (HasBeenHit || other.isTrigger) return;
@@ -120,14 +125,14 @@ public class MapImpactProp : MonoBehaviour
             {
                 BoxCollider copy = sensor.AddComponent<BoxCollider>();
                 copy.center = box.center;
-                copy.size = box.size;
+                copy.size = box.size * 1.12f;
                 trigger = copy;
             }
             else if (solid is CapsuleCollider capsule)
             {
                 CapsuleCollider copy = sensor.AddComponent<CapsuleCollider>();
                 copy.center = capsule.center;
-                copy.radius = capsule.radius;
+                copy.radius = capsule.radius * 1.12f;
                 copy.height = capsule.height;
                 copy.direction = capsule.direction;
                 trigger = copy;
@@ -186,6 +191,7 @@ public class MapImpactProp : MonoBehaviour
         Vector3 rotationAxis = Vector3.Cross(Vector3.up, direction).normalized;
         Vector3 fallPivot = transform.TransformPoint(localBase + transform.InverseTransformDirection(direction) * poleRadius);
         HasBeenHit = true;
+        foreach (var bus in BusPropImpact.ActiveBuses) if (bus != null) bus.IgnorePropCollisions(this);
         foreach (var fixture in GetComponentsInChildren<CroustyNightFixture>()) fixture.CutPower();
         foreach (Collider trigger in hitTriggers) trigger.enabled = false;
 

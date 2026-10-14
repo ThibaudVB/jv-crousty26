@@ -52,15 +52,15 @@ public sealed partial class ProceduralCity
         FeatureChunk(new Vector2Int(Mathf.FloorToInt(x / 2f), Mathf.FloorToInt(z / 2f))) == null &&
         (IsPoliceBlock(x, z) || IsGarageBlock(x, z) || FloorMod(x + z * 2, 7) == 3);
 
-    // One additional garage per 3x3 neighbourhood when a normal city lot is available.
+    // One garage per 8x8 region, with an inner margin preventing adjacent garages across regions.
     public bool IsGarageBlock(int x, int z)
     {
-        int regionX = Mathf.FloorToInt(x / 3f), regionZ = Mathf.FloorToInt(z / 3f);
-        int first = (int)((uint)CoordinateSeed(regionX, regionZ, 2701) % 9);
-        for (int i = 0; i < 9; i++)
+        int regionX = Mathf.FloorToInt(x / 8f), regionZ = Mathf.FloorToInt(z / 8f);
+        int first = (int)((uint)CoordinateSeed(regionX, regionZ, 2701) % 16);
+        for (int i = 0; i < 16; i++)
         {
-            int slot = (first + i) % 9;
-            int gx = regionX * 3 + slot / 3, gz = regionZ * 3 + slot % 3;
+            int slot = (first + i) % 16;
+            int gx = regionX * 8 + 2 + slot / 4, gz = regionZ * 8 + 2 + slot % 4;
             if (IsCroustyBlock(gx, gz) || IsRooftopBlock(gx, gz) || IsPoliceBlock(gx, gz) || IsParkBlock(gx, gz)) continue;
             if (FeatureChunk(new Vector2Int(Mathf.FloorToInt(gx / 2f), Mathf.FloorToInt(gz / 2f))) != null) continue;
             return x == gx && z == gz;
@@ -76,7 +76,7 @@ public sealed partial class ProceduralCity
         if (IsPoliceBlock(x, z)) return "Commissariat";
         if (IsGarageBlock(x, z)) return "Garage 0" + (1 + (int)((uint)CoordinateSeed(x, z, 2702) % 3));
         if (!IsLandmarkBlock(x, z)) return null;
-        string[] names = { "Skatepark", "Place du marche", "Garage 01", "Garage 02", "Garage 03", "Rampe des toits" };
+        string[] names = { "Skatepark", "Place du marche", "Rampe des toits" };
         // Rotate through the source venues across nearby streets; a hash per block
         // could pick the same garage several times in the player's first view.
         int rotation = (int)((uint)CoordinateSeed(0, 0, 991) % names.Length);
@@ -127,7 +127,7 @@ public sealed partial class ProceduralCity
                 if (n.Contains("Alley")) AddPart(native, block.Groups[1].Value, part);
                 else AddPart(streets, block.Groups[1].Value, part);
             }
-            if (Regex.IsMatch(n, @"^(StreetTree|Tree|Palm|FanPalm|FlowerTree|Cypress)_")) trees.Add(part);
+            if (IsTreePart(n)) trees.Add(part);
             if (n.StartsWith("FlowerBed_") || n.StartsWith("Bush_")) gardenDecor.Add(part);
             if (n.Contains("__StreetKicker_")) streetKickers.Add(part);
             bool course = (n.StartsWith("Route_") && !n.StartsWith("Route_Aerienne")) || n.Contains("__Route_");
@@ -263,14 +263,29 @@ public sealed partial class ProceduralCity
         root.SetParent(parent, false); root.localRotation = Quaternion.Euler(0, yaw, 0);
         root.localScale = Vector3.one * SourceScale;
         Vector3 offset = blockCenters[source.name];
+        var placedProps = new List<Vector3>();
         foreach (var part in source.parts)
         {
             // Signal heads are generated at actual junctions with live phases.
             if (part.name.StartsWith("TrafficLight_")) continue;
+            // Thin decorative sets independently instead of repeating their dense clusters.
+            if ((uint)CoordinateSeed(Mathf.RoundToInt(parent.position.x), Mathf.RoundToInt(parent.position.z),
+                StableNameHash(part.name)) % 3 == 0) continue;
             // Trees at the perimeter are fine; inner terrace sets can overlap a ramp/building.
             Vector3 p = part.bounds.center - offset;
             if (Mathf.Max(Mathf.Abs(p.x), Mathf.Abs(p.z)) < 18 && !part.name.EndsWith("StreetProps")) continue;
-            AddImported(part, root, offset, false);
+            float jitter = ((uint)CoordinateSeed(Mathf.RoundToInt(parent.position.x), Mathf.RoundToInt(parent.position.z),
+                StableNameHash(part.name) + 1) % 401) / 100f - 2f;
+            Vector3 shift = Mathf.Abs(p.x) > Mathf.Abs(p.z) ? new Vector3(0, 0, jitter) : new Vector3(jitter, 0, 0);
+            p += shift;
+            bool crowded = false;
+            foreach (var previous in placedProps) if (Vector3.Distance(previous, p) < 5f) { crowded = true; break; }
+            if (crowded) continue;
+            placedProps.Add(p);
+            var placement = new GameObject("Decor disperse").transform;
+            placement.SetParent(root, false);
+            placement.localPosition = shift;
+            AddImported(part, placement, offset, false);
         }
     }
 
@@ -447,19 +462,32 @@ public sealed partial class ProceduralCity
         mesh.transform.localScale = part.matrix.lossyScale;
         mesh.GetComponent<MeshFilter>().sharedMesh = part.mesh;
         mesh.GetComponent<MeshRenderer>().sharedMaterials = part.materials;
-        bool lamp = part.name.StartsWith("Lamp_");
-        bool streetProp = lamp || part.name.StartsWith("Bench_") || part.name.StartsWith("Bin_") ||
-            part.name.StartsWith("BikeRack_") || part.name.StartsWith("Hydrant_") ||
-            part.name.StartsWith("BusStop_") || part.name.StartsWith("Cone_") || part.name.StartsWith("Bollard_") ||
-            part.name.StartsWith("StreetSign_") || part.name.StartsWith("SignPost_");
-        if (streetProp) AddImpactPhysics(mesh, root, lamp || part.name.StartsWith("SignPost_") || part.name.StartsWith("StreetSign_"));
+        bool lamp = Regex.IsMatch(part.name, @"(^|_)Lamp_", RegexOptions.IgnoreCase);
+        bool tree = IsTreePart(part.name);
+        bool building = part.name.StartsWith("Building_") || part.name.EndsWith("_Shop");
+        bool sign = !part.name.Contains("Text") && Regex.IsMatch(part.name,
+            @"(^|_)(StreetSign|SignPost|Sign|Panel)_", RegexOptions.IgnoreCase);
+        bool streetProp = lamp || sign || Regex.IsMatch(part.name,
+            @"(^|_)(Bench|Bin|BikeRack|Hydrant|BusStop|Cone|Bollard|Bush|FlowerBed)_", RegexOptions.IgnoreCase);
+        bool protectedSign = Regex.IsMatch(part.name, @"(^|_)(Stop|StopSign|TrafficLight)(_|$)", RegexOptions.IgnoreCase);
+        if (protectedSign) AddFixedStreetPhysics(mesh);
+        else if (streetProp || tree) AddImpactPhysics(mesh, root, tree || lamp || sign, tree);
+        else if (building)
+        {
+            // Independent of mesh cooking and the caller's flag: every facade has a solid core.
+            var core = mesh.AddComponent<BoxCollider>();
+            core.center = part.mesh.bounds.center;
+            Vector3 extent = part.mesh.bounds.size;
+            core.size = new Vector3(Mathf.Max(.15f, extent.x), Mathf.Max(.15f, extent.y), Mathf.Max(.15f, extent.z));
+            mesh.GetComponent<MeshRenderer>().sharedMaterials = SafeBuildingMaterials(part.materials);
+        }
         if (CroustyDayNightCycle.Instance != null)
         {
             var renderer = mesh.GetComponent<MeshRenderer>();
             if (lamp || part.name.StartsWith("Building_") || part.name.EndsWith("_Shop"))
                 mesh.AddComponent<CroustyNightFixture>().Configure(renderer, lamp);
         }
-        if (solid && !streetProp && !part.name.Contains("Text") && !part.name.Contains("Sign"))
+        if (solid && !streetProp && !tree && !building && !part.name.Contains("Text") && !part.name.Contains("Sign"))
             mesh.AddComponent<MeshCollider>().sharedMesh = part.mesh;
         if (part.name.StartsWith("FireRing_")) AddFireRingSoundZone(mesh.transform, part.mesh.bounds);
         if (solid) mesh.AddComponent<RadarMapElement>().kind = part.name.Contains("Ramp") || part.name.Contains("Deck") ||
@@ -467,7 +495,66 @@ public sealed partial class ProceduralCity
 
     }
 
-    private static void AddImpactPhysics(GameObject mesh, Transform parent, bool pole)
+    private static int StableNameHash(string name)
+    {
+        unchecked { int value = 17; foreach (char c in name) value = value * 31 + c; return value; }
+    }
+
+    private static bool IsTreePart(string name) => Regex.IsMatch(name,
+        @"(^|_)(StreetTree|Tree|Palm|FanPalm|FlowerTree|Cypress)_", RegexOptions.IgnoreCase);
+
+    private readonly Dictionary<Material, Material> safeBuildingMaterials = new Dictionary<Material, Material>();
+    private Material[] SafeBuildingMaterials(Material[] source)
+    {
+        var result = new Material[source.Length];
+        for (int i = 0; i < source.Length; i++)
+        {
+            var original = source[i];
+            if (original == null) { result[i] = original; continue; }
+            if (!safeBuildingMaterials.TryGetValue(original, out var material))
+            {
+                material = new Material(original) { name = original.name + " - opaque building safety" };
+                if (material.HasProperty("_Cull")) material.SetFloat("_Cull", 0f);
+                if (material.HasProperty("_Surface")) material.SetFloat("_Surface", 0f);
+                if (material.HasProperty("_ZWrite")) material.SetFloat("_ZWrite", 1f);
+                if (material.HasProperty("_SrcBlend")) material.SetFloat("_SrcBlend", 1f);
+                if (material.HasProperty("_DstBlend")) material.SetFloat("_DstBlend", 0f);
+                material.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                material.SetOverrideTag("RenderType", "Opaque");
+                if (material.HasProperty("_BaseColor"))
+                {
+                    Color color = material.GetColor("_BaseColor"); color.a = 1f;
+                    material.SetColor("_BaseColor", color);
+                }
+                material.renderQueue = 2000;
+                safeBuildingMaterials.Add(original, material);
+            }
+            result[i] = material;
+        }
+        return result;
+    }
+
+    private static void AddFixedStreetPhysics(GameObject root)
+    {
+        Bounds bounds = new Bounds(); bool found = false;
+        foreach (var filter in root.GetComponentsInChildren<MeshFilter>())
+        {
+            if (filter.sharedMesh == null) continue;
+            var mesh = filter.sharedMesh.bounds;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 point = root.transform.InverseTransformPoint(filter.transform.TransformPoint(mesh.center +
+                    Vector3.Scale(mesh.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+                if (!found) { bounds = new Bounds(point, Vector3.zero); found = true; } else bounds.Encapsulate(point);
+            }
+        }
+        if (!found) return;
+        var collider = root.AddComponent<BoxCollider>();
+        collider.center = bounds.center;
+        collider.size = new Vector3(Mathf.Max(.15f, bounds.size.x), Mathf.Max(.15f, bounds.size.y), Mathf.Max(.15f, bounds.size.z));
+    }
+
+    private static void AddImpactPhysics(GameObject mesh, Transform parent, bool pole, bool tree = false)
     {
         // FBX mesh axes are rotated. Keep the physical root upright and preserve
         // the imported mesh's world transform, including its original proportions.
@@ -477,7 +564,8 @@ public sealed partial class ProceduralCity
         root.transform.SetParent(parent, false);
         root.transform.position = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
         mesh.transform.SetParent(root.transform, true);
-        ConfigureImpact(root, pole);
+        var impact = ConfigureImpact(root, pole);
+        if (tree) { impact.mass = 80f; impact.poleRadius = Mathf.Clamp(Mathf.Min(bounds.size.x, bounds.size.z) * .08f, .25f, .65f); }
         root.SetActive(true);
     }
 

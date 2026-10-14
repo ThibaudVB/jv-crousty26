@@ -40,6 +40,7 @@ public static class FlightChecks
         flight.Landed += strength => { impactEvents++; impactStrength = strength; };
         var camera = UnityEngine.Object.FindAnyObjectByType<BusCameraFollow>();
         var body = flight.GetComponent<Rigidbody>();
+        Set(flight, "city", null); // Isolated physical flight fixture; streaming is tested separately.
         var drive = flight.GetComponent<BusController>();
         var rig = flight.GetComponent<BusWheelRig>();
         var grounding = flight.GetComponent<SceneBaseGrounding>();
@@ -56,6 +57,7 @@ public static class FlightChecks
         body.rotation = Quaternion.identity;
         body.linearVelocity = Vector3.zero;
         zone.AdvanceCapture(true, 2f);
+        if (flight.UsesRemaining == 0) Assert(flight.AddCharges(1, 1), "Fixture grants a flight charge");
         Call(flight, "ActivateFlight");
         Assert(flight.CurrentMode == BusFlightController.FlightMode.Flying, "Activation gives immediate flight control");
         Assert(!drive.enabled && !rig.enabled && !body.useGravity, "Exclusive airborne control");
@@ -67,7 +69,7 @@ public static class FlightChecks
         Call(flight, "ActivateFlight");
         Assert(flight.RemainingFlightSeconds == remaining, "Activation cannot restart airborne timer");
         int ticks = 0;
-        Assert(Mathf.Abs(flight.RemainingFlightSeconds - 15f) < .01f, "Full 15 seconds of controllable flight");
+        Assert(float.IsPositiveInfinity(flight.RemainingFlightSeconds), "Flight has no expiry timer");
         Assert(body.linearVelocity.y >= flight.launchUpSpeed, "Single upward launch impulse");
         Set(flight, "turnInput", 1f);
         float initialYaw = (float)Get(flight, "yaw");
@@ -80,7 +82,9 @@ public static class FlightChecks
         Assert((float)Get(flight, "boostRemaining") < boostBefore, "Boost consumes its budget");
         Set(flight, "boostInput", false);
         while (!flight.IsFalling && ticks++ < 760) Call(flight, "FixedUpdate");
-        Assert(flight.IsFalling && flight.RemainingFlightSeconds == 0, "Expiry enters fall");
+        Assert(!flight.IsFalling, "Flight remains controllable beyond the previous fifteen-second limit");
+        Assert(flight.StopFlight(), "Player can stop flight on demand");
+        Assert(flight.IsFalling && flight.RemainingFlightSeconds == 0, "Manual cancellation enters fall");
         Assert(body.useGravity && !drive.enabled && !rig.enabled, "Gravity enabled, ground drive still suspended");
         var fallEffect = flight.GetComponent<BusFallSpeedEffect>();
         Assert(fallEffect != null, "Fall speed effect automatically attached");

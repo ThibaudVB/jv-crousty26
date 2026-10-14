@@ -427,7 +427,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2072bd14a74085347ae29ec46b7b8a45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusController
-  maxSpeedKmh: 90
+  maxSpeedKmh: 130
   maxReverseSpeedKmh: 40
   acceleration: 32
   reverseAcceleration: 16
@@ -3534,7 +3534,7 @@ MonoBehaviour:
   currentSpeedKmh: 0
   currentYaw: 0
   currentPitch: 0
-  cameraLocked: 0
+  cameraLocked: 1
   defaultPitch: 12
   landingShakeDistance: 0.16
   landingShakeAngle: 1.2
@@ -12466,11 +12466,12 @@ MonoBehaviour:
   firstRunOrders: 3
   ordersStep: 5
   nearbyAddressPool: 8
+  minimumAddressSpacing: 160
   secondsPerOrder: 15
   alarmSecondsLeft: 15
   pointsPerDelivery: 100
   completionBonus: 500
-  pointsPerRemainingSecond: 10
+  pointsPerRemainingSecond: 0
   deliverFromAnyHeight: 1
   useParachute: 1
   parachuteMinHeight: 8

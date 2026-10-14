@@ -62,6 +62,14 @@ public class DeliveryPoint : MonoBehaviour
 
     private enum State { Inactive, Waiting, Pending, Delivered }
     private State state = State.Inactive;
+    private bool markerVisible = true;
+
+    public void SetMarkerVisible(bool visible)
+    {
+        if (markerVisible == visible) return;
+        markerVisible = visible;
+        RefreshMarker();
+    }
 
     public bool IsWaiting => state == State.Waiting;
     public bool HasOpenOrder => state == State.Waiting || state == State.Pending;

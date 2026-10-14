@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 public class BusController : MonoBehaviour
 {
     [Header("Vitesse")]
-    public float maxSpeedKmh = 90f;
+    public float maxSpeedKmh = 130f;
     public float maxReverseSpeedKmh = 40f;
 
     [Header("Acceleration")]
@@ -55,6 +55,7 @@ public class BusController : MonoBehaviour
     public float PetAccelerationMultiplier => pet != null && pet.IsBoosting ? pet.accelerationMultiplier : 1f;
     private Rigidbody rb;
     private BusWheelRig wheelRig;
+    private ProceduralCity city;
 
     private float throttleInput;
     private float steeringInput;
@@ -65,6 +66,7 @@ public class BusController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        city = FindAnyObjectByType<ProceduralCity>();
         damage = GetComponent<BusDamage>();
         pet = GetComponent<BusPetController>();
         if (pet == null) pet = gameObject.AddComponent<BusPetController>();
@@ -83,7 +85,8 @@ public class BusController : MonoBehaviour
             rb.constraints &= ~RigidbodyConstraints.FreezeRotationY;
         else
             rb.constraints |= RigidbodyConstraints.FreezeRotationY;
-        if (GetComponent<BusNightLights>() == null) gameObject.AddComponent<BusNightLights>();    }
+        if (GetComponent<BusNightLights>() == null) gameObject.AddComponent<BusNightLights>();
+    }
 
     private void OnDisable()
     {
@@ -112,6 +115,12 @@ public class BusController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (city != null && !city.IsMovementReady(rb.position, rb.linearVelocity))
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            if (wheelRig != null && wheelRig.IsReady) wheelRig.Drive(0f, 0f, true, this);
+            return;
+        }
         UpdateDebug();
         // PET supplies thrust; braking and handbrake retain priority.
         float driveThrottle = pet != null && pet.IsBoosting && throttleInput >= 0f && !handbrakeInput

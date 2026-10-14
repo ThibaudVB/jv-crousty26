@@ -89,7 +89,7 @@ public class BusCameraFollow : MonoBehaviour
     // INITIALISATION
     // ==========================================
 
-    [Header("Secousse a lâ€™impact du Bus Fighter")]
+    [Header("Secousse a l’impact du Bus Fighter")]
     [Range(0f, 0.5f)] public float landingShakeDistance = 0.16f;
     [Range(0f, 5f)] public float landingShakeAngle = 1.2f;
     [Min(0.01f)] public float landingShakeDuration = 0.28f;
@@ -105,6 +105,8 @@ public class BusCameraFollow : MonoBehaviour
         landingShakeStrength = Mathf.Clamp01(strength);
         landingShakeRemaining = landingShakeDuration;
     }
+
+    public void ShakePoliceImpact() => BeginLandingShake(1f);
 
     private void RemoveLandingShake()
     {

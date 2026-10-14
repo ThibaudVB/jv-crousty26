@@ -484,6 +484,8 @@ GameObject:
   - component: {fileID: 920000000000000004}
   - component: {fileID: 920000000000000056}
   - component: {fileID: 920000000000000057}
+  - component: {fileID: 920000000000000058}
+  - component: {fileID: 920000000000000059}
   m_Layer: 0
   m_Name: CroustyBus
   m_TagString: Untagged
@@ -702,6 +704,44 @@ MonoBehaviour:
   explosionPrefab: {fileID: 8372507955426573714, guid: 7b8bb78ab9eb729448bf14240195a087, type: 3}
   explosionLifetime: 5
   lastSpeedKmh: 0
+--- !u!114 &920000000000000058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76d9872c30b071b4caa2a06c4fd53dd1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BusAirTricks
+  flipSpeed: 240
+  spinSpeed: 270
+  finishSpeed: 220
+  landingSnapSpeed: 900
+  minAirTime: 0.15
+--- !u!114 &920000000000000059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db8a080464c413a4fa1518c150b04414, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BusBoostDisplay
+  heightAboveBus: 5
+  textSize: 12
+  boostColor: {r: 1, g: 0.82, b: 0.13, a: 1}
+  outlineColor: {r: 0.45, g: 0.15, b: 0, a: 1}
+  boostLabel: BOOST
+  showTimeLeft: 1
+  popScale: 1.6
+  popDuration: 0.35
+  blinkSecondsLeft: 3
 --- !u!1 &22988778
 GameObject:
   m_ObjectHideFlags: 0
@@ -1407,6 +1447,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &96844273
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3191,7 +3234,7 @@ MonoBehaviour:
   currentSpeedKmh: 0
   currentYaw: 0
   currentPitch: 0
-  cameraLocked: 0
+  cameraLocked: 1
   defaultPitch: 12
   landingShakeDistance: 0.16
   landingShakeAngle: 1.2
@@ -3908,6 +3951,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &252166623
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4481,6 +4527,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &260561895
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4780,6 +4829,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &275667751
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7266,6 +7318,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &422547037
 GameObject:
   m_ObjectHideFlags: 0
@@ -7748,6 +7803,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &463450432
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8894,6 +8952,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &552888162
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16106,6 +16167,8 @@ MonoBehaviour:
   waypointHeightOffset: 4
   waypointTemplate: {fileID: 619482902}
   fontSize: 32
+  deliveryWaypointIcon: {fileID: 21300000, guid: da1c9ae6cecd9634cbd76dc7c798ad82, type: 3}
+  shopWaypointIcon: {fileID: 21300000, guid: c4eb9782e77259e49bd16ad16a9f2ea0, type: 3}
 --- !u!4 &962319296
 Transform:
   m_ObjectHideFlags: 0
@@ -16148,11 +16211,13 @@ MonoBehaviour:
   firstRunOrders: 3
   ordersStep: 5
   nearbyAddressPool: 8
+  minimumAddressSpacing: 160
+  flightDeliveryNeedsRing: 1
   secondsPerOrder: 15
   alarmSecondsLeft: 15
   pointsPerDelivery: 100
   completionBonus: 500
-  pointsPerRemainingSecond: 10
+  pointsPerRemainingSecond: 0
   deliverFromAnyHeight: 1
   useParachute: 1
   parachuteMinHeight: 8
@@ -16459,6 +16524,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &975554980
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16812,6 +16880,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1016411440
 GameObject:
   m_ObjectHideFlags: 0
@@ -20665,6 +20736,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1357885538
 GameObject:
   m_ObjectHideFlags: 0
@@ -23457,6 +23531,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1593384047
 GameObject:
   m_ObjectHideFlags: 0
@@ -24361,6 +24438,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1671107728
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -24924,6 +25004,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1702200964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -29211,6 +29294,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1933227914
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -29364,6 +29450,7 @@ MonoBehaviour:
   normalColor: {r: 0.9372549, g: 0.9137255, b: 0.88235295, a: 1}
   inkColor: {r: 0.14901961, g: 0.14901961, b: 0.19607843, a: 1}
   selectedTextColor: {r: 1, g: 0.99215686, b: 0.96862745, a: 1}
+  tabHoverOffset: 10
 --- !u!4 &1942756248
 Transform:
   m_ObjectHideFlags: 0
@@ -30814,6 +30901,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &2036693937
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31453,6 +31543,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &2081792092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31627,6 +31720,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &2084984702
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32655,6 +32751,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &2144916612
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -46179,6 +46278,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BusGarageRepair
   garageNamePrefix: Visuel Garage
   logTouched: 0
+  repairSound: {fileID: 0}
+  repairSoundVolume: 1
 --- !u!114 &920000000000000053
 MonoBehaviour:
   m_ObjectHideFlags: 0
