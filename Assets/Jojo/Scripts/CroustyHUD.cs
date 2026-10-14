@@ -97,7 +97,7 @@ public class CroustyHUD : MonoBehaviour
 
         if (canvas == null || waypointTemplate == null || deliveryValue == null ||
             objectiveValue == null || speedValue == null || timeValue == null ||
-            timerValue == null || scoreValue == null || scoreGain == null)
+            scoreValue == null || scoreGain == null)
         {
             Debug.LogError("CroustyHUD : assigner tous les panels du HUD dans l'Inspector.", this);
             enabled = false;
@@ -106,7 +106,8 @@ public class CroustyHUD : MonoBehaviour
 
         scoreStartScale = scoreValue.rectTransform.localScale;
         gainStartPosition = scoreGain.rectTransform.anchoredPosition;
-        timerNormalColor = timerValue.color;
+        if (timerValue != null) timerNormalColor = timerValue.color;
+        UpdateTimer();
 
         if (manager != null)
         {
@@ -221,52 +222,10 @@ public class CroustyHUD : MonoBehaviour
 
     private void UpdateTimer()
     {
-        // Style maquette : le chrono n'apparaît que pendant une tournée (ou à la défaite)
-        if (referenceHudStyle)
-            timerValue.gameObject.SetActive(manager.RunActive || manager.HasFailed);
-
-        float seconds;
-        string label;
-
-        if (manager.RunActive)
-        {
-            seconds = manager.RunRemaining;
-            label = "TIME LEFT";
-        }
-        else if (manager.AllDelivered)
-        {
-            seconds = 0f;
-            label = "RUN COMPLETE";
-        }
-        else if (manager.HasFailed)
-        {
-            seconds = 0f;
-            label = "OUT OF TIME";
-        }
-        else
-        {
-            seconds = manager.RunTimeLimit; // pas encore commencé : on montre le temps de la prochaine tournée
-            label = "DELIVERY RUN";
-        }
-
-        int wholeSeconds = Mathf.CeilToInt(seconds);
-        string time = $"{wholeSeconds / 60:00}:{wholeSeconds % 60:00}";
-        if (referenceHudStyle)
-            timerValue.text = time;
-        else
-            timerValue.text = time + $"\n<size=48%>{label}</size>";
-
-        // Clignote en orange quand il reste peu de temps
-        bool urgent = manager.RunActive && wholeSeconds <= urgentSeconds;
-        if (urgent)
-        {
-            float blink = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 8f);
-            timerValue.color = Color.Lerp(timerNormalColor, urgentColor, blink);
-        }
-        else
-        {
-            timerValue.color = timerNormalColor;
-        }
+        if (timerValue == null) return;
+        var panel = timerValue.transform.parent;
+        if (panel != null && panel.name == "Delivery countdown") panel.gameObject.SetActive(false);
+        else timerValue.gameObject.SetActive(false);
     }
 
     // ---------- SCORE ----------
@@ -332,7 +291,7 @@ public class CroustyHUD : MonoBehaviour
             }
 
             // Adresses qui attendent une commande
-            foreach (DeliveryPoint point in manager.deliveryPoints)
+            foreach (DeliveryPoint point in manager.VisibleDestinations)
             {
                 if (point != null && point.IsWaiting)
                 {

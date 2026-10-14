@@ -6,8 +6,8 @@ using UnityEngine.Rendering;
 [DisallowMultipleComponent]
 public sealed class BusNightLights : MonoBehaviour
 {
-    [Min(5f)] public float headlightRange = 55f;
-    [Min(0f)] public float headlightIntensity = 6f;
+    [Min(5f)] public float headlightRange = 100f;
+    [Min(0f)] public float headlightIntensity = 80f;
     [Range(20f, 100f)] public float beamAngle = 65f;
     private readonly List<Light> headlights = new List<Light>(2);
     private readonly List<GameObject> additions = new List<GameObject>();
@@ -16,7 +16,12 @@ public sealed class BusNightLights : MonoBehaviour
     private MaterialPropertyBlock properties;
     private struct Lens { public Renderer renderer; public Material[] original; }
 
-    private void Awake() => properties = new MaterialPropertyBlock();
+    private void Awake()
+    {
+        properties = new MaterialPropertyBlock();
+        headlightRange = Mathf.Max(100f, headlightRange);
+        headlightIntensity = Mathf.Max(80f, headlightIntensity);
+    }
 
     private void Start()
     {
@@ -31,10 +36,11 @@ public sealed class BusNightLights : MonoBehaviour
             if (template != null) PrepareLens(renderer, template, new Color(2.2f,1.95f,1.4f));
         }
         var pivot = transform.Find("Carrosserie - Animation arcade") ?? transform;
-        if (headlights.Count == 0)
+        if (headlights.Count < 2)
         {
             for (int side = -1; side <= 1; side += 2)
             {
+                if (headlights.Count >= 2) break;
                 Vector3 position = transform.TransformPoint(new Vector3(bounds.center.x + side * bounds.extents.x * .72f,
                     bounds.min.y + bounds.size.y * .23f, bounds.max.z + .06f));
                 CreateBeam(pivot, position);
@@ -82,7 +88,8 @@ public sealed class BusNightLights : MonoBehaviour
         light.spotAngle = beamAngle;
         light.innerSpotAngle = beamAngle * .65f;
         light.color = new Color(1,.92f,.77f);
-        light.shadows = LightShadows.None;
+        light.shadows = LightShadows.Soft;
+        light.shadowStrength = .8f;
         light.renderMode = LightRenderMode.ForcePixel;
         light.enabled = false;
         headlights.Add(light);
@@ -128,7 +135,7 @@ public sealed class BusNightLights : MonoBehaviour
     {
         var cycle = CroustyDayNightCycle.Instance;
         float night = cycle != null ? cycle.NightAmount : 0;
-        float power = Mathf.SmoothStep(0,1,Mathf.InverseLerp(.45f,.8f,night));
+        float power = Mathf.SmoothStep(0,1,Mathf.InverseLerp(.2f,.65f,night));
         foreach (var light in headlights)
         {
             light.enabled = power > .005f;

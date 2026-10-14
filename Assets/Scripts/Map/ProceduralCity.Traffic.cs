@@ -29,6 +29,8 @@ public sealed partial class ProceduralCity
     public readonly List<Transform> Pursuers = new List<Transform>();
     public int VehicleModelCount => vehicles.Length;
     public bool IsAreaReady(Vector3 position) => chunks.TryGetValue(ChunkAt(position), out var chunk) && chunk.complete;
+    public bool IsMovementReady(Vector3 position, Vector3 velocity) => WorldRoot == null ||
+        IsAreaReady(position) && IsAreaReady(position + velocity * .25f);
 
     public void AddPolicePatrol(CityTrafficCar car) { if (!traffic.Contains(car)) traffic.Add(car); }
     public void RemovePolicePatrol(CityTrafficCar car) => traffic.Remove(car);

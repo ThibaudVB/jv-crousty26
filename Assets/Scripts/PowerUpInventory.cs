@@ -106,6 +106,9 @@ public sealed class PowerUpInventory : MonoBehaviour
 
     public bool TryActivatePrimary()
     {
+        var activeFlight = GetComponent<BusFlightController>();
+        if (activeFlight != null && activeFlight.CurrentMode == BusFlightController.FlightMode.Flying)
+            return activeFlight.StopFlight();
         if (!HasCharge) return false;
         switch (primary.powerUp)
         {

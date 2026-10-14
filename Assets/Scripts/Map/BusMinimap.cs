@@ -314,7 +314,7 @@ public sealed class BusMinimap : MonoBehaviour
         int used = 0;
         if (deliveries != null)
         {
-            foreach (DeliveryPoint point in deliveries.deliveryPoints)
+            foreach (DeliveryPoint point in deliveries.VisibleDestinations)
             {
                 if (point == null || !point.IsWaiting) continue;
                 while (deliveryIcons.Count <= used)

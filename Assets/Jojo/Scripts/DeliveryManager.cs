@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Gère les tournées de livraison :
-// 1. Le bus passe au magasin (CroustyShop) : il charge des commandes et le chrono démarre.
+// 1. Le bus passe au magasin : des adresses dispersees sont preparees sans limite de temps.
 // 2. Il passe près d'une adresse qui attend (DeliveryPoint) : le crousty est lancé tout seul.
-// 3. Chaque livraison rapporte des points. Tout livrer avant la fin du chrono donne un bonus.
+// 3. Chaque livraison rapporte des points. Terminer la tournee donne un bonus fixe.
 // 4. On retourne au magasin pour la tournée suivante (3 commandes, puis 5, 10, 15...).
 //
 // A placer à la main sur un GameObject vide de la scène (ex : "DeliveryManager").
@@ -30,19 +30,19 @@ public class DeliveryManager : MonoBehaviour
     [Min(1)] public int ordersStep = 5;
     [Tooltip("Nombre d'adresses proches parmi lesquelles on tire au hasard")]
     [Min(6)] public int nearbyAddressPool = 8;
+    [Min(0f)] public float minimumAddressSpacing = 160f;
+    private readonly List<DeliveryPoint> visibleDestinations = new List<DeliveryPoint>(10);
+    public IReadOnlyList<DeliveryPoint> VisibleDestinations => visibleDestinations;
+    private bool preparingOrders;
 
-    [Header("Chrono")]
-    [Tooltip("Temps accordé par commande (3 commandes x 15 s = 45 s)")]
-    [Min(1f)] public float secondsPerOrder = 15f;
-    [Tooltip("Une alarme sonne quand il reste ce nombre de secondes")]
-    [Min(0f)] public float alarmSecondsLeft = 15f;
+    [HideInInspector] public float secondsPerOrder = 15f; // Legacy serialized data.
+    [HideInInspector] public float alarmSecondsLeft = 15f;
 
     [Header("Points")]
     [Min(0)] public int pointsPerDelivery = 100;
     [Tooltip("Bonus quand toutes les commandes de la tournée sont livrées")]
     [Min(0)] public int completionBonus = 500;
-    [Tooltip("Points en plus pour chaque seconde restante à la fin de la tournée")]
-    [Min(0)] public int pointsPerRemainingSecond = 10;
+    [HideInInspector] public int pointsPerRemainingSecond;
 
     [Header("Livraison en hauteur")]
     [Tooltip("Coché : on peut livrer à n'importe quelle hauteur (en volant, depuis un toit...). " +
@@ -85,8 +85,8 @@ public class DeliveryManager : MonoBehaviour
     public int Delivered { get; private set; }     // crousty arrivés à destination
     public int TotalDelivered { get; private set; } // livraisons réussies sur toute la partie
     public bool HasStarted { get; private set; }   // au moins une tournée a été chargée
-    public bool RunActive { get; private set; }    // une tournée est en cours (chrono lancé)
-    public bool HasFailed { get; private set; }    // partie perdue (chrono ou police)
+    public bool RunActive { get; private set; }    // une tournée est en cours
+    public bool HasFailed { get; private set; }    // partie perdue (police ou destruction)
     public float RunElapsed { get; private set; }  // secondes écoulées dans la tournée
     public int Score { get; private set; }
     public string PlayerName { get; private set; }
@@ -94,8 +94,8 @@ public class DeliveryManager : MonoBehaviour
     public int BestScore { get; private set; }
 
     // Durée de la tournée en cours (ou de la prochaine si on n'a pas encore commencé)
-    public float RunTimeLimit => secondsPerOrder * (HasStarted ? OrdersTotal : NextRunOrders);
-    public float RunRemaining => RunActive ? Mathf.Max(0f, RunTimeLimit - RunElapsed) : 0f;
+    public float RunTimeLimit => float.PositiveInfinity;
+    public float RunRemaining => RunActive ? float.PositiveInfinity : 0f;
 
     // Commandes de la prochaine tournée : 3, puis 5, 10, 15...
     public int NextRunOrders => runsLoaded == 0 ? firstRunOrders : ordersStep * runsLoaded;
@@ -118,7 +118,6 @@ public class DeliveryManager : MonoBehaviour
     private const string BestScoreKey = "Crousty.BestScore";
     private int runsLoaded;          // nombre de tournées déjà chargées
     private int inFlight;            // crousty en train de voler
-    private bool alarmPlayed;
     private bool mustLeaveShop;      // après un chargement, il faut sortir du magasin avant de recharger
     private PoliceGameOverManager gameOver;
 
@@ -173,8 +172,9 @@ public class DeliveryManager : MonoBehaviour
         bool atShop = shop != null && shop.IsInRange(player.position);
         if (!atShop)
             mustLeaveShop = false;
-        if (atShop && NeedsPickup && !mustLeaveShop)
-            LoadOrders();
+        if (atShop && NeedsPickup && !mustLeaveShop && !preparingOrders)
+            StartCoroutine(PrepareOrders());
+        RefreshVisibleDestinations();
 
         // 2. Livraison en passant devant une adresse
         DeliveryPoint target = FindDeliverablePoint();
@@ -191,17 +191,6 @@ public class DeliveryManager : MonoBehaviour
 
         RunElapsed += Time.deltaTime;
 
-        if (RunElapsed >= RunTimeLimit)
-        {
-            FailRun(true);
-            return;
-        }
-
-        if (!alarmPlayed && RunRemaining <= alarmSecondsLeft)
-        {
-            alarmPlayed = true;
-            CroustySoundDesignManager.Play(CroustySound.Alarm);
-        }
     }
 
     // Appelé par la police quand elle attrape le bus
@@ -281,6 +270,23 @@ public class DeliveryManager : MonoBehaviour
 
     // ---------- CHARGEMENT DES COMMANDES ----------
 
+    private IEnumerator PrepareOrders()
+    {
+        preparingOrders = true;
+        var city = FindAnyObjectByType<ProceduralCity>();
+        try
+        {
+            if (city != null && city.WorldRoot != null)
+                yield return city.PrepareDeliveryAddresses(NextRunOrders);
+            if (!HasFailed) LoadOrders();
+        }
+        finally
+        {
+            city?.FinishDeliveryPreparation();
+            preparingOrders = false;
+        }
+    }
+
     private void LoadOrders()
     {
         // On retire les adresses détruites ou désactivées
@@ -320,51 +326,60 @@ public class DeliveryManager : MonoBehaviour
         RunElapsed = 0f;
         HasStarted = true;
         RunActive = true;
-        alarmPlayed = false;
         mustLeaveShop = true;
         runsLoaded++;
+        visibleDestinations.Clear();
+        RefreshVisibleDestinations();
         RunStarted?.Invoke();
     }
 
-    // Les adresses les plus proches du bus, sans en prendre deux dans le même pâté de maisons
+    // Farthest-point sampling spreads the run across distinct streets, rather than the nearest block.
     private List<DeliveryPoint> FindNearbyAddresses(int wanted)
     {
         List<DeliveryPoint> sorted = new List<DeliveryPoint>(deliveryPoints);
-        sorted.Sort((a, b) => DistanceToPlayer(a).CompareTo(DistanceToPlayer(b)));
+        sorted.RemoveAll(point => point == null || !point.isActiveAndEnabled);
 
         int maxCount = Mathf.Max(wanted, nearbyAddressPool);
         List<DeliveryPoint> result = new List<DeliveryPoint>();
-        HashSet<Vector2Int> usedBlocks = new HashSet<Vector2Int>();
         ProceduralCity city = FindAnyObjectByType<ProceduralCity>();
 
-        foreach (DeliveryPoint point in sorted)
+        bool procedural = city != null && city.WorldRoot != null;
+        sorted.RemoveAll(point => shop != null && Vector3.Distance(point.transform.position, shop.transform.position) <
+            (procedural ? 160f : shop.pickupRadius + point.deliveryRadius + 2f));
+        for (int selection = 0; selection < maxCount && sorted.Count > 0; selection++)
         {
-            // Trop près du magasin : ce serait une livraison sans bouger
-            if (shop != null)
+            DeliveryPoint point = null; float best = -1f;
+            foreach (var candidate in sorted)
             {
-                float tooClose = shop.pickupRadius + point.deliveryRadius + 2f;
-                if (Vector3.Distance(point.transform.position, shop.transform.position) < tooClose)
-                    continue;
+                float distance = DistanceToPlayer(candidate);
+                foreach (var previous in result)
+                    distance = Mathf.Min(distance, Vector3.Distance(previous.transform.position, candidate.transform.position));
+                if (distance > best) { best = distance; point = candidate; }
             }
-
-            // Dans la ville procédurale : une seule adresse par pâté de maisons
-            if (city != null && city.WorldRoot != null && point.transform.IsChildOf(city.WorldRoot))
-            {
-                Vector3 local = point.transform.position - city.Origin;
-                Vector2Int block = new Vector2Int(
-                    Mathf.FloorToInt(local.x / ProceduralCity.BlockSize),
-                    Mathf.FloorToInt(local.z / ProceduralCity.BlockSize));
-
-                if (usedBlocks.Contains(block))
-                    continue;
-                usedBlocks.Add(block);
-            }
-
+            if (point == null) break;
+            if (procedural && result.Count > 0 && best < minimumAddressSpacing) break;
             result.Add(point);
-            if (result.Count >= maxCount)
-                break;
+            sorted.Remove(point);
         }
         return result;
+    }
+
+    public bool HasEnoughDispersedAddresses(int wanted) => FindNearbyAddresses(wanted).Count >= wanted;
+
+    private void RefreshVisibleDestinations()
+    {
+        visibleDestinations.RemoveAll(point => point == null || !point.IsWaiting);
+        if (visibleDestinations.Count < 10)
+        {
+            var candidates = new List<DeliveryPoint>();
+            foreach (var point in deliveryPoints)
+                if (point != null && point.IsWaiting && !visibleDestinations.Contains(point)) candidates.Add(point);
+            candidates.Sort((a, b) => DistanceToPlayer(a).CompareTo(DistanceToPlayer(b)));
+            foreach (var point in candidates)
+            { if (visibleDestinations.Count >= 10) break; visibleDestinations.Add(point); }
+        }
+        foreach (var point in deliveryPoints)
+            if (point != null) point.SetMarkerVisible(visibleDestinations.Contains(point));
     }
 
     private float DistanceToPlayer(DeliveryPoint point)
@@ -475,9 +490,8 @@ public class DeliveryManager : MonoBehaviour
 
     private void CompleteRun()
     {
-        int secondsLeft = Mathf.FloorToInt(RunRemaining);
         RunActive = false;
-        AddScore(completionBonus + secondsLeft * pointsPerRemainingSecond);
+        AddScore(completionBonus);
         SaveBestScore();
         CroustySoundDesignManager.Play(CroustySound.RunComplete);
         RunCompleted?.Invoke();

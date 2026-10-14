@@ -1119,6 +1119,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &87994168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1717,6 +1720,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &142394600
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2171,6 +2177,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.075
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!224 &156488275
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2487,16 +2496,16 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 211652105}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0.042747524, w: 0.99908596}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1155479150}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 4.9}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 67.5, y: -19}
+  m_AnchoredPosition: {x: 67.5, y: -21.97}
   m_SizeDelta: {x: 115, y: 28}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &211652107
@@ -3740,6 +3749,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 0
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &300252599
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3992,6 +4004,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &310503320
 GameObject:
   m_ObjectHideFlags: 0
@@ -4349,6 +4364,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &341704191
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4496,6 +4514,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &348762575
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5315,6 +5336,7 @@ MonoBehaviour:
   normalColor: {r: 0.9372549, g: 0.9137255, b: 0.88235295, a: 1}
   inkColor: {r: 0.14901961, g: 0.14901961, b: 0.19607843, a: 1}
   selectedTextColor: {r: 1, g: 0.99215686, b: 0.96862745, a: 1}
+  tabHoverOffset: 10
 --- !u!4 &448125327
 Transform:
   m_ObjectHideFlags: 0
@@ -5549,6 +5571,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &463242681
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5711,6 +5736,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &463350524
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8180,6 +8208,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &654630597
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8956,6 +8987,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &708379323
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9963,6 +9997,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 0.95
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &765831241
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10162,6 +10199,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &774252310
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10336,6 +10376,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &791938602
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11490,6 +11533,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &932789165
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12239,6 +12285,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &944419439
 GameObject:
   m_ObjectHideFlags: 0
@@ -13894,7 +13943,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 125, y: -34}
+  m_AnchoredPosition: {x: 119.3, y: -34}
   m_SizeDelta: {x: 250, y: 68}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1040345389
@@ -14753,6 +14802,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1088799563
 GameObject:
   m_ObjectHideFlags: 0
@@ -15495,6 +15547,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1155479149
 GameObject:
   m_ObjectHideFlags: 0
@@ -15520,17 +15575,17 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1155479149}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: -0.04396811, w: 0.9990329}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 211652106}
   m_Father: {fileID: 1257303541}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -5.04}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 75, y: -20}
+  m_AnchoredPosition: {x: 69.5, y: -20}
   m_SizeDelta: {x: 150, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1155479151
@@ -16496,6 +16551,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.075
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1257303543
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19590,6 +19648,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1554518019
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19914,6 +19975,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1577915559
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20507,6 +20571,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1608216259
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20818,6 +20885,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1650289494
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21352,6 +21422,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1678604875
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21679,6 +21752,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.1
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1692263642
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21853,6 +21929,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1717424512
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -23725,6 +23804,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.075
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1846694952
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27256,6 +27338,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.025
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &2130182947
 MonoBehaviour:
   m_ObjectHideFlags: 0

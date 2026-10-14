@@ -20,7 +20,7 @@ public class BusFlightController : MonoBehaviour
     public bool BonusEquipped { get; set; } = true;
     public bool CanReceiveCharges => UsesRemaining < 1 &&
         (inventory == null || inventory.CanAddPower(PowerUpInventory.PowerUpType.Flight));
-    [Min(1f)] public float flightDuration = 15f;
+    [HideInInspector] public float flightDuration = 15f; // Legacy scene data; flight ends on demand/contact.
 
     [Header("Impulsion initiale")]
     [Min(0f)] public float launchUpSpeed = 8f;
@@ -59,12 +59,14 @@ public class BusFlightController : MonoBehaviour
     public bool IsAirborne => mode != FlightMode.Ground;
     public bool IsFalling => mode == FlightMode.Falling;
     public FlightMode CurrentMode => mode;
-    public float RemainingFlightSeconds => timeRemaining;
+    public float RemainingFlightSeconds => mode == FlightMode.Flying ? float.PositiveInfinity : 0f;
+    private float launchedAt;
 
     private Rigidbody rb;
     private BusController busController;
     private BusWheelRig wheelRig;
     private PowerUpInventory inventory;
+    private ProceduralCity city;
 
     private WheelCollider[] wheelColliders;
     private bool[] originalWheelStates;
@@ -95,6 +97,7 @@ public class BusFlightController : MonoBehaviour
         if (inventory != null && UsesRemaining > 0)
             inventory.TryAddPower(PowerUpInventory.PowerUpType.Flight, UsesRemaining);
         rb = GetComponent<Rigidbody>();
+        city = FindAnyObjectByType<ProceduralCity>();
         busController = GetComponent<BusController>();
         wheelRig = GetComponent<BusWheelRig>();
         if (GetComponent<BusFallSpeedEffect>() == null)
@@ -162,21 +165,9 @@ public class BusFlightController : MonoBehaviour
             return;
 
         float dt = Time.fixedDeltaTime;
-
-        // Les 15 secondes sont entierement pilotables.
-        if (mode == FlightMode.Flying)
-        {
-            timeRemaining = Mathf.Max(
-                0f,
-                timeRemaining - dt
-            );
-
-            if (timeRemaining <= 0f)
-            {
-                StartFalling();
-                return;
-            }
-        }
+        if (city != null && !city.IsMovementReady(rb.position, rb.linearVelocity))
+        { rb.linearVelocity = Vector3.zero; return; }
+        if (mode == FlightMode.Flying) velocityBeforeFallStep = rb.linearVelocity;
 
         switch (mode)
         {
@@ -251,7 +242,8 @@ public class BusFlightController : MonoBehaviour
         pitchInput = 0f;
         boostInput = false;
 
-        timeRemaining = Mathf.Max(0.1f, flightDuration);
+        timeRemaining = 0f;
+        launchedAt = Time.time;
         CroustySoundDesignManager.Play(CroustySound.Flight);
 
         boostRemaining = boostDuration;
@@ -359,6 +351,13 @@ public class BusFlightController : MonoBehaviour
         RestoreWheelColliders();
     }
 
+    public bool StopFlight()
+    {
+        if (mode != FlightMode.Flying || Time.timeScale <= 0f) return false;
+        StartFalling();
+        return true;
+    }
+
     private void CheckGroundContact()
     {
         // Wheel suspension reports real contact, not a raycast landing above the road.
@@ -386,7 +385,7 @@ public class BusFlightController : MonoBehaviour
 
     private void CheckBodyContact(Collision collision)
     {
-        if (mode != FlightMode.Falling) return;
+        if (!IsAirborne || (mode == FlightMode.Flying && Time.time - launchedAt < .35f)) return;
         // Also return control after a chassis/roof impact, so R can recover an overturned bus.
         for (int i = 0; i < collision.contactCount; i++)
         {
@@ -402,13 +401,14 @@ public class BusFlightController : MonoBehaviour
     private void FinishLanding(Vector3 point, Vector3 normal, Collider surface)
     {
         // Do not teleport, straighten or erase the impact velocity.
-        if (mode != FlightMode.Falling) return;
+        if (!IsAirborne) return;
         Vector3 surfaceVelocity = surface.attachedRigidbody != null
             ? surface.attachedRigidbody.GetPointVelocity(point) : Vector3.zero;
         float speed = Mathf.Max(0f, -Vector3.Dot(velocityBeforeFallStep - surfaceVelocity, normal));
         float strength = Mathf.InverseLerp(minimumImpactSpeed,
             Mathf.Max(minimumImpactSpeed + 0.1f, fullImpactSpeed), speed);
         mode = FlightMode.Ground;
+        timeRemaining = 0f;
         RestoreGroundPhysics();
         if (strength > 0f)
         {

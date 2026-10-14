@@ -147,6 +147,8 @@ public class BusDamage : MonoBehaviour
         if (!CanTakeHit() || collision.transform.IsChildOf(transform))
             return;
         if (TryRoadblockHit(collision)) return;
+        var prop = collision.collider.GetComponentInParent<MapImpactProp>();
+        if (prop != null && (prop.HasBeenHit || prop.TryHit(collision.relativeVelocity))) return;
         var garage = GetComponent<BusGarageRepair>();
         if (garage != null && garage.IsGarage(collision.collider.transform)) return;
         var police = collision.collider.GetComponentInParent<PoliceCarAI>();
@@ -157,6 +159,8 @@ public class BusDamage : MonoBehaviour
             // Police only inflict damage with an actual rear-end pursuit impact.
             if (!police.IsRearRamCollision(collision)) return;
             TakeHit(collision.contactCount > 0 ? collision.GetContact(0).point : transform.position);
+            if (Camera.main != null && Camera.main.TryGetComponent<BusCameraFollow>(out var follow))
+                follow.ShakePoliceImpact();
             return;
         }
         if (crash != null && crash.WillDestroy(collision.collider)) return;

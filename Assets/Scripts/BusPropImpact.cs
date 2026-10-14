@@ -41,6 +41,7 @@ public class BusPropImpact : MonoBehaviour
 
     internal void IgnorePropCollisions(MapImpactProp prop)
     {
+        if (!prop.HasBeenHit) return;
         if (busColliders == null) busColliders = GetComponentsInChildren<Collider>();
         Collider[] propColliders = prop.GetComponentsInChildren<Collider>();
         foreach (Collider busCollider in busColliders)

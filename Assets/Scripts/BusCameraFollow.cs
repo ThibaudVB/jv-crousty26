@@ -72,7 +72,7 @@ public class BusCameraFollow : MonoBehaviour
     [SerializeField] private float currentPitch;
 
     [Header("Camera Lock")]
-    public bool cameraLocked = false;
+    public bool cameraLocked = true;
     public float defaultPitch = 12f;
 
     private Camera cam;
@@ -105,6 +105,8 @@ public class BusCameraFollow : MonoBehaviour
         landingShakeStrength = Mathf.Clamp01(strength);
         landingShakeRemaining = landingShakeDuration;
     }
+
+    public void ShakePoliceImpact() => BeginLandingShake(1f);
 
     private void RemoveLandingShake()
     {
@@ -142,6 +144,7 @@ public class BusCameraFollow : MonoBehaviour
     private void Awake()
     {
         cam = GetComponent<Camera>();
+        cameraLocked = true;
     }
 
     private void Start()
@@ -273,7 +276,7 @@ public class BusCameraFollow : MonoBehaviour
         chaseBlend = Mathf.MoveTowards(
             chaseBlend,
             chaseManager != null &&
-            chaseManager.ChaseStarted ? 1f : 0f,
+            chaseManager.ChaseStarted && !cameraLocked ? 1f : 0f,
             chaseFramingSpeed * deltaTime
         );
 
@@ -352,6 +355,14 @@ public class BusCameraFollow : MonoBehaviour
 
     private void UpdateFlightCamera(float deltaTime)
     {
+        if (cameraLocked)
+        {
+            yaw = target.eulerAngles.y;
+            pitch = defaultPitch;
+            chaseBlend = 0f;
+            UpdateCameraPosition(deltaTime);
+            return;
+        }
         // Desactive progressivement le cadrage policier.
         chaseBlend = Mathf.MoveTowards(
             chaseBlend,
@@ -379,7 +390,7 @@ public class BusCameraFollow : MonoBehaviour
             - flatForward * (falling ? distance : flightDistance)
             + Vector3.up * (falling ? height : flightHeight);
 
-        transform.position = Vector3.SmoothDamp(
+        transform.position = cameraLocked ? desiredPosition : Vector3.SmoothDamp(
             transform.position,
             desiredPosition,
             ref positionVelocity,
@@ -420,7 +431,7 @@ public class BusCameraFollow : MonoBehaviour
 
     private void UpdateCameraPosition(float deltaTime)
     {
-        float speedRatio = Mathf.Clamp01(
+        float speedRatio = cameraLocked ? 0f : Mathf.Clamp01(
             currentSpeedKmh / fovAtSpeedKmh
         );
 
@@ -473,7 +484,7 @@ public class BusCameraFollow : MonoBehaviour
             Vector3.forward *
             framedDistance;
 
-        transform.position = Vector3.SmoothDamp(
+        transform.position = cameraLocked ? desiredPosition : Vector3.SmoothDamp(
             transform.position,
             desiredPosition,
             ref positionVelocity,
@@ -494,7 +505,7 @@ public class BusCameraFollow : MonoBehaviour
                 Vector3.up
             );
 
-        transform.rotation = Quaternion.Slerp(
+        transform.rotation = cameraLocked ? desiredRotation : Quaternion.Slerp(
             transform.rotation,
             desiredRotation,
             rotationSmoothSpeed * deltaTime
@@ -530,7 +541,7 @@ public class BusCameraFollow : MonoBehaviour
     private void UpdateFOV()
     {
         // MODE AVION
-        if (flightController != null &&
+        if (!cameraLocked && flightController != null &&
             flightController.IsAirborne)
         {
             cam.fieldOfView = Mathf.Lerp(
@@ -544,7 +555,7 @@ public class BusCameraFollow : MonoBehaviour
 
         // MODE TERRESTRE
         float speedRatio = Mathf.Clamp01(
-            currentSpeedKmh / fovAtSpeedKmh
+            currentSpeedKmh / Mathf.Max(1f, fovAtSpeedKmh)
         );
 
         float targetFOV = Mathf.Lerp(
@@ -556,7 +567,7 @@ public class BusCameraFollow : MonoBehaviour
         cam.fieldOfView = Mathf.Lerp(
             cam.fieldOfView,
             targetFOV,
-            fovSmoothSpeed * Time.deltaTime
+            1f - Mathf.Exp(-Mathf.Max(0f, fovSmoothSpeed) * Time.deltaTime)
         );
     }
 

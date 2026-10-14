@@ -16,7 +16,8 @@ public sealed class CroustyBonusHUD : MonoBehaviour
 
     public void SelectBonus(SelectedBonus value) { selectedBonus = value; Refresh(); }
     public string SelectedKeyLabel => "E";
-    public bool HasSelectedBonus => Inventory != null && Inventory.HasCharge;
+    public bool HasSelectedBonus => flightController != null && flightController.CurrentMode == BusFlightController.FlightMode.Flying ||
+        Inventory != null && Inventory.HasCharge;
     public void CycleBonus(int direction)
     {
         if (direction == 0) return;
