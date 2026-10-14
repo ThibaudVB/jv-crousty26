@@ -64,6 +64,7 @@ public sealed class CroustyNameEntry : MonoBehaviour
         nameInput.SetTextWithoutNotify(playerName);
         nameInput.DeactivateInputField();
         CroustyPlayerProfile.Save(playerName);
+        CroustyMenuTutoButton.SaveSelection();
         IsLaunching = true;
         controls.interactable = controls.blocksRaycasts = false;
         playButton.interactable = false;

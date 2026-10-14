@@ -10,6 +10,11 @@ public class PedestrianFlee : MonoBehaviour
     [Tooltip("Il arrête de fuir quand le bus est plus loin que (rayon x ce facteur)")]
     public float stopFactor = 1.3f;
 
+    [Header("Son")]
+    [Tooltip("Son joué lorsque le bus entre dans le rayon de détection")]
+    public AudioClip approachSound;
+    [Range(0f, 1f)] public float approachSoundVolume = 1f;
+
     [Header("Fuite")]
     [Tooltip("Vitesse minimale de fuite (m/s), même si le bus est lent")]
     public float minFleeSpeed = 5f;
@@ -24,6 +29,7 @@ public class PedestrianFlee : MonoBehaviour
     // Le bus est cherché une seule fois pour tous les personnages
     private static Rigidbody busBody;
     private static Collider busCollider;
+    private static AudioSource busApproachAudioSource;
     private static float nextSearchTime;
 
     private static bool EnsureBus()
@@ -69,7 +75,10 @@ public class PedestrianFlee : MonoBehaviour
         float radius = detectionRadius + busSpeed * extraRadiusPerSpeed;
 
         if (!isFleeing && distance < radius)
+        {
             isFleeing = true;
+            PlayApproachSound();
+        }
         else if (isFleeing && distance > radius * stopFactor)
             isFleeing = false;
 
@@ -86,6 +95,34 @@ public class PedestrianFlee : MonoBehaviour
             transform.rotation,
             Quaternion.LookRotation(direction, Vector3.up),
             turnSpeed * Time.deltaTime);
+    }
+
+    private void PlayApproachSound()
+    {
+        if (approachSound == null) return;
+
+        if (busApproachAudioSource == null
+            || busApproachAudioSource.transform.parent != busBody.transform)
+        {
+            Transform soundTransform = busBody.transform.Find("Pedestrian Approach Sound");
+            GameObject soundObject = soundTransform != null
+                ? soundTransform.gameObject
+                : new GameObject("Pedestrian Approach Sound");
+
+            if (soundTransform == null)
+                soundObject.transform.SetParent(busBody.transform, false);
+
+            busApproachAudioSource = soundObject.GetComponent<AudioSource>();
+            if (busApproachAudioSource == null)
+                busApproachAudioSource = soundObject.AddComponent<AudioSource>();
+
+            busApproachAudioSource.playOnAwake = false;
+            busApproachAudioSource.loop = false;
+            busApproachAudioSource.spatialBlend = 1f;
+        }
+
+        if (!busApproachAudioSource.isPlaying)
+            busApproachAudioSource.PlayOneShot(approachSound, approachSoundVolume);
     }
 
     private void OnDrawGizmosSelected()

@@ -63,7 +63,11 @@ public static class PoliceIntegrationChecks
         damage.ExtinguishFire();Field(damage,"lastHitTime",-999f);
         Physics.SyncTransforms();
     }
-    static void Remove(PoliceCarAI car){UnityEngine.Object.DestroyImmediate(car.gameObject);}
+    static void Remove(PoliceCarAI car)
+    {
+        ((List<PoliceCarAI>)manager.Cars).Remove(car);
+        UnityEngine.Object.DestroyImmediate(car.gameObject);
+    }
     static void Tick()
     {
         if(SessionState.GetInt(Key,0)==0)return;
@@ -77,6 +81,7 @@ public static class PoliceIntegrationChecks
             bus=drive.GetComponent<Rigidbody>();crash=drive.GetComponent<BusCarCrash>();
             damage=drive.GetComponent<BusDamage>();box=drive.GetComponent<BoxCollider>();
             manager.enabled=false;drive.enabled=false;
+            Field(manager,"maximumRoadblocks",0); // Exercise roadblock spawning explicitly, not during unrelated checks.
             foreach(var car in new List<PoliceCarAI>(manager.Cars))Remove(car);
             ((List<PoliceCarAI>)manager.Cars).Clear();
             Vector3 forward=bus.rotation*Vector3.forward;
@@ -85,6 +90,14 @@ public static class PoliceIntegrationChecks
             Property(observer,"State",PoliceCarAI.Mode.Patrol);
             bus.linearVelocity=Vector3.zero;Call(manager,"FixedUpdate");
             Check(!manager.ChaseStarted,"A visible stationary bus does not trigger a pursuit");
+            var deliveries=DeliveryManager.Instance;
+            int originalDelivered=deliveries.TotalDelivered;
+            Property(deliveries,"TotalDelivered",4);
+            Field(manager,"suspicion",.35f);
+            bus.linearVelocity=forward*(50f/3.6f);Call(manager,"FixedUpdate");
+            Check(!manager.ChaseStarted && (float)manager.GetType().GetField("suspicion",Flags).GetValue(manager)==0f,
+                "Legal speed clears suspicion even at maximum delivery difficulty");
+            Property(deliveries,"TotalDelivered",originalDelivered);
             bus.linearVelocity=forward*20;observer.Blind(5);Call(manager,"FixedUpdate");
             Check(!manager.ChaseStarted,"A blinded officer cannot detect speeding");
             Field(observer,"blindUntil",0f);Field(manager,"suspicion",.35f);Call(manager,"FixedUpdate");
@@ -122,8 +135,43 @@ public static class PoliceIntegrationChecks
             Check(!rear.IsRammingBus,"Shared recovery prevents repeated rams");
             Remove(rear);Remove(second);
             bus.linearVelocity=forward*100f;Property(manager,"BusInSight",true);Field(manager,"chasing",true);Field(manager,"heat",1);
-            Check(manager.ChaseSpeed<40f,"Police catch-up speed is capped");
+            Check(manager.ChaseSpeed<=158f/3.6f+.001f,"Early catch-up speed stays capped at 158 km/h");
             Check((int)manager.GetType().GetProperty("PursuitLimit",Flags).GetValue(manager)==2,"Initial pursuit limited to two officers");
+            bus.linearVelocity=forward*(130f/3.6f);
+            Check(manager.ChaseSpeed*3.6f>145f,"Early police can catch a bus cruising at 130 km/h");
+            Field(manager,"patrolCount",3);
+            float earlyAcceleration=manager.ChaseAcceleration;
+            foreach(int completed in new[]{0,1,2,3,4,5,100})
+            {
+                Property(deliveries,"TotalDelivered",completed);
+                int stage=Mathf.Min(4,completed);
+                Check(manager.DifficultyLevel==stage,"Delivery difficulty stage for "+completed+" successful orders");
+                int expectedPatrols=new[]{3,5,6,8,10}[stage];
+                Check((int)manager.GetType().GetProperty("CurrentPatrolCount",Flags).GetValue(manager)==expectedPatrols,
+                    "Patrol population follows cumulative deliveries: "+completed);
+                Field(manager,"maximumRoadblocks",6);
+                Check((int)manager.GetType().GetProperty("RoadblockLimit",Flags).GetValue(manager)==Mathf.Min(6,completed),
+                    "No initial roadblocks, then increasingly blocked streets: "+completed);
+                Field(manager,"maximumRoadblocks",0);
+            }
+            Field(manager,"heat",5);
+            Check((int)manager.GetType().GetProperty("PursuitLimit",Flags).GetValue(manager)==12,"Survival pursuit can call twelve officers");
+            Check(manager.ChaseAcceleration>earlyAcceleration && manager.RearRamCooldown==1.5f,
+                "Late officers accelerate harder and recover faster between attacks");
+            Check((int)manager.GetType().GetProperty("StartingHeat",Flags).GetValue(manager)==5,
+                "Four completed orders start new pursuits at maximum wanted level");
+            Check(Mathf.Abs((float)manager.GetType().GetProperty("ArrestDuration",Flags).GetValue(manager)-1f)<.01f,
+                "Survival officers arrest a slow bus in one second");
+            bus.linearVelocity=forward*100f;
+            Check(Mathf.Abs(manager.ChaseSpeed*3.6f-204f)<.01f,"Survival catch-up speed is capped at 204 km/h");
+            Property(deliveries,"TotalDelivered",3);Field(manager,"heat",1);
+            Property(deliveries,"TotalDelivered",4);Call(manager,"FixedUpdate");
+            Check(manager.ChaseStarted && manager.HeatLevel==5,"Fourth delivery immediately raises an existing pursuit to maximum alert");
+            Call(manager,"Escape");
+            Check(manager.DifficultyLevel==4 && !manager.ChaseStarted,"Escaping clears pursuit without erasing delivery difficulty");
+            Property(deliveries,"TotalDelivered",0);Field(manager,"heat",5);
+            Check((int)manager.GetType().GetProperty("PursuitLimit",Flags).GetValue(manager)==4,"Early long pursuit remains limited to four officers");
+            Property(deliveries,"TotalDelivered",originalDelivered);Field(manager,"patrolCount",0);Field(manager,"heat",1);
 
             isolated=SceneManager.CreateScene("Police physical collision checks",new CreateSceneParameters(LocalPhysicsMode.Physics3D));
             physics=isolated.GetPhysicsScene();
@@ -202,6 +250,37 @@ public static class PoliceIntegrationChecks
             for(int i=0;i<25;i++){copBody.MovePosition(copBody.position+Vector3.left*8f*.02f);Call(crash,"FixedUpdate");physics.Simulate(.02f);}
             Check(!side.IsDestroyed&&damage.DamagePenalty==0f,"Side contact is neither frontal explosion nor rear damage");
             Remove(side);
+            ResetBus(Quaternion.identity);
+            var blockRoot=new GameObject("Roadblock collision checks");
+            SceneManager.MoveGameObjectToScene(blockRoot,isolated);
+            blockRoot.AddComponent<PoliceRoadblock>();
+            var solid=GameObject.CreatePrimitive(PrimitiveType.Cube);
+            solid.transform.SetParent(blockRoot.transform);
+            frontBumper=box.transform.TransformPoint(box.center+Vector3.forward*box.size.z*.5f);
+            solid.transform.position=frontBumper+Vector3.forward+Vector3.up*.3f;
+            solid.transform.localScale=new Vector3(18f,2f,1.2f);
+            for(int i=0;i<40;i++){bus.linearVelocity=Vector3.forward*2f;physics.Simulate(.02f);}
+            Check(damage.HitsTaken==1,"Even slow contact with a roadblock costs one health hit");
+            Check(bus.position.z<solid.transform.position.z,"Solid barricade stops direct passage");
+            Field(damage,"lastHitTime",-999f);
+            for(int i=0;i<10;i++){bus.linearVelocity=Vector3.forward*2f;physics.Simulate(.02f);}
+            Check(damage.HitsTaken==2,"Pushing against a barricade continues to damage the bus after cooldown");
+            UnityEngine.Object.DestroyImmediate(solid);
+            ResetBus(Quaternion.identity);
+            frontBumper=box.transform.TransformPoint(box.center+Vector3.forward*box.size.z*.5f);
+            var parked=Car(frontBumper+Vector3.forward*2.5f,Quaternion.Euler(0,90,0));
+            parked.transform.SetParent(blockRoot.transform,true);
+            parked.ParkAtRoadblock(parked.transform.position,parked.transform.rotation);
+            Vector3 parkedAt=parked.transform.position;
+            parked.StartChase();Call(parked,"FixedUpdate");
+            Check(parked.IsRoadblock && parked.transform.position==parkedAt,"Roadblock officer remains parked when a pursuit starts");
+            int explosionsBeforeBlock=crash.CarsExploded;
+            Check(!(bool)Call(crash,"TryDestroyCar",parked.GetComponent<BoxCollider>(),frontBumper,130f),
+                "A frontal 130 km/h attack cannot destroy a roadblock police car");
+            for(int i=0;i<100&&damage.HitsTaken==0;i++){bus.linearVelocity=Vector3.forward*2f;physics.Simulate(.02f);}
+            Check(damage.HitsTaken==1 && !parked.IsDestroyed && crash.CarsExploded==explosionsBeforeBlock,
+                "Contact with parked police damages the bus without destroying the blockade");
+            Remove(parked);UnityEngine.Object.DestroyImmediate(blockRoot);
             ResetBus(Quaternion.identity);
             var capture=bus.GetComponentInChildren<PoliceCatchZone>(true);
             Check(damage.hitsToDestroy==10,"Existing scene uses ten-hit resistance");

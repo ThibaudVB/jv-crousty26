@@ -6,7 +6,7 @@ using UnityEngine;
 // the street graph to where the bus was last reported. PoliceChaseManager decides.
 public class PoliceCarAI : MonoBehaviour
 {
-    public enum Mode { Patrol, Chase, Return, Destroyed }
+    public enum Mode { Patrol, Chase, Return, Destroyed, Roadblock }
 
     public Mode State { get; private set; } = Mode.Patrol;
     public float Speed { get; private set; }
@@ -15,6 +15,7 @@ public class PoliceCarAI : MonoBehaviour
     public bool IsBlinded => Time.time < blindUntil;
     public bool InPursuit => State == Mode.Chase;
     public bool IsDestroyed => State == Mode.Destroyed;
+    public bool IsRoadblock => State == Mode.Roadblock;
     public bool IsRammingBus { get; private set; }
     public float RiceSpeedFactor { get; private set; } = 1f;
 
@@ -76,7 +77,7 @@ public class PoliceCarAI : MonoBehaviour
 
     public void StartChase()
     {
-        if (IsDestroyed || State == Mode.Chase) return;
+        if (IsDestroyed || IsRoadblock || State == Mode.Chase) return;
         Speed = State == Mode.Patrol ? patrol.Speed : Speed;
         State = Mode.Chase;
         patrol.enabled = false;
@@ -84,6 +85,20 @@ public class PoliceCarAI : MonoBehaviour
         if (!city.Pursuers.Contains(transform)) city.Pursuers.Add(transform);
         yaw = transform.eulerAngles.y;
         route.Clear(); nextRoute = 0f;
+    }
+
+    public void ParkAtRoadblock(Vector3 position, Quaternion rotation)
+    {
+        State = Mode.Roadblock;
+        Speed = 0f;
+        IsRammingBus = false;
+        patrol.enabled = false;
+        RemovePatrol();
+        if (!city.Pursuers.Contains(transform)) city.Pursuers.Add(transform);
+        body.position = position;
+        body.rotation = rotation;
+        transform.SetPositionAndRotation(position, rotation);
+        yaw = rotation.eulerAngles.y;
     }
 
     // Lost the bus: drive back into the nearest right-hand lane, then patrol again.
@@ -104,7 +119,7 @@ public class PoliceCarAI : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (manager == null || IsDestroyed || State == Mode.Patrol || Time.timeScale <= 0f) return;
+        if (manager == null || IsDestroyed || IsRoadblock || State == Mode.Patrol || Time.timeScale <= 0f) return;
         float dt = Time.fixedDeltaTime;
         Vector3 position = body.position;
         if (!city.IsAreaReady(position)) { Speed = 0f; IsRammingBus = false; return; }
@@ -358,7 +373,7 @@ public class PoliceCarAI : MonoBehaviour
                 // Separate after contact so the next attack can hit a stationary bus again.
                 reverseUntil = ramRetreatUntil = Time.time + .8f;
             }
-            nextRam = Time.time + 3.5f;
+            nextRam = Time.time + manager.RearRamCooldown;
             // Keep IsRammingBus through this callback so BusDamage sees the same impact state.
         }
     }

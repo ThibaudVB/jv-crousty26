@@ -3661,6 +3661,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b6f5ad186fdc9b488bf160c633dcc38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  chargesGiven: 1
   respawnDelay: 8
   visual: {fileID: 0}
   rotationSpeed: 90
@@ -4994,6 +4995,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b6f5ad186fdc9b488bf160c633dcc38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  chargesGiven: 1
   respawnDelay: 8
   visual: {fileID: 0}
   rotationSpeed: 90
@@ -7193,6 +7195,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b6f5ad186fdc9b488bf160c633dcc38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  chargesGiven: 1
   respawnDelay: 8
   visual: {fileID: 0}
   rotationSpeed: 90
@@ -10805,76 +10808,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 806270340}
   m_CullTransparentMesh: 1
---- !u!1001 &809708772
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 95.30354
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 26.91
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 167.6839
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -447275898630060098, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -1.24
-      objectReference: {fileID: 0}
-    - target: {fileID: -447275898630060098, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 8.22
-      objectReference: {fileID: 0}
-    - target: {fileID: -447275898630060098, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.28
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-      propertyPath: m_Name
-      value: CroustyColis
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects:
-    - {fileID: 65702495048144492, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
 --- !u!21 &831266983
 Material:
   serializedVersion: 8
@@ -12732,18 +12665,10 @@ MonoBehaviour:
   pointsPerDelivery: 100
   completionBonus: 500
   pointsPerRemainingSecond: 10
-  deliverFromAnyHeight: 1
-  useParachute: 1
-  parachuteMinHeight: 8
-  parachuteFallSpeed: 6
-  parachuteMaxSeconds: 6
-  parachuteSize: 2.5
-  parachuteColor: {r: 0.9, g: 0.15, b: 0.15, a: 1}
-  parachuteSwing: 15
   throwDuration: 0.8
   throwArcHeight: 4
   throwStartHeight: 2.5
-  croustyProjectilePrefab: {fileID: 919132149155446097, guid: 39591bf4b25370242b0cee3909dd35b0, type: 3}
+  croustyProjectilePrefab: {fileID: 0}
   projectileColor: {r: 1, g: 0.6, b: 0.1, a: 1}
   projectileSize: 0.5
 --- !u!1 &965852437
@@ -16818,7 +16743,7 @@ MonoBehaviour:
   policePrefab: {fileID: 5063324600036237687, guid: e508328d7bf644a48aa68e109d1df7af, type: 3}
   catchZone: {fileID: 831359855}
   flightController: {fileID: 0}
-  patrolCount: 7
+  patrolCount: 3
   startupGraceSeconds: 3
   patrolRadius: 115
   speedLimitKmh: 50
@@ -16826,8 +16751,8 @@ MonoBehaviour:
   visionHalfAngle: 95
   closeAwareness: 22
   spottingSeconds: 0.35
-  chaseSpeedKmh: 88
-  chaseAcceleration: 9
+  chaseSpeedKmh: 138
+  chaseAcceleration: 10
   maxChasers: 5
   backupRadius: 260
   pursuitVisionRange: 90
@@ -16837,7 +16762,13 @@ MonoBehaviour:
   escapeCooldownSeconds: 8
   maximumHeat: 5
   escalationSeconds: 30
-  maximumReinforcements: 10
+  maximumReinforcements: 12
+  deliveriesPerDifficultyLevel: 1
+  maximumDifficultyLevel: 4
+  latePatrolCount: 10
+  lateChaseSpeedBonusKmh: 42
+  maximumRoadblocks: 6
+  roadblockLifetime: 90
   bustDistance: 9
   bustSpeedKmh: 22
   bustSeconds: 2.5
@@ -22863,7 +22794,6 @@ MonoBehaviour:
   mainPanel: {fileID: 943039609}
   optionsPanel: {fileID: 1309525332}
   leaderboardPanel: {fileID: 0}
-  nameEntry: {fileID: 0}
   homePages: {fileID: 0}
   pauseMenu: {fileID: 1044438174}
   categoryPanels:
@@ -169131,4 +169061,3 @@ SceneRoots:
   - {fileID: 591962833}
   - {fileID: 342565885}
   - {fileID: 227314357}
-  - {fileID: 809708772}
