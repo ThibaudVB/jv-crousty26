@@ -441,54 +441,78 @@ public sealed partial class ProceduralCity : MonoBehaviour
     {
         route.Clear();
         if (WorldRoot == null) return false;
-        Vector3 a = RoadProjection(start, out var first), b = RoadProjection(end, out var last);
-        var queue = new SortedSet<(int score, int tie, int serial, Vector2Int point)>(
-            Comparer<(int score, int tie, int serial, Vector2Int point)>.Create((left, right) =>
+        Vector3 a = RoadProjection(start, out var firstA, out var firstB);
+        Vector3 b = RoadProjection(end, out var lastA, out var lastB);
+        // The direct path on one street is shorter than going via either junction.
+        if (((firstA == lastA && firstB == lastB) || (firstA == lastB && firstB == lastA)) &&
+            !PoliceRoadblock.BlocksSegment(a, b))
+        { route.Add(a); AddCorner(route, b); return true; }
+        bool goalAOpen = !PoliceRoadblock.BlocksSegment(JunctionPosition(lastA), b);
+        bool goalBOpen = !PoliceRoadblock.BlocksSegment(JunctionPosition(lastB), b);
+        if (!goalAOpen && !goalBOpen) return false;
+        var queue = new SortedSet<(float score, int serial, Vector2Int point)>(
+            Comparer<(float score, int serial, Vector2Int point)>.Create((left, right) =>
             {
                 int order = left.score.CompareTo(right.score);
-                if (order == 0) order = left.tie.CompareTo(right.tie);
                 return order == 0 ? left.serial.CompareTo(right.serial) : order;
             }));
-        var cost = new Dictionary<Vector2Int, int> { [first] = 0 };
+        var cost = new Dictionary<Vector2Int, float>();
         var previous = new Dictionary<Vector2Int, Vector2Int>();
         var closed = new HashSet<Vector2Int>();
         int serial = 0;
-        queue.Add((Manhattan(first, last), 0, serial++, first));
-        var directions = new[] { Vector2Int.right, Vector2Int.up, Vector2Int.left, Vector2Int.down };
+        foreach (var first in new[] { firstA, firstB })
+        {
+            Vector3 junction = JunctionPosition(first);
+            if (PoliceRoadblock.BlocksSegment(a, junction)) continue;
+            float initial = PlanarDistance(a, junction);
+            cost[first] = initial;
+            queue.Add((initial + RouteHeuristic(junction, b), serial++, first));
+        }
+        float best = float.PositiveInfinity;
+        Vector2Int goal = default;
+        bool found = false;
         while (queue.Count > 0 && closed.Count < 16384)
         {
             var next = queue.Min; queue.Remove(next);
+            if (next.score >= best) break;
             Vector2Int current = next.point;
             if (!closed.Add(current)) continue;
-            if (current == last)
+            Vector3 position = JunctionPosition(current);
+            if ((current == lastA && goalAOpen) || (current == lastB && goalBOpen))
             {
-                var reverse = new List<Vector2Int> { last };
-                while (current != first) { current = previous[current]; reverse.Add(current); }
-                route.Add(a);
-                for (int i = reverse.Count - 1; i >= 0; i--) AddCorner(route, Origin + new Vector3(reverse[i].x * BlockSize, .1f, reverse[i].y * BlockSize));
-                AddCorner(route, b);
-                return true;
+                float total = cost[current] + PlanarDistance(position, b);
+                if (total < best) { best = total; goal = current; found = true; }
             }
-            foreach (var direction in directions)
+            foreach (var direction in RoadDirections)
             {
                 Vector2Int neighbor = current + direction;
-                if (!IsRoadEdgeOpen(current, neighbor) || closed.Contains(neighbor)) continue;
-                int value = cost[current] + 1;
-                if (cost.TryGetValue(neighbor, out int oldCost) && oldCost <= value) continue;
+                if (!IsRoadEdgeOpen(current, neighbor) || closed.Contains(neighbor) ||
+                    PoliceRoadblock.BlocksSegment(position, JunctionPosition(neighbor))) continue;
+                float value = cost[current] + BlockSize;
+                if (cost.TryGetValue(neighbor, out float oldCost) && oldCost <= value) continue;
                 cost[neighbor] = value; previous[neighbor] = current;
-                queue.Add((value + Manhattan(neighbor, last), -value, serial++, neighbor));
+                queue.Add((value + RouteHeuristic(JunctionPosition(neighbor), b), serial++, neighbor));
             }
         }
-        return false;
+        if (!found) return false;
+        var reverse = new List<Vector2Int> { goal };
+        while (previous.TryGetValue(goal, out var parent)) { goal = parent; reverse.Add(goal); }
+        route.Add(a);
+        for (int i = reverse.Count - 1; i >= 0; i--)
+            AddCorner(route, JunctionPosition(reverse[i]) + Vector3.up * .1f);
+        AddCorner(route, b);
+        return true;
     }
+    private static float PlanarDistance(Vector3 a, Vector3 b) => Vector2.Distance(new Vector2(a.x, a.z), new Vector2(b.x, b.z));
+    private static float RouteHeuristic(Vector3 a, Vector3 b) => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.z - b.z);
     private static int Manhattan(Vector2Int a, Vector2Int b) => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
 
-    private Vector3 RoadProjection(Vector3 world, out Vector2Int junction)
+    private Vector3 RoadProjection(Vector3 world, out Vector2Int edgeA, out Vector2Int edgeB)
     {
         Vector3 p = (world - Origin) / BlockSize;
         var center = new Vector2Int(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.z));
         float best = float.PositiveInfinity;
-        Vector3 result = Vector3.zero; junction = center;
+        Vector3 result = Vector3.zero; edgeA = center; edgeB = center + Vector2Int.right;
         for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++)
             for (int axis = 0; axis < 2; axis++)
             {
@@ -500,7 +524,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
                 float d = (point - new Vector2(p.x, p.z)).sqrMagnitude;
                 if (d >= best) continue;
                 best = d; result = new Vector3(point.x * BlockSize, .1f, point.y * BlockSize);
-                junction = (point - (Vector2)a).sqrMagnitude < (point - (Vector2)b).sqrMagnitude ? a : b;
+                edgeA = a; edgeB = b;
             }
         return Origin + result;
     }

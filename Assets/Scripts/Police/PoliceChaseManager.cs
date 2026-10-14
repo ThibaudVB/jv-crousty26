@@ -231,12 +231,13 @@ public class PoliceChaseManager : MonoBehaviour
             backup.RemoveAt(i);
         }
 
-        BusInSight = false;
+        BusInSight = !hidden && Time.time < airSeenUntil;
         float nearest = float.PositiveInfinity;
         int pinning = 0;
         foreach (var car in cars)
         {
             if (!car.InPursuit && !car.IsRoadblock) continue;
+            if (hidden) car.SeesBus = false;
             if (look) car.SeesBus = !hidden && !car.IsBlinded && CanSee(car, pursuitVisionRange, 180f);
             if (car.SeesBus) BusInSight = true;
             Vector3 offset = car.transform.position - BusPosition; offset.y = 0;
@@ -273,6 +274,23 @@ public class PoliceChaseManager : MonoBehaviour
         return true;
     }
 
+    private float airSeenUntil;
+    public bool CanAirSpotSpeeding => !BusHidden && Time.time >= calmUntil && BusVelocity.magnitude * 3.6f > speedLimitKmh;
+
+    public void ReportAirSight()
+    {
+        if (BusHidden || catchZone != null && catchZone.IsCaught) return;
+        if (!chasing)
+        {
+            if (!CanAirSpotSpeeding) return;
+            BeginChase(null);
+        }
+        airSeenUntil = Time.time + .15f;
+        lastSeen = Time.time;
+        lastKnown = BusPosition;
+        lastKnownVelocity = BusVelocity;
+    }
+
     private void BeginChase(PoliceCarAI first)
     {
         chasing = true; suspicion = 0f;
@@ -280,8 +298,7 @@ public class PoliceChaseManager : MonoBehaviour
         nextEscalation = Time.time + EscalationInterval;
         nextBackup = 0f;
         lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
-        first.StartChase();
-        first.SeesBus = true;
+        if (first != null) { first.StartChase(); first.SeesBus = true; }
         Flash("POLICE! You've been spotted!");
         backup.Clear();
         var others = new List<PoliceCarAI>();

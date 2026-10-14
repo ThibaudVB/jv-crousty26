@@ -10,15 +10,23 @@ public sealed class PoliceAirProjectile : MonoBehaviour
     private Texture2D fireTexture;
     private float explodeAt = float.PositiveInfinity, expiresAt;
     private const float BlastRadius = 4.5f;
+    private BusFlightController flight;
+    private Collider projectileCollider;
+    private Collider[] busColliders;
+    private bool ignoringBus;
+    private bool BusAirborne => flight != null && flight.IsAirborne;
 
     public void Initialize(GameObject model, bool dumpster, Rigidbody player)
     {
         burningDumpster = dumpster; bus = player;
+        flight = player.GetComponent<BusFlightController>();
+        busColliders = player.GetComponentsInChildren<Collider>();
         var crash = player.GetComponent<BusCarCrash>();
         explosionPrefab = crash != null ? crash.explosionPrefab : null;
         float size = dumpster ? 4.8f : 1.8f;
         PoliceModelVisual.Create(model, transform, new Vector3(size, 0f, 0f));
         var collider = gameObject.AddComponent<BoxCollider>();
+        projectileCollider = collider;
         collider.size = dumpster ? new Vector3(4.4f, 3.4f, 3.4f) : Vector3.one * 1.4f;
         collider.center = Vector3.up * collider.size.y * .5f;
         body = GetComponent<Rigidbody>(); body.mass = dumpster ? 180f : 15f;
@@ -28,6 +36,15 @@ public sealed class PoliceAirProjectile : MonoBehaviour
         expiresAt = Time.time + 20f;
         CreateWarning();
         if (dumpster) CreateFire();
+    }
+
+    private void FixedUpdate()
+    {
+        bool ignore = BusAirborne;
+        if (projectileCollider == null || ignore == ignoringBus) return;
+        ignoringBus = ignore;
+        foreach (var collider in busColliders)
+            if (collider != null) Physics.IgnoreCollision(projectileCollider, collider, ignore);
     }
 
     private void Update()
@@ -48,6 +65,7 @@ public sealed class PoliceAirProjectile : MonoBehaviour
     {
         if (exploded) return;
         var damage = collision.collider.GetComponentInParent<BusDamage>();
+        if (damage != null && BusAirborne) return;
         if (!burningDumpster && damage != null) { Explode(); return; }
         if (burningDumpster && damage != null) damage.TakePoliceProjectileHit(transform.position);
         if (landed) return;
@@ -78,7 +96,7 @@ public sealed class PoliceAirProjectile : MonoBehaviour
 
     private void OnCollisionStay(Collision collision)
     {
-        if (!burningDumpster) return;
+        if (!burningDumpster || BusAirborne) return;
         var damage = collision.collider.GetComponentInParent<BusDamage>();
         if (damage != null) damage.TakePoliceProjectileHit(transform.position);
     }
@@ -90,7 +108,7 @@ public sealed class PoliceAirProjectile : MonoBehaviour
         if (explosionPrefab != null)
             Destroy(Instantiate(explosionPrefab, transform.position, Quaternion.identity), 5f);
         CroustySoundDesignManager.Play(CroustySound.Explosion, transform.position);
-        if (bus != null)
+        if (bus != null && !BusAirborne)
         {
             var collider = bus.GetComponent<BoxCollider>();
             Vector3 closest = collider != null ? collider.ClosestPoint(transform.position) : bus.position;

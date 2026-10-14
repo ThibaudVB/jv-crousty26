@@ -1,91 +1,157 @@
 using UnityEngine;
 
-// Short, readable attack runs. Only an existing pursuit can call air support.
 [DisallowMultipleComponent]
 public sealed class PoliceAirSupport : MonoBehaviour
 {
     private PoliceChaseManager police;
     private ProceduralCity city;
+    private BusFlightController flight;
+    private BoxCollider busCollider;
     private GameObject helicopterPrefab, bombPrefab, dumpsterPrefab, helicopter;
     private Transform rotor;
-    private float nextAttack, leaveAt, nextDrop;
+    private float nextSpawn, nextDrop, startedAt, suspicion, patrolPhase;
     private int drops;
+    private Vector3 patrolCenter, previousRelative;
+    private bool hasPrevious, wasAttacking;
+    private readonly RaycastHit[] sightHits = new RaycastHit[32];
+    private bool Airborne => flight != null && flight.IsAirborne;
+    // Five minutes of play gradually turn occasional drops into sustained pressure.
+    private float Pressure => Mathf.Clamp01((Time.time - startedAt) / 300f);
 
     private void Start()
     {
         police = GetComponent<PoliceChaseManager>();
         city = FindAnyObjectByType<ProceduralCity>();
+        flight = police.BusBody.GetComponent<BusFlightController>();
+        busCollider = police.BusBody.GetComponent<BoxCollider>();
         helicopterPrefab = Resources.Load<GameObject>("Crousty/PoliceAir/Helicopter");
         bombPrefab = Resources.Load<GameObject>("Crousty/PoliceAir/Bomb");
         dumpsterPrefab = Resources.Load<GameObject>("Crousty/PoliceAir/Dumpster");
-        nextAttack = Time.time + 30f;
+        startedAt = Time.time;
+        nextSpawn = Time.time + 30f;
         if (helicopterPrefab == null || bombPrefab == null || dumpsterPrefab == null)
         { Debug.LogError("Police air support: missing imported models.", this); enabled = false; }
     }
 
-    private bool GameEnded => DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed;
-
     private void Update()
     {
         if (Time.timeScale <= 0f || police == null || police.BusBody == null) return;
-        if (GameEnded) { ClearHelicopter(); return; }
+        if (DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed)
+        { ClearHelicopter(); return; }
         if (helicopter == null)
         {
-            if (Time.time < nextAttack || !police.ChaseStarted || police.DifficultyLevel < 1 ||
-                city == null || !city.IsAreaReady(police.BusPosition)) return;
-            Spawn();
+            if (Time.time >= nextSpawn && city != null && city.IsAreaReady(police.BusPosition)) Spawn();
             return;
         }
         float dt = Time.deltaTime;
         if (rotor != null) rotor.Rotate(Vector3.up, 1800f * dt, Space.Self);
-        Vector3 heading = police.BusVelocity.sqrMagnitude > 4f ? police.BusVelocity.normalized : police.BusBody.transform.forward;
-        heading = Vector3.ProjectOnPlane(heading, Vector3.up).normalized;
-        helicopter.transform.rotation = Quaternion.RotateTowards(helicopter.transform.rotation,
-            Quaternion.LookRotation(heading), 55f * dt);
-        // Stay in formation: no independent forward speed that lets the helicopter escape.
-        Vector3 position = FormationPosition(helicopter.transform.forward);
-        helicopter.transform.position = position;
-        if (Time.time >= leaveAt || Vector3.Distance(position, police.BusPosition) > 260f)
-        { ClearHelicopter(); return; }
-        if (Time.time < nextDrop || drops >= 12 || !police.ChaseStarted) return;
-        nextDrop = Time.time + Mathf.Lerp(1.15f, .75f, police.DifficultyLevel / 4f);
-        Vector3 drop = position - Vector3.up * 2f;
+        bool visible = !Airborne && CanSeeBus();
+        if (visible && police.CanAirSpotSpeeding)
+        {
+            suspicion += dt;
+            if (suspicion >= .75f) police.ReportAirSight();
+        }
+        else suspicion = 0f;
+        if (visible && police.ChaseStarted) police.ReportAirSight();
+        bool attacking = visible && police.ChaseStarted;
+        if (attacking && !wasAttacking) nextDrop = Time.time + 2.5f;
+        if (!attacking && wasAttacking) patrolCenter = helicopter.transform.position;
+        wasAttacking = attacking;
+
+        Vector3 heading = police.BusVelocity.sqrMagnitude > 4f ? police.BusVelocity.normalized :
+            Vector3.ProjectOnPlane(police.BusBody.transform.forward, Vector3.up).normalized;
+        Vector3 target;
+        if (attacking)
+        {
+            target = police.BusPosition + heading * 55f;
+            target.y = city.Origin.y + 22f;
+        }
+        else
+        {
+            // Orbit the last ground location, never chase the bus's altitude or airborne position.
+            patrolPhase += dt * .22f;
+            target = patrolCenter + new Vector3(Mathf.Sin(patrolPhase), 0f, Mathf.Cos(patrolPhase)) * 32f;
+            target.y = city.Origin.y + 22f;
+        }
+        Vector3 offset = target - helicopter.transform.position;
+        Vector3 direction = Vector3.ProjectOnPlane(offset, Vector3.up);
+        if (direction.sqrMagnitude > .1f)
+            helicopter.transform.rotation = Quaternion.RotateTowards(helicopter.transform.rotation,
+                Quaternion.LookRotation(attacking ? heading : direction), 90f * dt);
+        // Match bus speed in formation; bounded catch-up when entering or turning.
+        float speed = attacking ? police.BusVelocity.magnitude + Mathf.Min(12f, offset.magnitude * 2f) : 9f;
+        helicopter.transform.position = Vector3.MoveTowards(helicopter.transform.position, target, speed * dt);
+        if (!Airborne && !attacking && Vector3.Distance(helicopter.transform.position, police.BusPosition) > 320f)
+        { ClearHelicopter(); nextSpawn = Time.time + 20f; return; }
+        if (!attacking || Time.time < nextDrop || offset.magnitude > 15f) return;
+        Vector3 drop = helicopter.transform.position - Vector3.up * 2f;
         if (!city.IsAreaReady(drop)) return;
-        // Drop on the projected driving line. The projectile stops tracking after release.
+        nextDrop = Time.time + Mathf.Lerp(3.5f, .65f, Pressure);
         drop += helicopter.transform.right * Random.Range(-.6f, .6f);
-        bool dumpster = drops % 3 == 2;
+        bool dumpster = ++drops % (Pressure < .5f ? 4 : 3) == 0;
         var hazard = new GameObject(dumpster ? "Poubelle incendiaire police" : "Bombe police");
         hazard.transform.position = drop;
-        hazard.AddComponent<PoliceAirProjectile>().Initialize(dumpster ? dumpsterPrefab : bombPrefab,
-            dumpster, police.BusBody);
-        drops++;
+        hazard.AddComponent<PoliceAirProjectile>().Initialize(dumpster ? dumpsterPrefab : bombPrefab, dumpster, police.BusBody);
+    }
+
+    private bool CanSeeBus()
+    {
+        Vector3 eye = helicopter.transform.position + Vector3.up * 2f;
+        Vector3 offset = police.BusBody.worldCenterOfMass - eye;
+        if (offset.sqrMagnitude > 130f * 130f) return false;
+        int count = Physics.RaycastNonAlloc(eye, offset.normalized, sightHits, offset.magnitude, ~0, QueryTriggerInteraction.Ignore);
+        if (count == sightHits.Length) return false;
+        for (int i = 0; i < count; i++)
+            if (sightHits[i].rigidbody == null) return false;
+        return true;
+    }
+
+    private void FixedUpdate()
+    {
+        if (helicopter == null || busCollider == null || Time.timeScale <= 0f) { hasPrevious = false; return; }
+        Vector3 relative = busCollider.bounds.center - (helicopter.transform.position + Vector3.up * 2f);
+        if (flight != null && flight.CurrentMode == BusFlightController.FlightMode.Flying)
+        {
+            // Swept relative bounds also catch fast passes between physics steps. No solid
+            // collider: ramming must not trigger the flight controller's landing behaviour.
+            Vector3 extents = busCollider.bounds.extents + new Vector3(3.5f, 2.5f, 3.5f);
+            Bounds bounds = new Bounds(Vector3.zero, extents * 2f);
+            Vector3 movement = relative - previousRelative;
+            bool hit = bounds.Contains(relative) || hasPrevious &&
+                (bounds.Contains(previousRelative) || movement.sqrMagnitude > .0001f &&
+                 bounds.IntersectRay(new Ray(previousRelative, movement.normalized), out float distance) && distance <= movement.magnitude);
+            if (hit)
+            {
+                var crash = police.BusBody.GetComponent<BusCarCrash>();
+                if (crash != null && crash.explosionPrefab != null)
+                    Destroy(Instantiate(crash.explosionPrefab, helicopter.transform.position, Quaternion.identity), 5f);
+                CroustySoundDesignManager.Play(CroustySound.Explosion, helicopter.transform.position);
+                ClearHelicopter();
+                nextSpawn = Time.time + Mathf.Lerp(60f, 30f, Pressure);
+                return;
+            }
+        }
+        previousRelative = relative;
+        hasPrevious = flight != null && flight.CurrentMode == BusFlightController.FlightMode.Flying;
     }
 
     private void Spawn()
     {
         Vector3 heading = Vector3.ProjectOnPlane(police.BusBody.transform.forward, Vector3.up).normalized;
-        if (police.BusVelocity.sqrMagnitude > 4f) heading = police.BusVelocity.normalized;
-        helicopter = new GameObject("Helicoptere de police - passage");
+        helicopter = new GameObject("Helicoptere de police - patrouille");
         PoliceModelVisual.Create(helicopterPrefab, helicopter.transform, new Vector3(14f, 0f, 0f), 90f);
         foreach (Transform part in helicopter.GetComponentsInChildren<Transform>())
             if (part.name == "Rotor_Main") { rotor = part; break; }
-        helicopter.transform.SetPositionAndRotation(FormationPosition(heading),
-            Quaternion.LookRotation(heading));
-        drops = 0;
-        nextDrop = Time.time + .6f;
-        leaveAt = Time.time + 12f;
-        nextAttack = Time.time + Random.Range(38f, 48f) - police.DifficultyLevel * 5f;
-    }
-
-    private Vector3 FormationPosition(Vector3 heading)
-    {
-        return police.BusPosition + heading * 55f + Vector3.up * 22f;
+        patrolCenter = police.BusPosition + heading * 75f;
+        patrolCenter.y = city.Origin.y + 22f;
+        helicopter.transform.SetPositionAndRotation(patrolCenter, Quaternion.LookRotation(heading));
+        patrolPhase = 0f; drops = 0; suspicion = 0f; hasPrevious = false; wasAttacking = false;
     }
 
     private void ClearHelicopter()
     {
         if (helicopter != null) Destroy(helicopter);
-        helicopter = null; rotor = null;
+        helicopter = null; rotor = null; hasPrevious = false; wasAttacking = false;
     }
     private void OnDisable() => ClearHelicopter();
 }

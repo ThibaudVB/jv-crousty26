@@ -41,6 +41,7 @@ public sealed class BusGPS : MonoBehaviour
     private void Awake()
     {
         path = new NavMeshPath();
+        if (GetComponent<BusGPSRoadGuide>() == null) gameObject.AddComponent<BusGPSRoadGuide>();
         Charges = Mathf.Clamp(startingCharges, 0, 1);
         if (deliveries == null) deliveries = GetComponent<DeliveryManager>();
         if (Inventory != null && Charges > 0)
@@ -145,15 +146,34 @@ public sealed class BusGPS : MonoBehaviour
         if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         candidates.Sort((a,b) => (a.transform.position-deliveries.player.position).sqrMagnitude
             .CompareTo((b.transform.position-deliveries.player.position).sqrMagnitude));
-        int index = candidates.IndexOf(Target);
-        for (int i=1; i<=candidates.Count; i++)
+        DeliveryPoint bestTarget = null;
+        float bestDistance = float.PositiveInfinity;
+        var bestRoute = new List<Vector3>();
+        foreach (var candidate in candidates)
         {
-            var candidate = candidates[(index+i)%candidates.Count];
+            // Straight-line distance is a lower bound; skip routes that cannot improve the result.
+            if (Vector3.Distance(candidate.transform.position, deliveries.player.position) > bestDistance + 16f) continue;
             if (!Calculate(candidate)) continue;
-            Target = candidate;
+            IList<Vector3> candidateRoute = proceduralCity != null && proceduralCity.WorldRoot != null
+                ? proceduralRoute : path.corners;
+            float distance = 0f;
+            for (int i = 1; i < candidateRoute.Count; i++) distance += Vector3.Distance(candidateRoute[i - 1], candidateRoute[i]);
+            if (candidateRoute.Count > 0)
+                distance += Vector3.Distance(deliveries.player.position, candidateRoute[0]) +
+                    Vector3.Distance(candidateRoute[candidateRoute.Count - 1], candidate.transform.position);
+            if (distance >= bestDistance) continue;
+            bestDistance = distance;
+            bestTarget = candidate;
+            bestRoute.Clear(); bestRoute.AddRange(candidateRoute);
+        }
+        if (bestTarget != null)
+        {
+            Target = bestTarget;
             Charges--;
             Inventory?.Consume(PowerUpInventory.PowerUpType.GPS);
-            SetRoute();
+            Route.Clear(); Route.AddRange(bestRoute);
+            RefreshStatus();
+            nextRepath = Time.time + .35f;
             return true;
         }
         Target = null;
@@ -164,8 +184,10 @@ public sealed class BusGPS : MonoBehaviour
     private void Update()
     {
         if (Time.timeScale <= 0f) return;
-        if (Target == null || !Target.IsWaiting || Time.time < nextRepath) return;
-        nextRepath = Time.time + 0.75f;
+        if (Target == null || !Target.IsWaiting || deliveries == null || deliveries.HasFailed)
+        { Route.Clear(); return; }
+        if (Time.time < nextRepath) return;
+        nextRepath = Time.time + .35f;
         if (Calculate(Target)) SetRoute();
         else { Route.Clear(); Status = "GPS: get back on the road"; }
     }
@@ -174,6 +196,10 @@ public sealed class BusGPS : MonoBehaviour
         Route.Clear();
         if (proceduralCity != null && proceduralCity.WorldRoot != null) Route.AddRange(proceduralRoute);
         else Route.AddRange(path.corners);
+        RefreshStatus();
+    }
+    private void RefreshStatus()
+    {
         float distance = 0;
         for (int i=1; i<Route.Count; i++) distance += Vector3.Distance(Route[i-1], Route[i]);
         Status = $"GPS: {distance:0} m";
