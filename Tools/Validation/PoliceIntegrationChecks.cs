@@ -28,7 +28,7 @@ public static class PoliceIntegrationChecks
     {
         deadline=EditorApplication.timeSinceStartup+120;
         EditorApplication.update+=Tick;
-        Application.logMessageReceived+=(m,s,t)=> { if(SessionState.GetInt(Key,0)>0 && (t==LogType.Exception||t==LogType.Error))errors++; };
+        Application.logMessageReceived+=(m,s,t)=> { if(SessionState.GetInt(Key,0)>0 && (t==LogType.Exception||t==LogType.Error) && !s.Contains("UnityEditor.Search."))errors++; };
     }
     public static void Run()
     {
@@ -80,6 +80,16 @@ public static class PoliceIntegrationChecks
             foreach(var car in new List<PoliceCarAI>(manager.Cars))Remove(car);
             ((List<PoliceCarAI>)manager.Cars).Clear();
             Vector3 forward=bus.rotation*Vector3.forward;
+            Field(manager,"patrolCount",0);Field(manager,"calmUntil",0f);Field(manager,"chasing",false);Field(manager,"suspicion",0f);
+            var observer=Car(bus.position-forward*18,Quaternion.LookRotation(forward));
+            Property(observer,"State",PoliceCarAI.Mode.Patrol);
+            bus.linearVelocity=Vector3.zero;Call(manager,"FixedUpdate");
+            Check(!manager.ChaseStarted,"A visible stationary bus does not trigger a pursuit");
+            bus.linearVelocity=forward*20;observer.Blind(5);Call(manager,"FixedUpdate");
+            Check(!manager.ChaseStarted,"A blinded officer cannot detect speeding");
+            Field(observer,"blindUntil",0f);Field(manager,"suspicion",.35f);Call(manager,"FixedUpdate");
+            Check(manager.ChaseStarted,"An officer who sees speeding starts a pursuit");
+            Remove(observer);Field(manager,"chasing",false);
             bus.linearVelocity=forward*8f;
             var front=Car(bus.position+forward*18,Quaternion.LookRotation(-forward));
             Call(front,"FixedUpdate");
@@ -87,6 +97,21 @@ public static class PoliceIntegrationChecks
             Vector3 goal=(Vector3)Call(front,"PursuitPoint",front.transform.position,forward);
             Check(Mathf.Abs(Vector3.Dot(goal-bus.position,Vector3.Cross(Vector3.up,forward)))>=8f,"Officer in front moves to flank");
             Remove(front);
+            bus.linearVelocity=Vector3.zero;
+            var parkedTarget=Car(bus.position-forward*18,Quaternion.LookRotation(forward));
+            Property(parkedTarget,"Speed",0f);
+            Call(parkedTarget,"FixedUpdate");
+            Check(parkedTarget.IsRammingBus&&parkedTarget.Speed>0f,"Officer accelerates into a rear attack against a parked bus");
+            var parkedBody=parkedTarget.GetComponent<Rigidbody>();
+            parkedBody.position=bus.position-forward*(manager.BusHalfLength+parkedTarget.HalfLength+3f);
+            parkedTarget.transform.position=parkedBody.position;
+            Field(parkedTarget,"nextRam",Time.time+3f);Property(parkedTarget,"Speed",0f);
+            Call(parkedTarget,"FixedUpdate");
+            Check(!parkedTarget.IsRammingBus&&parkedTarget.Speed==0f,"Officer waits behind a stopped bus during cooldown instead of circling");
+            Field(parkedTarget,"nextRam",0f);Call(parkedTarget,"FixedUpdate");
+            Check(parkedTarget.IsRammingBus,"Officer can attack a stopped bus again after cooldown");
+            Remove(parkedTarget);
+            bus.linearVelocity=forward*8f;
             var rear=Car(bus.position-forward*18,Quaternion.LookRotation(forward));
             Call(rear,"FixedUpdate");
             Check(rear.IsRammingBus,"Aligned faster officer can catch bus from behind");
@@ -145,6 +170,32 @@ public static class PoliceIntegrationChecks
             Check(!behind.IsDestroyed&&crash.CarsExploded==before,"Rear pursuit collision preserves officer");
             Check(damage.HitsTaken==1&&Mathf.Abs(damage.DamagePenalty-.05f)<.001f,"Rear impact counts once and reduces speed by five percent");
             Remove(behind);
+            ResetBus(Quaternion.identity);
+            tail=box.transform.TransformPoint(box.center-Vector3.forward*box.size.z*.5f);
+            var stationaryRear=Car(tail-Vector3.forward*2.5f,Quaternion.identity,true);
+            copBody=stationaryRear.GetComponent<Rigidbody>();
+            for(int i=0;i<40&&damage.DamagePenalty==0f;i++)
+            {
+                copBody.MovePosition(copBody.position+Vector3.forward*3f*.02f);
+                Call(crash,"FixedUpdate");physics.Simulate(.02f);
+            }
+            Check(damage.HitsTaken==1,"Stationary bus takes rear impact damage");
+            Check((float)stationaryRear.GetType().GetField("ramRetreatUntil",Flags).GetValue(stationaryRear)>Time.time,"Officer backs off after impact to permit a later attack");
+            Remove(stationaryRear);
+
+            ResetBus(Quaternion.identity);
+            Field(manager,"chasing",false);Field(manager,"heat",0);
+            var civilian=new GameObject("Civilian collision test"){tag="voitures"};
+            SceneManager.MoveGameObjectToScene(civilian,isolated);
+            var civilianCollider=civilian.AddComponent<BoxCollider>();
+            civilian.transform.position=bus.position+Vector3.forward*10;
+            Field(crash,"lastSpeedKmh",80f);
+            Check((bool)Call(crash,"TryDestroyCar",civilianCollider,civilian.transform.position,80f),"Civilian car is destroyed by actual crash handler");
+            Check(!manager.ChaseStarted&&manager.HeatLevel==0,"Destroying a civilian does not start a chase or increase heat");
+            var destroyedOfficer=Car(bus.position+Vector3.right*20,Quaternion.identity);
+            destroyedOfficer.DestroyByBus();
+            Check(manager.ChaseStarted&&manager.HeatLevel>0,"Destroying a police car still starts a chase");
+            Remove(destroyedOfficer);
             ResetBus(Quaternion.identity);
             var side=Car(bus.position+Vector3.right*(box.size.x*.5f+3f),Quaternion.LookRotation(Vector3.left),true);
             copBody=side.GetComponent<Rigidbody>();

@@ -7,6 +7,9 @@ public sealed class PowerUpInventory : MonoBehaviour
 {
     public enum PowerUpType { Pet, GPS, Rice, Flight }
 
+    public static int ChargeCapacity(PowerUpType powerUp) =>
+        powerUp == PowerUpType.Pet || powerUp == PowerUpType.Rice ? 3 : 1;
+
     [System.Serializable]
     public sealed class Slot
     {
@@ -72,7 +75,9 @@ public sealed class PowerUpInventory : MonoBehaviour
 
     public bool CanAddPower(PowerUpType powerUp)
     {
-        return !primary.occupied || !secondary.occupied;
+        Slot existing = FindPower(powerUp);
+        return existing != null ? existing.charges < ChargeCapacity(powerUp) :
+            !primary.occupied || !secondary.occupied;
     }
 
     public PowerUpType? GetPowerAt(int index)
@@ -91,11 +96,11 @@ public sealed class PowerUpInventory : MonoBehaviour
     {
         if (amount <= 0) return false;
 
-        Slot slot = !primary.occupied ? primary : !secondary.occupied ? secondary : null;
-        if (slot == null || amount > 3) return false;
+        Slot slot = FindPower(powerUp) ?? (!primary.occupied ? primary : !secondary.occupied ? secondary : null);
+        if (slot == null || amount > ChargeCapacity(powerUp) - (slot.occupied ? slot.charges : 0)) return false;
         slot.powerUp = powerUp;
         slot.occupied = true;
-        slot.charges = amount;
+        slot.charges += amount;
         RefreshAll();
         return true;
     }
@@ -129,11 +134,34 @@ public sealed class PowerUpInventory : MonoBehaviour
 
     private void Update()
     {
-        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame || Keyboard.current == null)
+        if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame || CroustyInput.Keyboard == null)
             return;
-        if (Keyboard.current.eKey.wasPressedThisFrame)
+        if (CroustyInput.Keyboard.tabKey.wasPressedThisFrame)
+            SwapSlots();
+        if (CroustyInput.Keyboard.eKey.wasPressedThisFrame)
             TryActivatePrimary();
     }
+
+    // Keep the visual slot objects in place; only exchange their contents.
+    public bool SwapSlots()
+    {
+        if (Time.timeScale <= 0f || !secondary.occupied) return false;
+        var type = primary.powerUp;
+        bool occupied = primary.occupied;
+        int charges = primary.charges;
+        primary.powerUp = secondary.powerUp;
+        primary.occupied = secondary.occupied;
+        primary.charges = secondary.charges;
+        secondary.powerUp = type;
+        secondary.occupied = occupied;
+        secondary.charges = charges;
+        RefreshAll();
+        return true;
+    }
+
+    private Slot FindPower(PowerUpType powerUp) =>
+        primary.occupied && primary.powerUp == powerUp ? primary :
+        secondary.occupied && secondary.powerUp == powerUp ? secondary : null;
 
     public void Consume(PowerUpType powerUp)
     {

@@ -26,7 +26,6 @@ public class BusCarCrash : MonoBehaviour
     private Vector3 velocityBeforeImpact;
     private Vector3 angularVelocityBeforeImpact;
     private BoxCollider busCollider;
-    private PoliceChaseManager policeManager;
     private readonly RaycastHit[] impactHits = new RaycastHit[32];
     private readonly HashSet<GameObject> destroyedCars = new HashSet<GameObject>();
 
@@ -34,7 +33,6 @@ public class BusCarCrash : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         busCollider = GetComponent<BoxCollider>();
-        policeManager = FindAnyObjectByType<PoliceChaseManager>();
     }
 
     private void FixedUpdate()
@@ -129,7 +127,6 @@ public class BusCarCrash : MonoBehaviour
         else if (lastSpeedKmh < explosionSpeedKmh) return false;
         if (!destroyedCars.Add(car)) return false;
         if (police != null) police.DestroyByBus();
-        else if (policeManager != null) policeManager.CivilianCarDestroyed(rb);
         ExplodeCar(car);
         return true;
     }

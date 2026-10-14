@@ -104,8 +104,8 @@ public class BusController : MonoBehaviour
         );
 
         // RESET DU BUS
-        if ((Keyboard.current != null && Keyboard.current[resetKey].wasPressedThisFrame) ||
-            (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame))
+        if ((CroustyInput.Keyboard != null && CroustyInput.Keyboard[resetKey].wasPressedThisFrame) ||
+            (CroustyInput.Pad != null && CroustyInput.Pad.buttonNorth.wasPressedThisFrame))
         {
             ResetVehicle();
         }
@@ -140,7 +140,7 @@ public class BusController : MonoBehaviour
         steeringInput = 0f;
         handbrakeInput = false;
 
-        var pad = Gamepad.current;
+        var pad = CroustyInput.Pad;
         if (pad != null)
         {
             throttleInput = pad.rightTrigger.ReadValue() - pad.leftTrigger.ReadValue();
@@ -148,14 +148,14 @@ public class BusController : MonoBehaviour
             handbrakeInput = pad.buttonSouth.isPressed;
         }
 
-        if (Keyboard.current == null)
+        if (CroustyInput.Keyboard == null)
             return;
 
         // AVANCER
         if (
-            Keyboard.current.zKey.isPressed ||
-            Keyboard.current.wKey.isPressed ||
-            Keyboard.current.upArrowKey.isPressed
+            CroustyInput.Keyboard.zKey.isPressed ||
+            CroustyInput.Keyboard.wKey.isPressed ||
+            CroustyInput.Keyboard.upArrowKey.isPressed
         )
         {
             throttleInput = 1f;
@@ -163,8 +163,8 @@ public class BusController : MonoBehaviour
 
         // FREIN / MARCHE ARRIERE
         if (
-            Keyboard.current.sKey.isPressed ||
-            Keyboard.current.downArrowKey.isPressed
+            CroustyInput.Keyboard.sKey.isPressed ||
+            CroustyInput.Keyboard.downArrowKey.isPressed
         )
         {
             throttleInput = -1f;
@@ -172,9 +172,9 @@ public class BusController : MonoBehaviour
 
         // GAUCHE
         if (
-            Keyboard.current.qKey.isPressed ||
-            Keyboard.current.aKey.isPressed ||
-            Keyboard.current.leftArrowKey.isPressed
+            CroustyInput.Keyboard.qKey.isPressed ||
+            CroustyInput.Keyboard.aKey.isPressed ||
+            CroustyInput.Keyboard.leftArrowKey.isPressed
         )
         {
             steeringInput = -1f;
@@ -182,15 +182,15 @@ public class BusController : MonoBehaviour
 
         // DROITE
         if (
-            Keyboard.current.dKey.isPressed ||
-            Keyboard.current.rightArrowKey.isPressed
+            CroustyInput.Keyboard.dKey.isPressed ||
+            CroustyInput.Keyboard.rightArrowKey.isPressed
         )
         {
             steeringInput = 1f;
         }
 
         // FREIN A MAIN
-        handbrakeInput |= Keyboard.current.spaceKey.isPressed;
+        handbrakeInput |= CroustyInput.Keyboard.spaceKey.isPressed;
     }
 
     private void ApplyLongitudinalMovement()

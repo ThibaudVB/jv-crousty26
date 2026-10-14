@@ -106,6 +106,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
 
     private void Awake()
     {
+        CroustySettings.ApplyCity(this);
         if (player == null) player = FindAnyObjectByType<BusController>()?.transform;
         if (deliveries == null) deliveries = FindAnyObjectByType<DeliveryManager>();
         if (player == null || deliveries == null || cityModel == null)
@@ -169,7 +170,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
 
     private void Update()
     {
-        if (WorldRoot == null || player == null || Time.timeScale <= 0f) return;
+        if (WorldRoot == null || player == null || Time.timeScale <= 0f || IsPrewarming) return;
         Vector2Int center = ChunkAt(player.position);
         EnsureNearestShop();
         // Protect physics, including teleports, without building nine full districts.

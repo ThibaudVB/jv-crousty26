@@ -259,7 +259,7 @@ public class BusCameraFollow : MonoBehaviour
         }
 
         // MODE TERRESTRE NORMAL
-        if (cameraLocked || Gamepad.current != null)
+        if (cameraLocked || CroustyInput.UsesController)
         {
             yaw = target.eulerAngles.y;
             pitch = defaultPitch;
@@ -293,7 +293,7 @@ public class BusCameraFollow : MonoBehaviour
             return;
         }
 
-        if (cameraLocked || Gamepad.current != null)
+        if (cameraLocked || CroustyInput.UsesController)
             return;
 
         Vector2 mouseDelta = Mouse.current != null && Cursor.lockState == CursorLockMode.Locked

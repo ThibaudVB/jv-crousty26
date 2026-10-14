@@ -29,7 +29,7 @@ public class BusFlightHUD : MonoBehaviour
         // Fin du bonus : chute libre.
         if (flightController.IsFalling)
         {
-            timerText.text = "BUS FIGHTER - CHUTE";
+            timerText.text = "BUS FIGHTER - FREE FALL";
             return;
         }
 

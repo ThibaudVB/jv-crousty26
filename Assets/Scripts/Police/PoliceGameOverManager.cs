@@ -80,7 +80,9 @@ public class PoliceGameOverManager : MonoBehaviour
         gameOver = true;
         DeliveryManager.Instance?.EndRunOnCapture();
         ShowResults();
-        CroustyLeaderboardScores.Record(DeliveryManager.Instance != null ? DeliveryManager.Instance.Score : 0);
+        var delivery = DeliveryManager.Instance;
+        CroustyLeaderboardScores.Record(delivery != null ? delivery.Score : 0,
+            delivery != null ? delivery.PlayerName : CroustyPlayerProfile.PlayerName);
         if (busController != null)
         {
             var flight = busController.GetComponent<BusFlightController>();

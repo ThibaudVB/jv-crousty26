@@ -37,10 +37,10 @@ public class CroustyHUD : MonoBehaviour
     public string objectiveFailed = "Run failed!";
 
     [Header("Textes de l'objectif, style maquette ({0} = livrées, {1} = total)")]
-    [TextArea] public string referencePickup = "Récupère les commandes au\nrestaurant de Crousty (0/1)";
-    [TextArea] public string referenceDeliver = "Livre les commandes aux clients\n({0}/{1})";
-    [TextArea] public string referenceComplete = "Tournée terminée ! Retourne\nau restaurant de Crousty.";
-    [TextArea] public string referenceFailed = "Tournée échouée ! Retourne au restaurant.";
+    [TextArea] public string referencePickup = "Pick up your orders at\nCrousty's restaurant (0/1)";
+    [TextArea] public string referenceDeliver = "Deliver your orders\n({0}/{1})";
+    [TextArea] public string referenceComplete = "Run complete! Return to\nCrousty's restaurant.";
+    [TextArea] public string referenceFailed = "Run failed! Return to the restaurant.";
 
     [Header("Vitesse")]
     [Tooltip("Vitesse (km/h) qui remplit complètement la jauge")]
@@ -312,7 +312,7 @@ public class CroustyHUD : MonoBehaviour
             return score.ToString();
 
         decimal thousands = score / 1000m;
-        return thousands.ToString("0.#", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + "k";
+        return thousands.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "k";
     }
 
     // ---------- REPERES ----------

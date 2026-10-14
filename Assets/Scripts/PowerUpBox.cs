@@ -6,9 +6,6 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public sealed class PowerUpBox : MonoBehaviour
 {
-    [Header("Contenu")]
-    [Min(1)] public int chargesGiven = 1;
-
     [Header("Respawn")]
     [Min(0f)] public float respawnDelay = 8f;
 
@@ -70,24 +67,24 @@ public sealed class PowerUpBox : MonoBehaviour
         var flight = bus.GetComponent<BusFlightController>();
         if (gps == null) gps = FindAnyObjectByType<BusGPS>();
 
-        if (pet != null && pet.CanReceiveCharges)
+        if (pet != null && pet.isActiveAndEnabled && pet.CanReceiveCharges)
         {
-            candidates.Add(() => pet.AddCharges(chargesGiven, 3));
+            candidates.Add(() => pet.AddCharges(3, 3));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Pet);
         }
-        if (gps != null && gps.CanReceiveCharges)
+        if (gps != null && gps.isActiveAndEnabled && gps.CanReceiveCharges)
         {
-            candidates.Add(() => gps.AddCharges(chargesGiven, 3));
+            candidates.Add(() => gps.AddCharges(1, 1));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.GPS);
         }
-        if (rice != null && rice.CanReceiveCharges)
+        if (rice != null && rice.isActiveAndEnabled && rice.CanReceiveCharges)
         {
-            candidates.Add(() => rice.AddCharges(chargesGiven, 3));
+            candidates.Add(() => rice.AddCharges(3, 3));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Rice);
         }
-        if (flight != null && flight.CanReceiveCharges)
+        if (flight != null && flight.isActiveAndEnabled && flight.CanReceiveCharges)
         {
-            candidates.Add(() => flight.AddCharges(chargesGiven, 3));
+            candidates.Add(() => flight.AddCharges(1, 1));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Flight);
         }
         if (candidates.Count == 0) return;

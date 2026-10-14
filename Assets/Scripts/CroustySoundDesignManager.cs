@@ -40,6 +40,8 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
         if (bank != null && bank.cues != null)
             foreach (var cue in bank.cues) if (cue.clip != null && cue.clip.loadType != AudioClipLoadType.Streaming) cue.clip.LoadAudioData();
         AudioListener.volume = Mathf.Clamp01(PlayerPrefs.GetFloat("Crousty.MasterVolume",1));
+        effectsVolume = Mathf.Clamp01(PlayerPrefs.GetFloat("Crousty.EffectsVolume", 1));
+        musicVolume = Mathf.Clamp01(PlayerPrefs.GetFloat("Crousty.MusicVolume", 1));
         voices = new Voice[10];
         for (int i = 0; i < voices.Length; i++) voices[i] = new Voice { source = Source("Cue " + i), ui = i < 3 };
         ambience = Loop("Bus ambience", CroustySound.Ambience);

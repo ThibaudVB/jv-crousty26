@@ -43,8 +43,8 @@ public sealed class CroustyHudControls : MonoBehaviour
     private void Update()
     {
         if (front == null || Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame) return;
-        var pad = Gamepad.current;
-        var keyboard = Keyboard.current;
+        var pad = CroustyInput.Pad;
+        var keyboard = CroustyInput.Keyboard;
         if (pad != null && pad.rightShoulder.wasPressedThisFrame || keyboard != null && keyboard.oKey.wasPressedThisFrame)
             hidden = !hidden;
         if (pad != null && pad.leftShoulder.wasPressedThisFrame || keyboard != null && keyboard.lKey.wasPressedThisFrame)
@@ -69,7 +69,7 @@ public sealed class CroustyHudControls : MonoBehaviour
     {
         if (bonuses == null || xPrompt == null || xKey == null) return;
         bool available = bonuses.HasSelectedBonus;
-        bool controller = Gamepad.current != null;
+        bool controller = CroustyInput.Pad != null;
         xPrompt.enabled = controller && available;
         xKey.gameObject.SetActive(!controller && available);
         xKey.text = bonuses.SelectedKeyLabel;

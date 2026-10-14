@@ -8,9 +8,9 @@ public sealed class BusGPS : MonoBehaviour
     public DeliveryManager deliveries;
     [Tooltip("Racine des routes et obstacles. A renseigner apres generation procedurale.")]
     public Transform navigationRoot;
-    [Range(0, 3)] public int startingCharges = 0;
+    [Range(0, 1)] public int startingCharges = 0;
     public int Charges { get; private set; }
-    public bool CanReceiveCharges => Charges < 3 &&
+    public bool CanReceiveCharges => Charges < 1 &&
         (Inventory == null || Inventory.CanAddPower(PowerUpInventory.PowerUpType.GPS));
     public bool BonusEquipped { get; set; } = true;
     public DeliveryPoint Target { get; private set; }
@@ -30,7 +30,10 @@ public sealed class BusGPS : MonoBehaviour
         get
         {
             if (inventory == null && deliveries != null && deliveries.player != null)
-                inventory = PowerUpInventory.EnsureFor(deliveries.player.gameObject);
+            {
+                var bus = deliveries.player.GetComponentInParent<BusController>();
+                if (bus != null) inventory = PowerUpInventory.EnsureFor(bus.gameObject);
+            }
             return inventory;
         }
     }
@@ -38,7 +41,7 @@ public sealed class BusGPS : MonoBehaviour
     private void Awake()
     {
         path = new NavMeshPath();
-        Charges = startingCharges;
+        Charges = Mathf.Clamp(startingCharges, 0, 1);
         if (deliveries == null) deliveries = GetComponent<DeliveryManager>();
         if (Inventory != null && Charges > 0)
             Inventory.TryAddPower(PowerUpInventory.PowerUpType.GPS, Charges);
@@ -51,11 +54,10 @@ public sealed class BusGPS : MonoBehaviour
         Target = null;
         Route.Clear();
     }
-    // Appel par un futur pickup : un bonus recharge jusqu'a trois livraisons.
-    public void GrantBonus() { Charges = 3; Status = "[E] GPS"; }
+    public void GrantBonus() => AddCharges(1, 1);
     public bool AddCharges(int amount, int max)
     {
-        int addedAmount = Mathf.Min(amount, max - Charges);
+        int addedAmount = Mathf.Min(amount, Mathf.Min(max, 1) - Charges);
         if (addedAmount <= 0) return false;
         if (Inventory != null && !Inventory.TryAddPower(PowerUpInventory.PowerUpType.GPS, addedAmount))
             return false;
@@ -82,7 +84,7 @@ public sealed class BusGPS : MonoBehaviour
             foreach (MeshCollider collider in FindObjectsByType<MeshCollider>())
                 if (collider.name == "Ground_Asphalt") { navigationRoot = collider.transform.root; break; }
         }
-        if (navigationRoot == null) { Status = "GPS : carte indisponible"; return false; }
+        if (navigationRoot == null) { Status = "GPS: map unavailable"; return false; }
         var sources = new List<NavMeshBuildSource>();
         NavMeshBuilder.CollectSources(navigationRoot, ~0, NavMeshCollectGeometry.PhysicsColliders,
             0, new List<NavMeshBuildMarkup>(), sources);
@@ -92,7 +94,7 @@ public sealed class BusGPS : MonoBehaviour
         foreach (var source in sources)
             if (source.sourceObject is Mesh mesh && !mesh.isReadable)
             {
-                Status = "GPS : meshes non lisibles";
+                Status = "GPS: map data unavailable";
                 return false;
             }
         var renderers = navigationRoot.GetComponentsInChildren<Renderer>();
@@ -109,7 +111,7 @@ public sealed class BusGPS : MonoBehaviour
         settings.overrideVoxelSize = true;
         settings.voxelSize = 0.4f;
         data = NavMeshBuilder.BuildNavMeshData(settings, sources, bounds, Vector3.zero, Quaternion.identity);
-        if (data == null) { ReleaseNavigation(); Status = "GPS : navigation indisponible"; return false; }
+        if (data == null) { ReleaseNavigation(); Status = "GPS: navigation unavailable"; return false; }
         instance = NavMesh.AddNavMeshData(data);
         filter = new NavMeshQueryFilter { agentTypeID = agentType, areaMask = NavMesh.AllAreas };
         return true;
@@ -131,11 +133,16 @@ public sealed class BusGPS : MonoBehaviour
             (Inventory != null && Inventory.PrimaryPower != PowerUpInventory.PowerUpType.GPS) ||
             deliveries == null) return false;
         if (Target != null && !Target.IsWaiting) return false; // Colis en vol.
-        if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         var candidates = new List<DeliveryPoint>();
         foreach (var point in deliveries.deliveryPoints)
             if (point != null && point.IsWaiting) candidates.Add(point);
         if (deliveries.player == null) return false;
+        if (candidates.Count == 0)
+        {
+            Status = "GPS: pick up some orders";
+            return false;
+        }
+        if ((proceduralCity == null || proceduralCity.WorldRoot == null) && !EnsureNavigation()) return false;
         candidates.Sort((a,b) => (a.transform.position-deliveries.player.position).sqrMagnitude
             .CompareTo((b.transform.position-deliveries.player.position).sqrMagnitude));
         int index = candidates.IndexOf(Target);
@@ -151,7 +158,7 @@ public sealed class BusGPS : MonoBehaviour
         }
         Target = null;
         Route.Clear();
-        Status = candidates.Count == 0 ? "GPS : prends des commandes" : "GPS : aucune route accessible";
+        Status = candidates.Count == 0 ? "GPS: pick up some orders" : "GPS: no route available";
         return false;
     }
     private void Update()
@@ -160,7 +167,7 @@ public sealed class BusGPS : MonoBehaviour
         if (Target == null || !Target.IsWaiting || Time.time < nextRepath) return;
         nextRepath = Time.time + 0.75f;
         if (Calculate(Target)) SetRoute();
-        else { Route.Clear(); Status = "GPS : rejoins une route"; }
+        else { Route.Clear(); Status = "GPS: get back on the road"; }
     }
     private void SetRoute()
     {
@@ -169,14 +176,14 @@ public sealed class BusGPS : MonoBehaviour
         else Route.AddRange(path.corners);
         float distance = 0;
         for (int i=1; i<Route.Count; i++) distance += Vector3.Distance(Route[i-1], Route[i]);
-        Status = $"GPS : {distance:0} m  [G] changer";
+        Status = $"GPS: {distance:0} m";
     }
     private void OnDelivered(DeliveryPoint point)
     {
         if (point != Target) return;
         Target = null;
         Route.Clear();
-        Status = Charges > 0 ? "[E] GPS : prochaine livraison" : "GPS epuise";
+        Status = Charges > 0 ? "[E] GPS: next delivery" : "GPS depleted";
     }
     private void ReleaseNavigation()
     {

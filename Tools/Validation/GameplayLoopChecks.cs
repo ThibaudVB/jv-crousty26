@@ -15,6 +15,8 @@ public sealed class GameplayLoopChecks : MonoBehaviour
     public GameObject defeatPanel;
     public CroustyMenu menu;
     int passed, originalBest, authoredHudObjectCount;
+    string originalLeaderboard;
+    bool hadLeaderboard;
     const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
     void Awake() { authoredHudObjectCount = canvas.GetComponentsInChildren<Transform>(true).Length; }
     void Check(bool value,string message)
@@ -37,10 +39,18 @@ public sealed class GameplayLoopChecks : MonoBehaviour
         }
         return end;
     }
-    void RestoreBest() { PlayerPrefs.SetInt("Crousty.BestScore",originalBest); PlayerPrefs.Save(); }
+    void RestoreBest()
+    {
+        PlayerPrefs.SetInt("Crousty.BestScore",originalBest);
+        if(hadLeaderboard)PlayerPrefs.SetString(CroustyLeaderboardScores.StorageKey,originalLeaderboard);
+        else PlayerPrefs.DeleteKey(CroustyLeaderboardScores.StorageKey);
+        PlayerPrefs.Save();
+    }
     IEnumerator Start()
     {
         originalBest = PlayerPrefs.GetInt("Crousty.BestScore",0);
+        hadLeaderboard=PlayerPrefs.HasKey(CroustyLeaderboardScores.StorageKey);
+        originalLeaderboard=PlayerPrefs.GetString(CroustyLeaderboardScores.StorageKey);
         yield return null;
         Check(canvas.GetComponentsInChildren<Transform>(true).Length == authoredHudObjectCount,"starting the HUD does not generate UI objects");
         var hudFields = new SerializedObject(hud);

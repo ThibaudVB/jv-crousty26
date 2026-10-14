@@ -296,8 +296,8 @@ public sealed class BusMinimap : MonoBehaviour
 
     private void UpdateGPS()
     {
-        gpsLabel.gameObject.SetActive(gps != null && (!compactHud || gps.Target != null));
-        if (gps != null) gpsLabel.text = $"{gps.Status}\n{gps.Charges}/3 livraisons";
+        gpsLabel.gameObject.SetActive(gps != null && (!compactHud || gps.Target != null || gps.Charges > 0 && gps.BonusEquipped));
+        if (gps != null) gpsLabel.text = gps.Status;
         routeGraphic.UpdateRoute(mapCamera,
             gps != null && gps.isActiveAndEnabled ? gps.Route : null,
             radar != null ? radar.GroundHeight : 0f);

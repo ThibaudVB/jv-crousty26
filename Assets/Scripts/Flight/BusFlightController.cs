@@ -15,10 +15,10 @@ public class BusFlightController : MonoBehaviour
 
     [Header("Activation")]
     public Key activationKey = Key.F;
-    [Range(0, 3)] public int startingCharges = 0;
+    [Range(0, 1)] public int startingCharges = 0;
     public int UsesRemaining { get; private set; }
     public bool BonusEquipped { get; set; } = true;
-    public bool CanReceiveCharges => UsesRemaining < 3 &&
+    public bool CanReceiveCharges => UsesRemaining < 1 &&
         (inventory == null || inventory.CanAddPower(PowerUpInventory.PowerUpType.Flight));
     [Min(1f)] public float flightDuration = 15f;
 
@@ -90,7 +90,7 @@ public class BusFlightController : MonoBehaviour
 
     private void Awake()
     {
-        UsesRemaining = startingCharges;
+        UsesRemaining = Mathf.Clamp(startingCharges, 0, 1);
         inventory = PowerUpInventory.EnsureFor(gameObject);
         if (inventory != null && UsesRemaining > 0)
             inventory.TryAddPower(PowerUpInventory.PowerUpType.Flight, UsesRemaining);
@@ -103,7 +103,7 @@ public class BusFlightController : MonoBehaviour
 
     public bool AddCharges(int amount, int max)
     {
-        int addedAmount = Mathf.Min(amount, max - UsesRemaining);
+        int addedAmount = Mathf.Min(amount, Mathf.Min(max, 1) - UsesRemaining);
         if (addedAmount <= 0) return false;
         if (inventory != null && !inventory.TryAddPower(PowerUpInventory.PowerUpType.Flight, addedAmount))
             return false;
@@ -117,9 +117,9 @@ public class BusFlightController : MonoBehaviour
         if (Time.timeScale <= 0f || CroustyPauseMenu.ToggledThisFrame)
             return;
 
-        Keyboard keyboard = Keyboard.current;
+        Keyboard keyboard = CroustyInput.Keyboard;
 
-        var pad = Gamepad.current;
+        var pad = CroustyInput.Pad;
 
         if (!IsAirborne)
             return;

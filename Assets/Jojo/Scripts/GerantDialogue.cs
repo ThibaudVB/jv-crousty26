@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // Boîte de dialogue du gérant en bas à gauche de l'écran :
-// portrait + étiquette "GÉRANT" + bandeau papier avec le texte qui s'écrit lettre par lettre.
+// portrait + étiquette "MANAGER" + bandeau papier avec le texte qui s'écrit lettre par lettre.
 // Le gérant réagit à ce qui se passe : début de tournée, livraison réussie, partie perdue,
 // poursuite de police, boîte bonus, bus à l'arrêt... Il tire une réplique au hasard
 // dans la liste correspondante (toutes les listes se modifient dans l'Inspector).
@@ -106,7 +106,7 @@ public class GerantDialogue : MonoBehaviour
     public float idleSpeedKmh = 3f;
 
     [Header("Texte")]
-    public string speakerName = "GÉRANT";
+    public string speakerName = "MANAGER";
     [Tooltip("Police du dialogue. Si vide, police par défaut de Unity.")]
     public Font font;
     public int fontSize = 30;

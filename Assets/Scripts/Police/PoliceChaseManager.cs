@@ -238,7 +238,7 @@ public class PoliceChaseManager : MonoBehaviour
         lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
         first.StartChase();
         first.SeesBus = true;
-        Flash("POLICE ! Le bus a ete repere");
+        Flash("POLICE! You've been spotted!");
         backup.Clear();
         var others = new List<PoliceCarAI>();
         foreach (var car in cars)
@@ -246,16 +246,6 @@ public class PoliceChaseManager : MonoBehaviour
                 Vector3.Distance(car.transform.position, BusPosition) < backupRadius) others.Add(car);
         others.Sort((a, b) => Vector3.Distance(a.transform.position, BusPosition).CompareTo(Vector3.Distance(b.transform.position, BusPosition)));
         for (int i = 0; i < others.Count && i < PursuitLimit - 1; i++) backup.Add((others[i], Time.time + 2f + 1.5f * i));
-    }
-
-    // Ramming a patrol car, even slowly, starts a chase immediately.
-    public void Provoked(PoliceCarAI car)
-    {
-        if (car == null || car.IsDestroyed) return;
-        if (catchZone != null && catchZone.IsCaught) return;
-        if (!chasing) BeginChase(car);
-        else car.StartChase();
-        lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
     }
 
     public void CarDestroyed(PoliceCarAI car)
@@ -272,38 +262,14 @@ public class PoliceChaseManager : MonoBehaviour
         lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
         nextEscalation = Time.time + escalationSeconds;
         nextBackup = nextSpawn = 0f;
-        Flash("VOITURE DE POLICE DETRUITE ! ALERTE " + heat + " - RENFORTS !");
-    }
-
-    public void CivilianCarDestroyed(Rigidbody source)
-    {
-        if (!isActiveAndEnabled || source != busRigidbody || catchZone != null && catchZone.IsCaught) return;
-        if (!chasing)
-        {
-            PoliceCarAI closest = null;
-            float nearest = float.PositiveInfinity;
-            foreach (var car in cars)
-            {
-                if (car == null || car.IsDestroyed) continue;
-                float distance = (car.transform.position - BusPosition).sqrMagnitude;
-                if (distance < nearest) { nearest = distance; closest = car; }
-            }
-            if (closest != null) BeginChase(closest);
-            else { chasing = true; heat = 1; suspicion = 0f; }
-        }
-        else RaiseHeat();
-        lastSeen = Time.time; lastKnown = BusPosition; lastKnownVelocity = BusVelocity;
-        nextEscalation = Time.time + escalationSeconds;
-        nextBackup = nextSpawn = 0f;
-        RequestBackup();
-        Flash("VOITURE DETRUITE ! LA POLICE EST A TES TROUSSES !");
+        Flash("POLICE CAR DESTROYED! WANTED LEVEL " + heat + " - BACKUP INCOMING!");
     }
 
     private void RaiseHeat()
     {
         if (heat >= maximumHeat) return;
         heat++;
-        Flash("ALERTE " + heat + " - La police appelle des renforts !");
+        Flash("WANTED LEVEL " + heat + " - Police are calling for backup!");
     }
 
     private void RequestBackup()
@@ -332,7 +298,7 @@ public class PoliceChaseManager : MonoBehaviour
         foreach (var car in cars) { car.SeesBus = false; car.ReturnToPatrol(); }
         calmUntil = Time.time + escapeCooldownSeconds;
         SetArrest(0f);
-        Flash("Police semee !");
+        Flash("You lost the police!");
     }
 
     // The PET cloud blinds officers behind or right next to the bus; the bus stays hidden while boosting.
@@ -350,7 +316,7 @@ public class PoliceChaseManager : MonoBehaviour
             car.SeesBus = false;
             any = true;
         }
-        if (any) Flash("Nuage PET : la police est aveuglee !");
+        if (any) Flash("TOXIC GAS: the police can't see!");
         return any;
     }
 
@@ -502,8 +468,8 @@ public class PoliceChaseManager : MonoBehaviour
         if (statusText == null) return;
         string text = ""; Color color = Color.white;
         if (Time.time < messageUntil) { text = message; color = chasing ? new Color(1f, .3f, .25f) : new Color(.55f, 1f, .45f); }
-        else if (chasing && BusInSight) { text = "ALERTE " + heat + "/" + maximumHeat + " - POURSUITE POLICIERE"; color = new Color(1f, .3f, .25f); }
-        else if (chasing) { text = "ALERTE " + heat + " - Hors de vue... " + Mathf.CeilToInt(Mathf.Max(0f, SearchDuration - SecondsOutOfSight)) + " s"; color = new Color(1f, .8f, .3f); }
+        else if (chasing && BusInSight) { text = "WANTED LEVEL " + heat + "/" + maximumHeat + " - POLICE CHASE"; color = new Color(1f, .3f, .25f); }
+        else if (chasing) { text = "WANTED LEVEL " + heat + " - Out of sight... " + Mathf.CeilToInt(Mathf.Max(0f, SearchDuration - SecondsOutOfSight)) + " s"; color = new Color(1f, .8f, .3f); }
         statusText.text = text; statusText.color = color;
         bool showBar = arrest > .001f;
         arrestBar.SetActive(showBar);

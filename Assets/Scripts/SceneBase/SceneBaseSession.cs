@@ -57,7 +57,7 @@ public sealed class SceneBaseSession : MonoBehaviour
         if (passengerText != null && displayedCount != passengers.passengerCount)
         {
             displayedCount = passengers.passengerCount;
-            passengerText.text = $"Passagers : {displayedCount}";
+            passengerText.text = $"Passengers: {displayedCount}";
         }
     }
 
