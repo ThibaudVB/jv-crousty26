@@ -107,6 +107,8 @@ public class BusWheelRig : MonoBehaviour
     }
 
     private Transform visualPivot;
+    // Rotation des figures en l'air (galipettes, 360), donnée par BusAirTricks
+    [NonSerialized] public Quaternion trickRotation = Quaternion.identity;
     private Vector3 visualAngles;
     private Vector3 visualAngularVelocity;
     private float visualAcceleration;
@@ -457,7 +459,7 @@ public class BusWheelRig : MonoBehaviour
             turn * visualDriftAngle, -turn * visualRollAngle);
         visualAngles = Vector3.SmoothDamp(visualAngles, target, ref visualAngularVelocity,
             Mathf.Max(0.01f, visualTransitionSeconds), Mathf.Infinity, deltaTime);
-        visualPivot.localRotation = Quaternion.Euler(visualAngles);
+        visualPivot.localRotation = trickRotation * Quaternion.Euler(visualAngles);
     }
 
     public void UpdateMeshes()

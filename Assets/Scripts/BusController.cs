@@ -83,8 +83,7 @@ public class BusController : MonoBehaviour
             rb.constraints &= ~RigidbodyConstraints.FreezeRotationY;
         else
             rb.constraints |= RigidbodyConstraints.FreezeRotationY;
-        if (GetComponent<BusNightLights>() == null) gameObject.AddComponent<BusNightLights>();
-    }
+        if (GetComponent<BusNightLights>() == null) gameObject.AddComponent<BusNightLights>();    }
 
     private void OnDisable()
     {
@@ -430,6 +429,7 @@ public class BusController : MonoBehaviour
             );
 
         if (wheelRig != null) wheelRig.ResetWheels();
+        GetComponent<BusAirTricks>()?.ResetTrick();
 
         // Reset également la direction
         currentSteering = 0f;
