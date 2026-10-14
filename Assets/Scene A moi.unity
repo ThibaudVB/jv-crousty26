@@ -407,6 +407,7 @@ GameObject:
   - component: {fileID: 920000000000000005}
   - component: {fileID: 920000000000000004}
   - component: {fileID: 920000000000000056}
+  - component: {fileID: 920000000000000057}
   m_Layer: 0
   m_Name: CroustyBus
   m_TagString: Untagged
@@ -37964,7 +37965,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BusGarageRepair
   garageNamePrefix: Visuel Garage
   logTouched: 0
-  repairSound: {fileID: 0}
+  repairSound: {fileID: 8300000, guid: 49515bb72aedb9345a0b2dc47d67b16a, type: 3}
   repairSoundVolume: 1
 --- !u!114 &920000000000000053
 MonoBehaviour:
@@ -38045,6 +38046,32 @@ MonoBehaviour:
     counter: {fileID: 0}
     powerUp: 0
   startingCharges: 0
+--- !u!114 &920000000000000057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 549dfe6d0ecd3c542afee0c93dcdb39b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BusWings
+  wingModel: {fileID: 919132149155446097, guid: abe4f761cd0498146a2b47c9902c3bcb, type: 3}
+  modelRotation: {x: 0, y: 0, z: 0}
+  wingColor: {r: 1, g: 0.98, b: 0.92, a: 1}
+  wingSize: 0.4
+  alongBus: 0.1
+  height: 0
+  sweepAngle: 15
+  flapSpeed: 2.2
+  flapAmplitude: 35
+  restAngle: 10
+  foldedAngle: -80
+  climbFlapMultiplier: 1.6
+  fallFlapMultiplier: 2.6
+  deploySeconds: 0.45
 --- !u!1 &920000000000000100
 GameObject:
   m_ObjectHideFlags: 0
