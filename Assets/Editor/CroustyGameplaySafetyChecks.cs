@@ -51,6 +51,14 @@ public static class CroustyGameplaySafetyChecks
         var lights = deliveries.player.GetComponent<BusNightLights>();
         Check(lights != null && lights.headlightRange >= 100f && lights.headlightIntensity >= 80f, "Phares renforces");
         Check(float.IsPositiveInfinity(deliveries.RunTimeLimit), "Tournees sans limite de temps");
+        if (deliveries.gameObject.scene.name == "SceneBase")
+        {
+            Check(deliveries.flightDeliveryNeedsRing, "Anneaux de livraison actifs dans SceneBase");
+            var tricks = deliveries.player.GetComponent<BusAirTricks>();
+            var buildingCrash = deliveries.player.GetComponent<BusBuildingCrash>();
+            Check(tricks != null && tricks.isActiveAndEnabled, "Figures aeriennes actives dans SceneBase");
+            Check(buildingCrash != null && buildingCrash.isActiveAndEnabled, "Tours destructibles en vol dans SceneBase");
+        }
         if (!deliveries.HasFailed)
         {
             float elapsed = deliveries.RunElapsed; bool active = deliveries.RunActive;
@@ -77,6 +85,8 @@ public static class CroustyGameplaySafetyChecks
         var visible = (List<DeliveryPoint>)manager.VisibleDestinations;
         var originalVisible = new List<DeliveryPoint>(visible);
         var root = new GameObject("Temporary delivery checks");
+        bool originalActive = manager.RunActive;
+        int originalLeft = manager.CroustyLeft;
         root.SetActive(false);
         try
         {
@@ -98,10 +108,21 @@ public static class CroustyGameplaySafetyChecks
             Check(candidates.Count == 40, "40 adresses dispersees restent disponibles");
             Refresh(manager);
             Check(visible.Count == 10, "40 commandes affichent seulement dix destinations");
+            typeof(DeliveryManager).GetField("<RunActive>k__BackingField", Fields).SetValue(manager, true);
+            typeof(DeliveryManager).GetField("<CroustyLeft>k__BackingField", Fields).SetValue(manager, 40);
+            UpdateRings(manager);
+            Check(CountRings(manager) == 10, "40 commandes affichent seulement dix anneaux en vol");
+            var ringPoint = visible[0];
+            var ring = (Transform)typeof(DeliveryPoint).GetField("ring", Fields).GetValue(ringPoint);
+            ringPoint.UpdateRing(ringPoint.RingCenter + ring.forward * 2f, true);
+            Check(ringPoint.UpdateRing(ringPoint.RingCenter - ring.forward * 2f, true), "Traverser un anneau declenche la livraison");
             var removed = visible[0];
             removed.MarkPending();
+            Check(!ring.gameObject.activeSelf, "L'anneau disparait au lancer du colis");
             Refresh(manager);
+            UpdateRings(manager);
             Check(visible.Count == 10 && !visible.Contains(removed), "Une destination est remplacee des qu'un colis part");
+            Check(CountRings(manager) == 10, "Les anneaux se renouvellent sans depasser dix");
             int markers = 0;
             foreach (var point in manager.deliveryPoints) if (point.marker.activeSelf) markers++;
             Check(markers == 10, "Dix balises maximum dans le monde");
@@ -110,11 +131,26 @@ public static class CroustyGameplaySafetyChecks
         {
             manager.deliveryPoints = original;
             visible.Clear(); visible.AddRange(originalVisible);
+            typeof(DeliveryManager).GetField("<RunActive>k__BackingField", Fields).SetValue(manager, originalActive);
+            typeof(DeliveryManager).GetField("<CroustyLeft>k__BackingField", Fields).SetValue(manager, originalLeft);
+            foreach (var filter in root.GetComponentsInChildren<MeshFilter>(true))
+                if (filter.sharedMesh != null) UnityEngine.Object.DestroyImmediate(filter.sharedMesh);
             UnityEngine.Object.DestroyImmediate(root);
         }
     }
 
     private static void Refresh(DeliveryManager manager) => typeof(DeliveryManager).GetMethod("RefreshVisibleDestinations", Fields).Invoke(manager, null);
+    private static void UpdateRings(DeliveryManager manager) => typeof(DeliveryManager).GetMethod("UpdateRings", Fields).Invoke(manager, new object[] { true });
+    private static int CountRings(DeliveryManager manager)
+    {
+        int count = 0;
+        foreach (var point in manager.deliveryPoints)
+        {
+            var ring = (Transform)typeof(DeliveryPoint).GetField("ring", Fields).GetValue(point);
+            if (ring != null && ring.gameObject.activeSelf) count++;
+        }
+        return count;
+    }
     private static void Check(bool condition, string message)
     { if (!condition) throw new InvalidOperationException("GAMEPLAY_SAFETY_CHECK_FAILED: " + message); }
 }

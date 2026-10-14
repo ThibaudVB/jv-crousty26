@@ -75,6 +75,43 @@ public static class JojoVisuals
         return beacon;
     }
 
+    // Anneau (donut) vertical : le trou est dans l'axe Z de l'objet. Sans collision.
+    public static GameObject CreateRing(Transform parent, Color color, float radius, float thickness)
+    {
+        const int segments = 48; // autour du cercle
+        const int sides = 10;    // autour du tube
+        var vertices = new Vector3[(segments + 1) * (sides + 1)];
+        var triangles = new int[segments * sides * 6];
+        for (int s = 0; s <= segments; s++)
+        {
+            float a = s * Mathf.PI * 2f / segments;
+            Vector3 around = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+            for (int t = 0; t <= sides; t++)
+            {
+                float b = t * Mathf.PI * 2f / sides;
+                vertices[s * (sides + 1) + t] = around * (radius + Mathf.Cos(b) * thickness) + Vector3.forward * (Mathf.Sin(b) * thickness);
+            }
+        }
+        int i = 0;
+        for (int s = 0; s < segments; s++)
+            for (int t = 0; t < sides; t++)
+            {
+                int a = s * (sides + 1) + t, b = a + sides + 1;
+                triangles[i++] = a; triangles[i++] = a + 1; triangles[i++] = b;
+                triangles[i++] = b; triangles[i++] = a + 1; triangles[i++] = b + 1;
+            }
+        var mesh = new Mesh { name = "Anneau", vertices = vertices, triangles = triangles };
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        var ring = new GameObject("Cercle de livraison", typeof(MeshFilter), typeof(MeshRenderer));
+        ring.transform.SetParent(parent, false);
+        ring.GetComponent<MeshFilter>().sharedMesh = mesh;
+        TurnOffShadows(ring);
+        SetColor(ring, color);
+        return ring;
+    }
+
     private static GameObject CreateBeamPart(Transform parent, string name, Color color, float height, float width, float alpha)
     {
         color.a = alpha;

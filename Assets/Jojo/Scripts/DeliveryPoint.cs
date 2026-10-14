@@ -30,6 +30,35 @@ public class DeliveryPoint : MonoBehaviour
     // Waiting   -> une commande attend, le bus doit passer
     // Pending   -> le crousty est en l'air vers l'adresse
     // Delivered -> livré !
+    [Header("Cercle de livraison en vol")]
+    [Tooltip("Hauteur minimale du cercle au-dessus de l'adresse (m). Utilisé si le DeliveryManager demande les cercles en vol.")]
+    public float ringMinHeight = 50f;
+    [Tooltip("Hauteur maximale du cercle (m). Une hauteur au hasard entre les deux est tirée à chaque nouvelle commande.")]
+    public float ringMaxHeight = 60f;
+    [Tooltip("Rayon du cercle (m) : le bus doit passer à l'intérieur")]
+    public float ringRadius = 7f;
+    [Tooltip("Épaisseur du tube du cercle (m)")]
+    public float ringThickness = 0.6f;
+
+    private Transform ring;
+    private float lastRingSide;
+    private bool ringPrimed;
+    private float ringHeight = -1f; // tirée au hasard entre ringMinHeight et ringMaxHeight
+
+    public Vector3 RingCenter
+    {
+        get
+        {
+            if (ringHeight < 0f) PickRingHeight();
+            return transform.position + Vector3.up * ringHeight;
+        }
+    }
+
+    private void PickRingHeight()
+    {
+        ringHeight = Random.Range(Mathf.Min(ringMinHeight, ringMaxHeight), Mathf.Max(ringMinHeight, ringMaxHeight));
+    }
+
     private enum State { Inactive, Waiting, Pending, Delivered }
     private State state = State.Inactive;
     private bool markerVisible = true;
@@ -58,6 +87,8 @@ public class DeliveryPoint : MonoBehaviour
     public void SetOrderActive(bool active)
     {
         state = active ? State.Waiting : State.Inactive;
+        // Nouvelle commande : le cercle change de hauteur
+        if (active) PickRingHeight();
         RefreshMarker();
     }
 
@@ -85,11 +116,53 @@ public class DeliveryPoint : MonoBehaviour
         return JojoVisuals.IsClose(transform.position, position, deliveryRadius, float.PositiveInfinity);
     }
 
+    // Appelé à chaque image par le DeliveryManager quand les cercles sont activés.
+    // show = le bus vole et peut livrer. Renvoie vrai quand le bus vient de passer dans le cercle.
+    public bool UpdateRing(Vector3 busPosition, bool show)
+    {
+        if (!show || state != State.Waiting)
+        {
+            if (ring != null) ring.gameObject.SetActive(false);
+            ringPrimed = false;
+            return false;
+        }
+
+        if (ring == null)
+        {
+            ring = JojoVisuals.CreateRing(transform, markerColor, ringRadius, ringThickness).transform;
+            // Taille en mètres, même si l'adresse est agrandie ou réduite
+            Vector3 scale = transform.lossyScale;
+            ring.localScale = new Vector3(1f / Mathf.Max(0.001f, scale.x), 1f / Mathf.Max(0.001f, scale.y), 1f / Mathf.Max(0.001f, scale.z));
+        }
+        ring.gameObject.SetActive(true);
+        ring.position = RingCenter;
+
+        // Tant que le bus est loin, le cercle se tourne vers lui : on peut arriver de n'importe quel côté.
+        // De près il ne bouge plus, sinon on ne pourrait jamais passer au travers.
+        Vector3 toBus = busPosition - RingCenter;
+        Vector3 flat = new Vector3(toBus.x, 0f, toBus.z);
+        if (flat.magnitude > ringRadius * 3f)
+            ring.rotation = Quaternion.LookRotation(flat.normalized, Vector3.up);
+
+        // Le bus a changé de côté du cercle, et il est passé dans le trou
+        float side = Vector3.Dot(toBus, ring.forward);
+        bool crossed = ringPrimed && side * lastRingSide <= 0f && lastRingSide != 0f &&
+            Vector3.ProjectOnPlane(toBus, ring.forward).magnitude <= ringRadius;
+        lastRingSide = side;
+        ringPrimed = true;
+        return crossed;
+    }
+
     // Le faisceau n'est visible que quand une commande attend
     private void RefreshMarker()
     {
         if (marker != null)
             marker.SetActive(state == State.Waiting && markerVisible);
+        if (state != State.Waiting || !markerVisible)
+        {
+            if (ring != null) ring.gameObject.SetActive(false);
+            ringPrimed = false;
+        }
     }
 
     // Dessine la zone dans la vue Scene
@@ -97,5 +170,7 @@ public class DeliveryPoint : MonoBehaviour
     {
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(transform.position, deliveryRadius);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(RingCenter, ringRadius);
     }
 }

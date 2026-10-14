@@ -18,10 +18,13 @@ public sealed class CroustyMenuPages : MonoBehaviour
     public Button[] buttons;
     [Min(0.05f)] public float transitionDuration = 0.55f;
     public float tabHeight = 88f;
+    [Tooltip("Au survol, le ticket « Voir plus / Voir moins » sort un peu plus de l'écran (px)")]
+    public float hoverPeek = 12f;
     public bool IsExpanded { get; private set; }
     public bool IsAnimating => Mathf.Abs(progress - (IsExpanded ? 1f : 0f)) > .0001f || Mathf.Abs(velocity) > .001f;
 
-    private float progress, velocity;
+    private float progress, velocity, hoverAmount;
+    private CroustyMenuHover tabHover;
 
     private void Awake() => Apply();
     private void OnEnable() => Apply();
@@ -45,6 +48,9 @@ public sealed class CroustyMenuPages : MonoBehaviour
             CroustyPanelMotion.Spring(ref progress, ref velocity, IsExpanded ? 1f : 0f,
                 Time.unscaledDeltaTime * .55f / Mathf.Max(.05f, transitionDuration));
         }
+        if (tabHover == null && navigationTab != null) tabHover = navigationTab.GetComponent<CroustyMenuHover>();
+        bool hovered = tabHover != null && tabHover.IsActive && !IsAnimating;
+        hoverAmount = Mathf.MoveTowards(hoverAmount, hovered ? 1f : 0f, Time.unscaledDeltaTime * 8f);
         Apply();
         if (IsAnimating || Keyboard.current == null || !Keyboard.current.eKey.wasPressedThisFrame) return;
         Button chosen = null;
@@ -83,7 +89,10 @@ public sealed class CroustyMenuPages : MonoBehaviour
         // One long image passes through the viewport. Its printed ends are revealed by clipping.
         float closedPosition = -screenHeight + tabHeight;
         float openPosition = ticketHeight - tabHeight;
-        navigationTab.anchoredPosition = new Vector2(60f, Mathf.Lerp(closedPosition, openPosition, progress));
+        // Survol : fermé, le ticket monte un peu ; ouvert, il descend un peu.
+        float ease = hoverAmount * hoverAmount * (3f - 2f * hoverAmount);
+        float peek = ease * hoverPeek * Mathf.Lerp(1f, -1f, progress);
+        navigationTab.anchoredPosition = new Vector2(60f, Mathf.Lerp(closedPosition, openPosition, progress) + peek);
         if (navigationPrompt != null)
             navigationPrompt.anchoredPosition = new Vector2(216f,
                 -16f - Mathf.Lerp(0f, ticketHeight - tabHeight, progress));

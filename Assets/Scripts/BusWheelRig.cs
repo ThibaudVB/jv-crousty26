@@ -398,7 +398,6 @@ public class BusWheelRig : MonoBehaviour
         bool boosting = arcadeBoostRemaining > 0f;
         float maxSpeed = settings.EffectiveMaxSpeedKmh / 3.6f;
         float targetSpeed = rawThrottle < 0f ? -settings.maxReverseSpeedKmh / 3.6f : maxSpeed;
-        if (boosting && rawThrottle > 0f) targetSpeed *= driftExitBoost;
         if (grounded)
         {
             if (handbrake)
@@ -413,6 +412,8 @@ public class BusWheelRig : MonoBehaviour
                 if (boosting && !braking) acceleration *= 1.35f;
                 signedSpeed = Mathf.MoveTowards(signedSpeed, targetSpeed, acceleration * dt);
             }
+            // Le bonus de sortie aide l'acceleration, sans depasser la vitesse maximale.
+            signedSpeed = Mathf.Clamp(signedSpeed, -settings.maxReverseSpeedKmh / 3.6f, maxSpeed);
             float speedRatio = Mathf.Clamp01(Mathf.Abs(signedSpeed) / Mathf.Max(1f, maxSpeed));
             float authority = Mathf.Lerp(1f, 0.78f, speedRatio);
             float yaw = progressiveSteering * arcadeTurnSpeed * authority *
