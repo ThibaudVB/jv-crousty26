@@ -216,6 +216,14 @@ public class BusDamage : MonoBehaviour
         if (CanTakeHit()) TryRoadblockHit(collision);
     }
 
+    public void TakePoliceProjectileHit(Vector3 point)
+    {
+        if (!CanTakeHit()) return;
+        TakeHit(point);
+        if (Camera.main != null && Camera.main.TryGetComponent<BusCameraFollow>(out var follow))
+            follow.ShakePoliceImpact();
+    }
+
     private void TakeHit(Vector3 point)
     {
         if (!CanTakeHit()) return;

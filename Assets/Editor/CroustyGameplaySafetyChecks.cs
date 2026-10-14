@@ -47,7 +47,7 @@ public static class CroustyGameplaySafetyChecks
         }
         Check(garages.Count > 0, "Garages accessibles dans la ville");
         var follow = Camera.main != null ? Camera.main.GetComponent<BusCameraFollow>() : null;
-        Check(follow != null && follow.cameraLocked && Camera.main.fieldOfView >= Mathf.Min(follow.baseFOV, follow.maxFOV) - .1f && Camera.main.fieldOfView <= Mathf.Max(follow.baseFOV, follow.maxFOV) + .1f, "Camera verrouillee avec effet de vitesse borne");
+        Check(follow != null && follow.cameraLocked && Camera.main.fieldOfView >= follow.baseFOV - .1f && Camera.main.fieldOfView <= Mathf.Max(follow.maxFOV, follow.flightFOV) + .1f, "Camera historique avec suivi et FOV dynamiques");
         var lights = deliveries.player.GetComponent<BusNightLights>();
         Check(lights != null && lights.headlightRange >= 100f && lights.headlightIntensity >= 80f, "Phares renforces");
         Check(float.IsPositiveInfinity(deliveries.RunTimeLimit), "Tournees sans limite de temps");
