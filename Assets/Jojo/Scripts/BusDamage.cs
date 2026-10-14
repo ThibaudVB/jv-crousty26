@@ -147,6 +147,7 @@ public class BusDamage : MonoBehaviour
         if (!CanTakeHit() || collision.transform.IsChildOf(transform))
             return;
         if (TryRoadblockHit(collision)) return;
+        if (LandedTrick()) return;
         var garage = GetComponent<BusGarageRepair>();
         if (garage != null && garage.IsGarage(collision.collider.transform)) return;
         var police = collision.collider.GetComponentInParent<PoliceCarAI>();
@@ -189,6 +190,13 @@ public class BusDamage : MonoBehaviour
         // m/s -> km/h : x 3.6
         if (strongestImpact * 3.6f >= minImpactSpeedKmh)
             TakeHit(impactPoint);
+    }
+
+    // Figure réussie à l'atterrissage (BusAirTricks) : pas de dégâts
+    private bool LandedTrick()
+    {
+        var tricks = GetComponent<BusAirTricks>();
+        return tricks != null && tricks.ProtectsLanding;
     }
 
     private bool CanTakeHit()
@@ -260,7 +268,7 @@ public class BusDamage : MonoBehaviour
         {
             // On vient d'atterrir : la chute était-elle trop haute ?
             bool justLanded = !wasGrounded;
-            if (justLanded && highestY - y >= fallDamageHeight && CanTakeHit())
+            if (justLanded && highestY - y >= fallDamageHeight && CanTakeHit() && !LandedTrick())
                 TakeHit(transform.position);
             highestY = y;
         }

@@ -36,9 +36,21 @@ public class BusAirTricks : MonoBehaviour
     [Tooltip("Couches considérées comme le sol pour mesurer la hauteur")]
     public LayerMask groundLayers = ~0;
 
+    [Header("Récompense des figures")]
+    [Tooltip("Écart maximal (degrés) avec un tour complet pour que l'atterrissage compte comme réussi")]
+    [Range(0f, 180f)] public float landingTolerance = 35f;
+    [Tooltip("Durée du boost de points après une figure réussie (s)")]
+    [Min(0f)] public float boostDuration = 10f;
+    [Tooltip("Bonus par tour : 0.5 = x1.5 pour 1 tour, x2 pour 2 tours, x2.5 pour 3 tours...")]
+    [Min(0f)] public float boostPerTurn = 0.5f;
+    [Tooltip("Multiplicateur de points maximum")]
+    [Min(1f)] public float maxBoostMultiplier = 4f;
+    [Tooltip("Après une figure réussie, le bus ne prend pas de dégâts pendant ce temps (s)")]
+    [Min(0f)] public float safeLandingSeconds = 0.75f;
+
     // Nombre de figures réussies (un tour complet = une figure)
     public int TricksLanded { get; private set; }
-    // Appelé à l'atterrissage avec le nombre de tours faits pendant le saut
+    // Appelé quand on atterrit une figure réussie, avec le nombre de tours faits pendant le saut
     public event System.Action<int> TrickLanded;
 
     private BusWheelRig wheelRig;
@@ -47,6 +59,7 @@ public class BusAirTricks : MonoBehaviour
     private float pitch, yaw;              // angles de la figure en cours (en degrés, non limités à 360)
     private float pitchDirection, yawDirection; // sens de la dernière rotation, pour finir la figure dans le même sens
     private readonly RaycastHit[] groundHits = new RaycastHit[16];
+    private float safeUntil;
 
     [Header("Debug")]
     [Tooltip("Hauteur actuelle au-dessus du sol pendant un saut (m), pour aider à régler la hauteur minimale")]
@@ -137,14 +150,35 @@ public class BusAirTricks : MonoBehaviour
 
     private void Land()
     {
-        int turns = Mathf.RoundToInt(Mathf.Abs(NearestTurn(pitch)) / 360f) + Mathf.RoundToInt(Mathf.Abs(NearestTurn(yaw)) / 360f);
-        if (turns > 0)
+        int turns = CountTurns();
+        if (turns > 0 && IsStraight())
         {
+            // Figure réussie : boost de points, et pas de dégâts pendant un court instant
             TricksLanded += turns;
+            safeUntil = Time.time + safeLandingSeconds;
+            float multiplier = Mathf.Min(maxBoostMultiplier, 1f + boostPerTurn * turns);
+            if (DeliveryManager.Instance != null)
+                DeliveryManager.Instance.StartScoreBoost(multiplier, boostDuration);
             TrickLanded?.Invoke(turns);
         }
+        // Les tours complets ne comptent plus pour le prochain saut (même rotation à l'écran)
+        pitch -= NearestTurn(pitch);
+        yaw -= NearestTurn(yaw);
         pitchDirection = yawDirection = 0f;
     }
+
+    private int CountTurns() =>
+        Mathf.RoundToInt(Mathf.Abs(NearestTurn(pitch)) / 360f) + Mathf.RoundToInt(Mathf.Abs(NearestTurn(yaw)) / 360f);
+
+    // Le bus est « à peu près droit » : chaque rotation est proche d'un tour complet
+    private bool IsStraight() =>
+        Mathf.Abs(pitch - NearestTurn(pitch)) <= landingTolerance && Mathf.Abs(yaw - NearestTurn(yaw)) <= landingTolerance;
+
+    // Utilisé par BusDamage : vrai juste après une figure réussie, ou au moment même de l'atterrissage
+    // (BusDamage peut voir l'atterrissage avant ce script)
+    public bool ProtectsLanding =>
+        isActiveAndEnabled && (Time.time < safeUntil ||
+            airTime > 0f && wheelRig != null && wheelRig.IsGrounded && CountTurns() > 0 && IsStraight());
 
     private static float NearestTurn(float angle) => Mathf.Round(angle / 360f) * 360f;
 
