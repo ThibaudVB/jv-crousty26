@@ -40,6 +40,8 @@ public sealed class CroustyMenu : MonoBehaviour
     public Color normalColor = new Color32(239, 233, 225, 255);
     public Color inkColor = new Color32(38, 38, 50, 255);
     public Color selectedTextColor = new Color32(255, 253, 247, 255);
+    [Tooltip("Glissement (px) d'une case au survol de la souris")]
+    public float tabHoverOffset = 10f;
 
     private bool launching;
     private bool? requestedFullscreen;
@@ -73,6 +75,7 @@ public sealed class CroustyMenu : MonoBehaviour
         AudioListener.volume = volume;
         volumeLabel.text = Mathf.RoundToInt(volume * 100f) + "%";
         RefreshFullscreenLabel(Screen.fullScreen);
+        SetupTabHover();
         SelectCategory(0);
         CloseOptions();
         if (leaderboardPanel != null) leaderboardPanel.SetActive(false);
@@ -175,6 +178,112 @@ public sealed class CroustyMenu : MonoBehaviour
         CroustyPanelMotion.Hide(optionsPanel);
         CroustyPanelMotion.Show(mainPanel);
         CroustySoundDesignManager.PlayUI(CroustySound.Paper);
+    }
+
+    // Au survol, le texte glisse et le bandeau s'allonge en restant collé au bord de l'écran,
+    // même pour la case sélectionnée. Pareil pour le bouton Retour.
+    private void SetupTabHover()
+    {
+        if (tabs != null)
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                if (tabs[i] == null) continue;
+                var background = tabBackgrounds != null && i < tabBackgrounds.Length && tabBackgrounds[i] != null
+                    ? tabBackgrounds[i].rectTransform : null;
+                var shadow = tabShadows != null && i < tabShadows.Length && tabShadows[i] != null
+                    ? tabShadows[i].rectTransform : null;
+                tabs[i].followers = new[] { background, shadow };
+                tabs[i].stretchWidth = background != null ? background.rect.width : 312f;
+                tabs[i].hoverOffset = tabHoverOffset;
+            }
+
+        var back = optionsPanel.transform.Find("RETOUR");
+        var settingsBack = back != null ? back.GetComponent<CroustyMenuHover>() : null;
+
+        // Le Retour du classement reprend la mise en page et le survol de celui des réglages.
+        if (leaderboardPanel != null)
+            foreach (var hover in leaderboardPanel.GetComponentsInChildren<CroustyMenuHover>(true))
+                if (hover.name == "Retour classement")
+                {
+                    CopyBackLayout(settingsBack, hover);
+                    SetupBackHover(hover);
+                }
+        SetupBackHover(settingsBack);
+    }
+
+    // Même place, même bandeau, même texte que le bouton Retour des réglages.
+    private static void CopyBackLayout(CroustyMenuHover source, CroustyMenuHover target)
+    {
+        if (source == null || source.colorTarget == null || source.textTarget == null) return;
+        Image ribbon = target.colorTarget != null ? target.colorTarget : target.ribbonImage;
+        if (ribbon == null || target.textTarget == null) return;
+
+        TMP_Text label = target.textTarget, sourceLabel = source.textTarget;
+        label.rectTransform.SetParent(target.transform, false);
+        ribbon.rectTransform.SetParent(target.transform, false);
+        ribbon.transform.SetAsFirstSibling();
+        CopyRect((RectTransform)source.transform, (RectTransform)target.transform);
+        CopyRect(source.colorTarget.rectTransform, ribbon.rectTransform);
+        CopyRect(sourceLabel.rectTransform, label.rectTransform);
+
+        ribbon.sprite = source.colorTarget.sprite;
+        ribbon.type = source.colorTarget.type;
+        ribbon.preserveAspect = source.colorTarget.preserveAspect;
+        if (target.ribbonImage != null) target.idleRibbon = ribbon.sprite;
+
+        label.font = sourceLabel.font;
+        label.fontSize = sourceLabel.fontSize;
+        label.enableAutoSizing = sourceLabel.enableAutoSizing;
+        label.fontStyle = sourceLabel.fontStyle;
+        label.alignment = sourceLabel.alignment;
+        label.characterSpacing = sourceLabel.characterSpacing;
+        label.margin = sourceLabel.margin;
+        label.color = sourceLabel.color;
+    }
+
+    private static void CopyRect(RectTransform from, RectTransform to)
+    {
+        to.anchorMin = from.anchorMin;
+        to.anchorMax = from.anchorMax;
+        to.pivot = from.pivot;
+        to.sizeDelta = from.sizeDelta;
+        to.anchoredPosition = from.anchoredPosition;
+        to.localScale = from.localScale;
+        to.localRotation = from.localRotation;
+    }
+
+    // Bouton Retour : le texte glisse, le bandeau crème s'allonge depuis le bord et devient orange.
+    private void SetupBackHover(CroustyMenuHover hover)
+    {
+        if (hover == null) return;
+        Image ribbon = hover.colorTarget != null ? hover.colorTarget : hover.ribbonImage;
+        if (ribbon == null || hover.textTarget == null) return;
+
+        if (hover.ribbonImage != null)
+        {
+            // Ancien survol par changement d'image : on garde l'image crème et on la teinte.
+            if (hover.idleRibbon != null) ribbon.sprite = hover.idleRibbon;
+            hover.ribbonImage = null;
+            hover.colorTarget = ribbon;
+            hover.activeImageColor = selectedColor;
+            hover.activeTextColor = selectedTextColor;
+            hover.hoverScale = 1.035f;
+        }
+
+        // Le texte ne doit pas s'étirer avec le bandeau.
+        RectTransform label = hover.textTarget.rectTransform;
+        if (label.IsChildOf(ribbon.transform)) label.SetParent(hover.transform, true);
+
+        // Pivot à gauche (sans bouger le bandeau) pour qu'il s'allonge vers la droite.
+        RectTransform band = ribbon.rectTransform;
+        float width = band.rect.width;
+        band.anchoredPosition += new Vector2(-band.pivot.x * width * band.localScale.x, 0f);
+        band.pivot = new Vector2(0f, band.pivot.y);
+
+        hover.SetTarget(label);
+        hover.followers = new[] { band };
+        hover.stretchWidth = width;
+        hover.hoverOffset = tabHoverOffset;
     }
 
     public void SelectCategory(int index)
