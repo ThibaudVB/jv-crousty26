@@ -10,6 +10,12 @@ public class BusGarageRepair : MonoBehaviour
     [Tooltip("Affiche dans la Console le nom de chaque objet touché (pour vérifier les noms)")]
     public bool logTouched = false;
 
+    [Header("Son de réparation")]
+    [Tooltip("Son joué quand le bus endommagé est réparé")]
+    public AudioClip repairSound;
+    [Range(0f, 1f)]
+    public float repairSoundVolume = 1f;
+
     private BusDamage damage;
 
     private void OnCollisionEnter(Collision collision)
@@ -41,6 +47,11 @@ public class BusGarageRepair : MonoBehaviour
     {
         // BusDamage est placé sur le bus dans la scène
         if (damage == null) damage = GetComponent<BusDamage>();
-        if (damage != null) damage.ExtinguishFire();
+        if (damage == null) return;
+
+        bool wasDamaged = damage.IsDamaged;
+        damage.ExtinguishFire();
+        if (wasDamaged && repairSound != null)
+            AudioSource.PlayClipAtPoint(repairSound, transform.position, repairSoundVolume);
     }
 }
