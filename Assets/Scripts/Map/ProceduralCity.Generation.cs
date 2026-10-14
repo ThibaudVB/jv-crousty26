@@ -228,7 +228,11 @@ public sealed partial class ProceduralCity
             if (module != null)
             {
                 var venue = PlaceAssembly(module, parent, Vector3.zero, yaw, Mathf.Min(SourceScale, 46 / Mathf.Max(module.bounds.size.x, module.bounds.size.z)), true);
-                if (feature.StartsWith("Garage ", StringComparison.Ordinal)) chunk.garages.Add(venue.transform);
+                if (feature.StartsWith("Garage ", StringComparison.Ordinal))
+                {
+                    chunk.garages.Add(venue.transform);
+                    AddGarageRepairZone(venue.transform);
+                }
             }
         }
         else BuildNativeBlock(parent, random, yaw, DistrictAt(x, z));
@@ -363,6 +367,42 @@ public sealed partial class ProceduralCity
         Vector3 offset = new Vector3(source.bounds.center.x, 0, source.bounds.center.z);
         foreach (var part in source.parts) AddImported(part, root, offset, solid);
         return root.gameObject;
+    }
+
+    private static void AddGarageRepairZone(Transform garage)
+    {
+        GameObject zone = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        zone.name = "Visuel Garage - Zone de reparation";
+        zone.transform.SetParent(garage, false);
+        zone.transform.localPosition = new Vector3(0f, 2.5f, 0f);
+        zone.transform.localScale = new Vector3(8f, 5f, 8f);
+
+        BoxCollider trigger = zone.GetComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        Material material = zone.GetComponent<MeshRenderer>().material;
+        material.color = new Color(0.35f, 0.8f, 1f, 0.25f);
+        material.SetOverrideTag("RenderType", "Transparent");
+        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+
+        if (material.HasProperty("_Surface"))
+        {
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetFloat("_ZWrite", 0f);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        }
+        else if (material.HasProperty("_Mode"))
+        {
+            material.SetFloat("_Mode", 3f);
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        }
     }
 
     private GameObject Visual(Template part, Transform parent, Vector3 position, Vector3 scale, float yaw, bool solid)
