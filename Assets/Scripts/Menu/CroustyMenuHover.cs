@@ -18,6 +18,14 @@ public sealed class CroustyMenuHover : MonoBehaviour,
     public GameObject actionPrompt;
     public float hoverScale = 1.035f;
     public bool animateTransform = true;
+    [Tooltip("Décalage supplémentaire au survol, même si la case est déjà sélectionnée.")]
+    public float hoverOffset;
+    [Tooltip("Éléments voisins (fond, ombre) qui s'étirent vers la droite avec la case.")]
+    public RectTransform[] followers;
+    [Tooltip("Largeur (px) du bandeau : il s'étire de son bord gauche, sans se décoller de l'écran.")]
+    public float stretchWidth = 300f;
+    private Vector3[] followerScales;
+    private bool targetCaptured;
     public bool IsActive => hovered || selected || highlighted;
     public bool IsHovered => hovered;
     private bool hovered;
@@ -34,6 +42,26 @@ public sealed class CroustyMenuHover : MonoBehaviour,
     private void Awake()
     {
         if (target == null) target = transform as RectTransform;
+        CaptureTarget();
+    }
+
+    // Change l'objet animé (ex. : seul le texte glisse, le fond s'étire).
+    public void SetTarget(RectTransform newTarget)
+    {
+        if (newTarget == null || newTarget == target) return;
+        if (target != null && targetCaptured)
+        {
+            target.localScale = baseScale;
+            target.localRotation = baseRotation;
+            target.anchoredPosition = basePosition;
+        }
+        target = newTarget;
+        CaptureTarget();
+    }
+
+    private void CaptureTarget()
+    {
+        targetCaptured = true;
         basePosition = target.anchoredPosition;
         baseScale = target.localScale;
         baseRotation = target.localRotation;
@@ -45,6 +73,7 @@ public sealed class CroustyMenuHover : MonoBehaviour,
         {
             if (colorTarget != null) baseImageColor = colorTarget.color;
             if (textTarget != null) baseTextColor = textTarget.color;
+            CaptureFollowers();
             styleCaptured = true;
         }
         float active = IsActive ? 1f : 0f;
@@ -65,8 +94,9 @@ public sealed class CroustyMenuHover : MonoBehaviour,
             {
                 target.localRotation = Quaternion.Slerp(target.localRotation,baseRotation * Quaternion.Euler(0,0,pressed ? -1.5f : bounce * 22),t);
                 target.anchoredPosition = Vector2.Lerp(target.anchoredPosition,
-                    basePosition + new Vector2(active * 5f, 0f), t);
+                    basePosition + new Vector2(active * 5f + (hovered ? hoverOffset : 0f), 0f), t);
             }
+            MoveFollowers(target.anchoredPosition - basePosition);
         }
         if (colorTarget != null)
             colorTarget.color = Color.Lerp(colorTarget.color,
@@ -92,9 +122,33 @@ public sealed class CroustyMenuHover : MonoBehaviour,
             target.localRotation = baseRotation;
             target.anchoredPosition = basePosition;
         }
+        MoveFollowers(Vector2.zero);
         if (!styleCaptured) return;
         if (colorTarget != null) colorTarget.color = baseImageColor;
         if (textTarget != null) textTarget.color = baseTextColor;
+    }
+
+    private void CaptureFollowers()
+    {
+        if (followers == null) return;
+        followerScales = new Vector3[followers.Length];
+        for (int i = 0; i < followers.Length; i++)
+            if (followers[i] != null) followerScales[i] = followers[i].localScale;
+    }
+
+    // Les bandeaux partent du bord gauche de l'écran (pivot à gauche) :
+    // on les allonge vers la droite au lieu de les déplacer.
+    private void MoveFollowers(Vector2 offset)
+    {
+        if (followers == null || followerScales == null) return;
+        float stretch = 1f + Mathf.Max(0f, offset.x) / Mathf.Max(1f, stretchWidth);
+        for (int i = 0; i < followers.Length && i < followerScales.Length; i++)
+        {
+            if (followers[i] == null) continue;
+            Vector3 scale = followerScales[i];
+            scale.x *= stretch;
+            followers[i].localScale = scale;
+        }
     }
 
     public void OnPointerEnter(PointerEventData e) => hovered = true;
