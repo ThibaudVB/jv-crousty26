@@ -411,11 +411,13 @@ public sealed class CroustyMenuPanelBuilder
 
     private void BuildCredits()
     {
-        Section("CRÉDITS", 354, 102, 96);
+        Section("CREDITS", 354, 102, 96);
         Text(optionsContent, "CROUSTY EXPRESS", 358, 140, 330, 48, 34, Ink,
             TextAlignmentOptions.MidlineLeft);
-        Text(optionsContent, "Merci d'avoir pris le bus !", 358, 189, 340, 30,
-            20, Ink, TextAlignmentOptions.MidlineLeft);
+        var credits = Resources.Load<TextAsset>("Crousty/Credits");
+        var body = Text(optionsContent, credits != null ? credits.text : "Thanks for riding with us!",
+            358, 189, 420, 235, 18, Ink, TextAlignmentOptions.TopLeft);
+        body.gameObject.AddComponent<CroustyCredits>();
     }
 
     private void Section(string title, float x, float y, float width)

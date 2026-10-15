@@ -159,6 +159,8 @@ public class BusDamage : MonoBehaviour
     {
         if (!CanTakeHit() || collision.transform.IsChildOf(transform))
             return;
+        var prop = collision.collider.GetComponentInParent<MapImpactProp>();
+        if (prop != null && prop.passThroughBus) return;
         if (TryRoadblockHit(collision)) return;
         if (LandedTrick()) return;
         var garage = GetComponent<BusGarageRepair>();
@@ -273,7 +275,7 @@ public class BusDamage : MonoBehaviour
     private void FixedUpdate()
     {
         float y = rb.position.y;
-        bool grounded = IsGrounded();
+        bool grounded = IsGrounded(out bool wheelsDown);
         bool flying = flight != null && flight.isActiveAndEnabled &&
             flight.CurrentMode == BusFlightController.FlightMode.Flying;
 
@@ -291,7 +293,7 @@ public class BusDamage : MonoBehaviour
         {
             // On vient d'atterrir : la chute était-elle trop haute ?
             bool justLanded = !wasGrounded;
-            if (justLanded && highestY - y >= fallDamageHeight && CanTakeHit() && !LandedTrick())
+            if (justLanded && highestY - y >= fallDamageHeight && CanTakeHit() && !LandedTrick() && !wheelsDown)
                 TakeHit(transform.position);
             highestY = y;
         }
@@ -299,10 +301,19 @@ public class BusDamage : MonoBehaviour
         wasGrounded = grounded;
     }
 
-    private bool IsGrounded()
+    private bool IsGrounded(out bool wheelsDown)
     {
+        wheelsDown = false;
         if (wheelRig != null && wheelRig.IsReady && wheelRig.IsGrounded)
+        {
+            Vector3 normal = Vector3.zero;
+            foreach (var wheel in wheelRig.wheels)
+                if (wheel.collider != null && wheel.collider.GetGroundHit(out var hit))
+                    normal += hit.normal;
+            wheelsDown = normal.sqrMagnitude > .01f &&
+                Vector3.Dot(transform.up, normal.normalized) >= .85f;
             return true;
+        }
 
         // Rayon vers le bas depuis le centre du bus, jusqu'un peu sous la carrosserie
         Vector3 origin = body != null ? body.bounds.center : rb.position + Vector3.up;
@@ -314,7 +325,11 @@ public class BusDamage : MonoBehaviour
             bool isBus = hit.collider.transform.IsChildOf(transform);
             bool isFloor = hit.normal.y > 0.5f;
             if (!isBus && isFloor)
+            {
+                // An upright landing aligned with the road is safe, regardless of fall height.
+                wheelsDown = Vector3.Dot(transform.up, hit.normal) >= .85f;
                 return true;
+            }
         }
         return false;
     }

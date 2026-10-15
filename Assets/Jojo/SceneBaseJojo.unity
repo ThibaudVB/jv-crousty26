@@ -303,7 +303,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: OBJECTIF
+  m_text: "TASK"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -1589,7 +1589,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Contr\xF4leur"
+  m_text: "Controller"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -1801,7 +1801,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "R\xE9cup\xE9rer les commandes au restaurant"
+  m_text: "Pick up your orders at the restaurant"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -2490,7 +2490,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: CLAVIER / SOURIS
+  m_text: "KEYBOARD / MOUSE"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -3140,7 +3140,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Gaz Toxique
+  m_text: "TOXIC GAS"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -3936,7 +3936,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "CR\xC9DITS"
+  m_text: "CREDITS"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -4229,7 +4229,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Bonus
+  m_text: "Power-ups"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -5419,7 +5419,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Delivery
+  m_text: "Deliveries"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -5662,7 +5662,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\xC9CHAP  \u2022  REPRENDRE"
+  m_text: "ESC  •  RESUME"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -6799,7 +6799,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: MENU PRINCIPAL
+  m_text: "MAIN MENU"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -8112,7 +8112,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "D\xC9SACTIV\xC9"
+  m_text: "OFF"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -8991,7 +8991,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: REPRENDRE
+  m_text: "RESUME"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -11065,7 +11065,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: SOURIS
+  m_text: "MOUSE"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -12085,7 +12085,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: LA VILLE T'ATTEND
+  m_text: "THE CITY IS WAITING"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -12615,12 +12615,10 @@ MonoBehaviour:
   objectiveDeliver: Deliver your orders ({0} remaining)
   objectiveComplete: Run complete! Return to the restaurant
   objectiveFailed: Run failed!
-  referencePickup: "R\xE9cup\xE8re les commandes au\nrestaurant de Crousty (0/1)"
-  referenceDeliver: 'Livre les commandes aux clients
-
-    ({0}/{1})'
-  referenceComplete: "Tourn\xE9e termin\xE9e ! Retourne\nau restaurant de Crousty."
-  referenceFailed: "Tourn\xE9e \xE9chou\xE9e ! Retourne au restaurant."
+  referencePickup: "Pick up your orders at\nCrousty's restaurant (0/1)"
+  referenceDeliver: "Deliver your orders\n({0}/{1})"
+  referenceComplete: "Run complete! Return to\nCrousty's restaurant."
+  referenceFailed: "Run failed! Return to the restaurant."
   speedGaugeMaxKmh: 160
   urgentSeconds: 15
   urgentColor: {r: 1, g: 0.65, b: 0.2, a: 1}
@@ -13165,7 +13163,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Gaz Toxique
+  m_text: "TOXIC GAS"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -13759,7 +13757,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: LIVRAISONS
+  m_text: "DELIVERIES"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -14009,7 +14007,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "R\xE9cup\xE8re les commandes au\nrestaurant de Crousty (0/1)"
+  m_text: "Pick up your orders at\nCrousty's restaurant (0/1)"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -14613,7 +14611,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Volume g\xE9n\xE9ral"
+  m_text: "Master volume"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -15489,7 +15487,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Sensibilit\xE9"
+  m_text: "Sensitivity"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -15776,21 +15774,21 @@ MonoBehaviour:
     nameText: {fileID: 1016411442}
     countText: {fileID: 168959929}
     englishName: PET
-    frenchName: Gaz Toxique
+    frenchName: "TOXIC GAS"
     previewCharges: 3
   rice:
     artwork: {fileID: 1827752236}
     nameText: {fileID: 656361445}
     countText: {fileID: 278116105}
     englishName: RICE
-    frenchName: RIZ
+    frenchName: "RICE"
     previewCharges: 3
   flight:
     artwork: {fileID: 1324090789}
     nameText: {fileID: 1558325786}
     countText: {fileID: 1425849986}
     englishName: FLIGHT
-    frenchName: VOL
+    frenchName: "FLIGHT"
     previewCharges: 3
   grayMaterial: {fileID: 0}
   emptySprite: {fileID: 21300000, guid: ddefb119beeccd246a85fda46cca547c, type: 3}
@@ -17566,21 +17564,21 @@ MonoBehaviour:
     nameText: {fileID: 211377585}
     countText: {fileID: 690857828}
     englishName: PET
-    frenchName: Gaz Toxique
+    frenchName: "TOXIC GAS"
     previewCharges: 3
   rice:
     artwork: {fileID: 1641331246}
     nameText: {fileID: 152055220}
     countText: {fileID: 599837238}
     englishName: RICE
-    frenchName: RIZ
+    frenchName: "RICE"
     previewCharges: 3
   flight:
     artwork: {fileID: 1673802308}
     nameText: {fileID: 487700439}
     countText: {fileID: 1411374266}
     englishName: FLIGHT
-    frenchName: VOL
+    frenchName: "FLIGHT"
     previewCharges: 3
   grayMaterial: {fileID: 0}
   emptySprite: {fileID: 21300000, guid: ddefb119beeccd246a85fda46cca547c, type: 3}
@@ -17792,7 +17790,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "VID\xC9O"
+  m_text: "VIDEO"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -17921,7 +17919,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "CONTR\xD4LEUR"
+  m_text: "CONTROLLER"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -18321,7 +18319,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: COMMANDES
+  m_text: "CONTROLS"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -19251,7 +19249,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: RETOUR
+  m_text: "BACK"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -21174,7 +21172,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "CR\xC9DITS"
+  m_text: "CREDITS"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -21589,6 +21587,7 @@ GameObject:
   - component: {fileID: 1828246294}
   - component: {fileID: 1828246296}
   - component: {fileID: 1828246295}
+  - component: {fileID: 960000001828246295}
   m_Layer: 0
   m_Name: Merci d'avoir pris le bus ! texte
   m_TagString: Untagged
@@ -21613,7 +21612,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 358, y: -189}
-  m_SizeDelta: {x: 340, y: 30}
+  m_SizeDelta: {x: 420, y: 235}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1828246295
 MonoBehaviour:
@@ -21635,7 +21634,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Merci d'avoir pris le bus !
+  m_text: "Scroll: mouse wheel / Up & Down / right stick\n\n<b>DEVELOPMENT</b>\nThibaud von Borowski\nJordan TCHA\nAntoine BASSET\n\n<b>3D ART & ANIMATION</b>\nEric Tran-Ky\n\n<b>COMMUNICATIONS</b>\nHélène TEA & Mathis Duclos\n\n<b>UI / UX</b>\nEdouard FORT & Eric Tran-Ky\n\n<b>AUDIOVISUAL PRODUCTION</b>\nEric Tran-Ky & Edouard FORT\n\n<b>PROJECT MANAGEMENT</b>\nEdouard FORT, Eric Tran-Ky & Helene TEA\n\n<b>EMOTIONAL SUPPORT</b>\nGwendal Judic & Robin Alonzo\n\n<b>DRINKS SUPPORT</b>\nCathy Duclos\n\n<b>FOOD SUPPORT</b>\nLa Fancy, HFC, Burger King & Super U\n\n<b>SPECIAL THANKS</b>\nGwendal Judic, Arthur Centimètre, Robin Alonzo,\nJulien BERTRAND, GIROUX GUILLAUME,\nHEURARD MAEL\n\n<b>WITH THANKS TO</b>\nBordeaux Montaigne University\nBordeaux Montaigne University Institute of Technology (IUT)\n\n<b>3D ASSET SOURCES</b>\nPoly Pizza — poly.pizza\nSketchfab — sketchfab.com\nThanks to the artists who shared their work.\n\n<b>MUSIC</b>\nWhat We Got — Infraction\n\n<b>SOUND EFFECTS</b>\nHeavy Wings Flapping — Dragon Studio\n\n<b>VISUAL EFFECTS</b>\nCinematic Explosions FREE — Mirza Beig\n\n<b>ENGINE & UI TECHNOLOGY</b>\nUnity & TextMesh Pro\n\nThanks for riding with us!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -21662,7 +21661,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 16
+  m_fontSize: 18
   m_fontSizeBase: 16
   m_fontWeight: 400
   m_enableAutoSizing: 0
@@ -21670,7 +21669,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 4096
+  m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -22044,7 +22043,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "VID\xC9O"
+  m_text: "VIDEO"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -22805,9 +22804,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Hop hop hop ! Les commandes
-
-    attendent, on se bouge !'
+  m_text: "Come on! The orders are\nwaiting. Let's move!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -23164,7 +23161,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "R\xC9GLAGES"
+  m_text: "SETTINGS"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -23301,7 +23298,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: OBJECTIF
+  m_text: "TASK"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -23948,7 +23945,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Plein \xE9cran"
+  m_text: "Fullscreen"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -38244,7 +38241,7 @@ MonoBehaviour:
   randomLineInterval: 20
   idleSeconds: 10
   idleSpeedKmh: 3
-  speakerName: "G\xC9RANT"
+  speakerName: "MANAGER"
   font: {fileID: 0}
   fontSize: 30
   textColor: {r: 0.14901961, g: 0.14901961, b: 0.19215687, a: 1}
@@ -169282,3 +169279,15 @@ SceneRoots:
   - {fileID: 591962833}
   - {fileID: 342565885}
   - {fileID: 227314357}
+--- !u!114 &960000001828246295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1828246293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75e993a70bc94fb69c8101b86c0203f4, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
