@@ -142,6 +142,7 @@ public class GerantDialogue : MonoBehaviour
     private float idleTimer;            // secondes passées à l'arrêt
     private bool saidFailed;            // réplique de défaite déjà dite
     private bool wasChased;             // la police poursuivait déjà le bus
+    private bool automaticDialogueEnabled = true;
     private int lastBonusCharges;       // charges de bonus à l'image précédente
 
     // Bonus du bus (pour savoir quand une boîte bonus est ramassée)
@@ -207,10 +208,15 @@ public class GerantDialogue : MonoBehaviour
     private void OnDeliveryCompleted(DeliveryPoint point) { Say(deliverySuccessLines); }
     private void OnResumed() { if (manager == null || !manager.HasFailed) Say(pauseLines); }
 
+    public void SetAutomaticDialogueEnabled(bool enabled)
+    {
+        automaticDialogueEnabled = enabled;
+    }
+
     // Dit une réplique tirée au hasard dans la liste (différente de la réplique actuelle si possible)
     private void Say(string[] lines)
     {
-        if (lines == null || lines.Length == 0)
+        if (!automaticDialogueEnabled || lines == null || lines.Length == 0)
             return;
 
         string line = lines[Random.Range(0, lines.Length)];

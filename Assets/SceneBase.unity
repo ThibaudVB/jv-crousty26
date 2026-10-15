@@ -10448,6 +10448,7 @@ MonoBehaviour:
   policeImpactSound: {fileID: 8300000, guid: a13cfad261ad9904980e357b7a10b2b4, type: 3}
   policeImpactVolume: 1
   tutorialLootboxPrefab: {fileID: 8264346837173044115, guid: 99021d0afec2ffc4e8c616f5b3043013, type: 3}
+  dialogueMaquetteScale: 1.5
 --- !u!1 &646106510
 GameObject:
   m_ObjectHideFlags: 0

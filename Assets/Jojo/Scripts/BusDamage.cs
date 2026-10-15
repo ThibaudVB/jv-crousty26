@@ -53,6 +53,7 @@ public class BusDamage : MonoBehaviour
 
     // Infos pour les autres scripts
     public bool IsDamaged { get; private set; }
+    public bool DamageEnabled { get; private set; } = true;
     public int HitsTaken { get; private set; }
     public float DamagePenalty { get; private set; }
     public float SpeedMultiplier => isActiveAndEnabled ? 1f - DamagePenalty : 1f;
@@ -153,6 +154,11 @@ public class BusDamage : MonoBehaviour
         TakeHit(transform.position);
     }
 
+    public void SetDamageEnabled(bool damageEnabled)
+    {
+        DamageEnabled = damageEnabled;
+    }
+
     // ---------- CHOCS ----------
 
     private void OnCollisionEnter(Collision collision)
@@ -216,6 +222,9 @@ public class BusDamage : MonoBehaviour
 
     private bool CanTakeHit()
     {
+        if (!DamageEnabled)
+            return false;
+
         bool cooldownOver = Time.time - lastHitTime >= hitCooldown;
         bool gameLost = DeliveryManager.Instance != null && DeliveryManager.Instance.HasFailed;
         return cooldownOver && HitsTaken < Mathf.Max(1, hitsToDestroy) && !gameLost && (catchZone == null || !catchZone.IsCaught);
