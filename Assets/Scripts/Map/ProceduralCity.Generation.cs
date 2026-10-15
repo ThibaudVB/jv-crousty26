@@ -394,12 +394,17 @@ public sealed partial class ProceduralCity
 
         BoxCollider trigger = zone.AddComponent<BoxCollider>();
         trigger.isTrigger = true;
-        // Épaisseur minimale pour que le bus lancé à fond ne passe pas au travers entre deux frames
+        // Épaisseur minimale pour que le bus lancé à fond soit vu des deux côtés du cercle
         Vector3 size = bounds.size * 0.85f;
         Vector3 scale = ring.lossyScale;
-        for (int i = 0; i < 3; i++) size[i] = Mathf.Max(size[i], 4f / Mathf.Max(0.001f, Mathf.Abs(scale[i])));
+        for (int i = 0; i < 3; i++) size[i] = Mathf.Max(size[i], 6f / Mathf.Max(0.001f, Mathf.Abs(scale[i])));
         trigger.size = size;
-        zone.AddComponent<FireRingSoundZone>();
+
+        // Axe du trou : la plus petite dimension du cercle (son épaisseur)
+        int axis = 0;
+        for (int i = 1; i < 3; i++) if (bounds.size[i] < bounds.size[axis]) axis = i;
+        var sound = zone.AddComponent<FireRingSoundZone>();
+        sound.localAxis = axis == 0 ? Vector3.right : axis == 1 ? Vector3.up : Vector3.forward;
         CreateRoadPowerBox(ring.parent, ring.TransformPoint(bounds.center));
     }
 
