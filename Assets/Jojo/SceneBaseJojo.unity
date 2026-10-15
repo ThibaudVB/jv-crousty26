@@ -407,6 +407,7 @@ GameObject:
   - component: {fileID: 920000000000000005}
   - component: {fileID: 920000000000000004}
   - component: {fileID: 920000000000000056}
+  - component: {fileID: 920000000000000057}
   m_Layer: 0
   m_Name: CroustyBus
   m_TagString: Untagged
@@ -1290,7 +1291,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 76
+  m_fontSize: 63.3
   m_fontSizeBase: 76
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -2047,6 +2048,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &136580673
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2805,7 +2809,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -3661,7 +3665,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b6f5ad186fdc9b488bf160c633dcc38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  chargesGiven: 1
   respawnDelay: 8
   visual: {fileID: 0}
   rotationSpeed: 90
@@ -3813,6 +3816,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &230788716
 GameObject:
   m_ObjectHideFlags: 0
@@ -4359,7 +4366,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -4496,7 +4503,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -4996,7 +5003,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b6f5ad186fdc9b488bf160c633dcc38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  chargesGiven: 1
   respawnDelay: 8
   visual: {fileID: 0}
   rotationSpeed: 90
@@ -5894,6 +5900,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &422547037
 GameObject:
   m_ObjectHideFlags: 0
@@ -5983,6 +5992,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &437836865
 GameObject:
   m_ObjectHideFlags: 0
@@ -7196,7 +7209,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b6f5ad186fdc9b488bf160c633dcc38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  chargesGiven: 1
   respawnDelay: 8
   visual: {fileID: 0}
   rotationSpeed: 90
@@ -7429,7 +7441,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -9169,7 +9181,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 36, y: 79}
+  m_AnchoredPosition: {x: 70.2, y: 82.7}
   m_SizeDelta: {x: 46, y: 35}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &690857828
@@ -9192,7 +9204,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -12670,13 +12682,21 @@ MonoBehaviour:
   pointsPerDelivery: 100
   completionBonus: 500
   pointsPerRemainingSecond: 0
+  deliverFromAnyHeight: 1
+  flightDeliveryNeedsRing: 1
+  useParachute: 1
+  parachuteMinHeight: 8
+  parachuteFallSpeed: 6
+  parachuteMaxSeconds: 6
+  parachuteSize: 2.5
+  parachuteColor: {r: 0.9, g: 0.15, b: 0.15, a: 1}
+  parachuteSwing: 15
   throwDuration: 0.8
   throwArcHeight: 4
   throwStartHeight: 2.5
   croustyProjectilePrefab: {fileID: 0}
   projectileColor: {r: 1, g: 0.6, b: 0.1, a: 1}
   projectileSize: 0.5
-  flightDeliveryNeedsRing: 1
 --- !u!1 &965852437
 GameObject:
   m_ObjectHideFlags: 0
@@ -13085,6 +13105,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1016411440
 GameObject:
   m_ObjectHideFlags: 0
@@ -14901,6 +14924,25 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 100
   m_TargetDisplay: 0
+--- !u!224 &1185835673
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1845124068}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2113424812}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 64, y: -54}
+  m_SizeDelta: {x: 62, y: 61}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1186657582
 GameObject:
   m_ObjectHideFlags: 0
@@ -16537,6 +16579,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &1352833108
 GameObject:
   m_ObjectHideFlags: 0
@@ -16695,6 +16741,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1357885538
 GameObject:
   m_ObjectHideFlags: 0
@@ -17131,6 +17180,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &1411374264
 GameObject:
   m_ObjectHideFlags: 0
@@ -17188,7 +17241,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -17325,7 +17378,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -18500,6 +18553,36 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 110
   m_TargetDisplay: 0
+--- !u!114 &1528404031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1845124068}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: c353069da338ca7408b5162de91cf60a, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &1557213159
 GameObject:
   m_ObjectHideFlags: 0
@@ -19033,6 +19116,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!1 &1593384047
 GameObject:
   m_ObjectHideFlags: 0
@@ -19720,6 +19806,14 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1663769913}
   m_CullTransparentMesh: 1
+--- !u!222 &1670971893
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1845124068}
+  m_CullTransparentMesh: 1
 --- !u!1 &1673802306
 GameObject:
   m_ObjectHideFlags: 0
@@ -20068,6 +20162,9 @@ MonoBehaviour:
   actionPrompt: {fileID: 0}
   hoverScale: 1.035
   animateTransform: 1
+  hoverOffset: 0
+  followers: []
+  stretchWidth: 300
 --- !u!114 &1702200964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20904,6 +21001,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &1792458707
 GameObject:
   m_ObjectHideFlags: 0
@@ -21689,6 +21790,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1844215217}
   m_CullTransparentMesh: 1
+--- !u!1 &1845124068
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1185835673}
+  - component: {fileID: 1670971893}
+  - component: {fileID: 1528404031}
+  m_Layer: 0
+  m_Name: Icone commandes
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
 --- !u!1 &1877760415
 GameObject:
   m_ObjectHideFlags: 0
@@ -22800,6 +22919,7 @@ MonoBehaviour:
   mainPanel: {fileID: 943039609}
   optionsPanel: {fileID: 1309525332}
   leaderboardPanel: {fileID: 0}
+  nameEntry: {fileID: 0}
   homePages: {fileID: 0}
   pauseMenu: {fileID: 1044438174}
   categoryPanels:
@@ -22838,6 +22958,7 @@ MonoBehaviour:
   normalColor: {r: 0.9372549, g: 0.9137255, b: 0.88235295, a: 1}
   inkColor: {r: 0.14901961, g: 0.14901961, b: 0.19607843, a: 1}
   selectedTextColor: {r: 1, g: 0.99215686, b: 0.96862745, a: 1}
+  tabHoverOffset: 10
 --- !u!4 &1942756248
 Transform:
   m_ObjectHideFlags: 0
@@ -23964,7 +24085,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: x3
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -24376,81 +24497,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2095504941}
   m_CullTransparentMesh: 1
---- !u!1 &1845124068
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1185835673}
-  - component: {fileID: 1670971893}
-  - component: {fileID: 1528404031}
-  m_Layer: 0
-  m_Name: Icone commandes
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1185835673
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1845124068}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2113424812}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 64, y: -54}
-  m_SizeDelta: {x: 62, y: 61}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &1670971893
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1845124068}
-  m_CullTransparentMesh: 1
---- !u!114 &1528404031
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1845124068}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: c353069da338ca7408b5162de91cf60a, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 1
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &2113424811
 GameObject:
   m_ObjectHideFlags: 0
@@ -24579,6 +24625,10 @@ MonoBehaviour:
   markerColor: {r: 0.2725346, g: 1, b: 0.19999999, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &2127315605
 GameObject:
   m_ObjectHideFlags: 0
@@ -38146,43 +38196,51 @@ MonoBehaviour:
   nameTag: {fileID: 0}
   nameTitle: {fileID: 0}
   deliveryStartLines:
-  - 'Here, go deliver this. And don''t touch the drumsticks, I counted them. Well... I counted up to three.'
-  - 'Order for old Mrs. Johnson. She ordered three days ago, but hey, she won''t die. Well, hopefully.'
-  - 'The chicken is still hot. Well, it was yesterday.'
-  - 'Careful, this order is worth more than your paycheck. Granted, that''s not a high bar.'
-  - 'Drive fast, before the health inspector wakes up.'
-  - 'Honestly? I don''t even like Croustys. I''m more of a kebab guy. Keep it under your hat.'
-  - 'Oh shit, the rats got a taste of the order. Oh well... extra protein.'
+  - Here, go deliver this. And don't touch the drumsticks, I counted them. Well...
+    I counted up to three.
+  - Order for old Mrs. Johnson. She ordered three days ago, but hey, she won't die.
+    Well, hopefully.
+  - The chicken is still hot. Well, it was yesterday.
+  - Careful, this order is worth more than your paycheck. Granted, that's not a high
+    bar.
+  - Drive fast, before the health inspector wakes up.
+  - Honestly? I don't even like Croustys. I'm more of a kebab guy. Keep it under
+    your hat.
+  - Oh shit, the rats got a taste of the order. Oh well... extra protein.
   managerLines:
-  - 'A hair in the order? Is it short and curly? Oh... well, then that ain''t a hair.'
-  - 'The secret recipe? Chicken, breading, and a whole lot of prayers.'
-  - 'I dropped the chicken on the floor. Five-second rule. Or five minutes, I forget.'
-  - 'The customer left five stars. Okay, it was my mom, but it still counts.'
-  - 'I dumped all my special white sauce on it. The customer didn''t ask for any, but trust me, they''re gonna love it.'
+  - A hair in the order? Is it short and curly? Oh... well, then that ain't a hair.
+  - The secret recipe? Chicken, breading, and a whole lot of prayers.
+  - I dropped the chicken on the floor. Five-second rule. Or five minutes, I forget.
+  - The customer left five stars. Okay, it was my mom, but it still counts.
+  - I dumped all my special white sauce on it. The customer didn't ask for any, but
+    trust me, they're gonna love it.
   deliverySuccessLines:
-  - 'Great job. You''ve earned the right to maybe not get fired today.'
-  - 'Incredible. I''m giving you a raise. Two cents. Nah, make it one.'
-  - 'You''re faster than Uber Eats. And cleaner than my kitchen.'
+  - Great job. You've earned the right to maybe not get fired today.
+  - Incredible. I'm giving you a raise. Two cents. Nah, make it one.
+  - You're faster than Uber Eats. And cleaner than my kitchen.
   deliveryFailedLines:
-  - 'You took so long the chicken had time to hatch.'
-  - 'Even the rats deliver faster than you. And they get paid in crumbs.'
-  - 'Next time, I''m sending my grandma. On a scooter.'
-  - 'The customer called. They''re crying. So is the chicken.'
+  - You took so long the chicken had time to hatch.
+  - Even the rats deliver faster than you. And they get paid in crumbs.
+  - Next time, I'm sending my grandma. On a scooter.
+  - The customer called. They're crying. So is the chicken.
   policeChaseLines:
-  - 'If the cops ask you questions, you''ve never worked here. Neither have I, for that matter.'
-  - 'Are they chasing you for speeding... or for my health permits? Good question.'
-  - 'Throwing a chicken at ''em usually calms them down.'
-  - 'The cops are my best customers. Except when they''re on duty.'
+  - If the cops ask you questions, you've never worked here. Neither have I, for
+    that matter.
+  - Are they chasing you for speeding... or for my health permits? Good question.
+  - Throwing a chicken at 'em usually calms them down.
+  - The cops are my best customers. Except when they're on duty.
   bonusBoxLines:
-  - 'A mystery box! I don''t even remember what I put in there. It''s gonna be a surprise for both of us.'
+  - A mystery box! I don't even remember what I put in there. It's gonna be a surprise
+    for both of us.
   idleLines:
-  - 'You took so long the chicken had time to hatch.'
-  - 'Even the rats deliver faster than you. And they get paid in crumbs.'
-  - 'Next time, I''m sending my grandma. On a scooter.'
-  - 'Hello? Did the bus stall, or is it just you?'
-  - 'The customer called. They''re crying. So is the chicken.'
+  - You took so long the chicken had time to hatch.
+  - Even the rats deliver faster than you. And they get paid in crumbs.
+  - Next time, I'm sending my grandma. On a scooter.
+  - Hello? Did the bus stall, or is it just you?
+  - The customer called. They're crying. So is the chicken.
   pauseLines:
-  - 'Taking a break? The chicken ain''t getting any colder... wait, I mean warmer. Keep moving.'
+  - Taking a break? The chicken ain't getting any colder... wait, I mean warmer.
+    Keep moving.
   randomLineInterval: 20
   idleSeconds: 10
   idleSpeedKmh: 3
@@ -38263,6 +38321,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BusGarageRepair
   garageNamePrefix: Visuel Garage
   logTouched: 0
+  repairSound: {fileID: 0}
+  repairSoundVolume: 1
 --- !u!114 &920000000000000053
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -38342,6 +38402,33 @@ MonoBehaviour:
     counter: {fileID: 0}
     powerUp: 0
   startingCharges: 0
+--- !u!114 &920000000000000057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76d9872c30b071b4caa2a06c4fd53dd1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BusAirTricks
+  flipSpeed: 240
+  spinSpeed: 270
+  finishSpeed: 220
+  landingSnapSpeed: 900
+  minAirTime: 0.15
+  minHeightAboveGround: 4
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  landingTolerance: 35
+  boostDuration: 10
+  boostPerTurn: 0.5
+  maxBoostMultiplier: 4
+  safeLandingSeconds: 0.75
+  currentHeight: 0
 --- !u!1 &920000000000000100
 GameObject:
   m_ObjectHideFlags: 0
@@ -39333,6 +39420,137 @@ MonoBehaviour:
   streamingFogColor: {r: 0.69, g: 0.77, b: 0.83, a: 1}
   dayNightCycle: 1
   groundHeight: -1.33
+--- !u!1 &930000000000000100
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 930000000000000101}
+  - component: {fileID: 930000000000000102}
+  m_Layer: 5
+  m_Name: Coeurs
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &930000000000000101
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000000000100}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 845881195}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 1}
+  m_AnchorMax: {x: 0.5, y: 1}
+  m_AnchoredPosition: {x: -14, y: -122}
+  m_SizeDelta: {x: 273, y: 42}
+  m_Pivot: {x: 0.5, y: 1}
+--- !u!114 &930000000000000102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000000000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c4bc962dc0749749cdda7bcd90b98c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BusHealthHearts
+  busDamage: {fileID: 0}
+  heartCount: 5
+  fullHeart: {fileID: 21300000, guid: 87e66b88a42c402e8164a72e6d54a234, type: 3}
+  emptyHeart: {fileID: 21300000, guid: 391f66b5b7994c138278126b17cb28c8, type: 3}
+  heartSize: {x: 51, y: 42}
+  spacing: 4.5
+  lostPopScale: 1.35
+  lostPopDuration: 0.3
+--- !u!1 &930000000000000200
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 930000000000000210}
+  - component: {fileID: 930000000000000211}
+  - component: {fileID: 930000000000000212}
+  m_Layer: 0
+  m_Name: Icone argent
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &930000000000000210
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000000000200}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 230788717}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 64, y: -54}
+  m_SizeDelta: {x: 62, y: 61}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &930000000000000211
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000000000200}
+  m_CullTransparentMesh: 1
+--- !u!114 &930000000000000212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000000000200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: b0ab5d498ca249dea5d44d8d07497ddb, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!21 &930000000000100053
 Material:
   serializedVersion: 8
@@ -169064,134 +169282,3 @@ SceneRoots:
   - {fileID: 591962833}
   - {fileID: 342565885}
   - {fileID: 227314357}
---- !u!1 &930000000000000100
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 930000000000000101}
-  - component: {fileID: 930000000000000102}
-  m_Layer: 5
-  m_Name: Coeurs
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &930000000000000101
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 930000000000000100}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 845881195}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 1}
-  m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: -14, y: -122}
-  m_SizeDelta: {x: 273, y: 42}
-  m_Pivot: {x: 0.5, y: 1}
---- !u!114 &930000000000000102
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 930000000000000100}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4c4bc962dc0749749cdda7bcd90b98c1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BusHealthHearts
-  busDamage: {fileID: 0}
-  heartCount: 5
-  fullHeart: {fileID: 21300000, guid: 87e66b88a42c402e8164a72e6d54a234, type: 3}
-  emptyHeart: {fileID: 21300000, guid: 391f66b5b7994c138278126b17cb28c8, type: 3}
-  heartSize: {x: 51, y: 42}
-  spacing: 4.5
-  lostPopScale: 1.35
-  lostPopDuration: 0.3
---- !u!1 &930000000000000200
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 930000000000000210}
-  - component: {fileID: 930000000000000211}
-  - component: {fileID: 930000000000000212}
-  m_Layer: 0
-  m_Name: Icone argent
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &930000000000000210
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 930000000000000200}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 230788717}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 64, y: -54}
-  m_SizeDelta: {x: 62, y: 61}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &930000000000000211
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 930000000000000200}
-  m_CullTransparentMesh: 1
---- !u!114 &930000000000000212
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 930000000000000200}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: b0ab5d498ca249dea5d44d8d07497ddb, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 1
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
