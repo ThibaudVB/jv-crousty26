@@ -21543,6 +21543,7 @@ GameObject:
   - component: {fileID: 1828246294}
   - component: {fileID: 1828246296}
   - component: {fileID: 1828246295}
+  - component: {fileID: 960000001828246295}
   m_Layer: 0
   m_Name: Merci d'avoir pris le bus ! texte
   m_TagString: Untagged
@@ -21567,7 +21568,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 358, y: -189}
-  m_SizeDelta: {x: 340, y: 30}
+  m_SizeDelta: {x: 420, y: 235}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1828246295
 MonoBehaviour:
@@ -21589,7 +21590,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Thanks for riding with us!
+  m_text: "Scroll: mouse wheel / Up & Down / right stick\n\n<b>DEVELOPMENT</b>\nThibaud von Borowski\nJordan TCHA\nAntoine BASSET\n\n<b>3D ART & ANIMATION</b>\nEric Tran-Ky\n\n<b>COMMUNICATIONS</b>\nHélène TEA & Mathis Duclos\n\n<b>UI / UX</b>\nEdouard FORT & Eric Tran-Ky\n\n<b>AUDIOVISUAL PRODUCTION</b>\nEric Tran-Ky & Edouard FORT\n\n<b>PROJECT MANAGEMENT</b>\nEdouard FORT, Eric Tran-Ky & Helene TEA\n\n<b>EMOTIONAL SUPPORT</b>\nGwendal Judic & Robin Alonzo\n\n<b>DRINKS SUPPORT</b>\nCathy Duclos\n\n<b>FOOD SUPPORT</b>\nLa Fancy, HFC, Burger King & Super U\n\n<b>SPECIAL THANKS</b>\nGwendal Judic, Arthur Centimètre, Robin Alonzo,\nJulien BERTRAND, GIROUX GUILLAUME,\nHEURARD MAEL\n\n<b>WITH THANKS TO</b>\nBordeaux Montaigne University\nBordeaux Montaigne University Institute of Technology (IUT)\n\n<b>3D ASSET SOURCES</b>\nPoly Pizza — poly.pizza\nSketchfab — sketchfab.com\nThanks to the artists who shared their work.\n\n<b>MUSIC</b>\nWhat We Got — Infraction\n\n<b>SOUND EFFECTS</b>\nHeavy Wings Flapping — Dragon Studio\n\n<b>VISUAL EFFECTS</b>\nCinematic Explosions FREE — Mirza Beig\n\n<b>ENGINE & UI TECHNOLOGY</b>\nUnity & TextMesh Pro\n\nThanks for riding with us!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -21616,7 +21617,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 16
+  m_fontSize: 18
   m_fontSizeBase: 16
   m_fontWeight: 400
   m_enableAutoSizing: 0
@@ -21624,7 +21625,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 4096
+  m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -169075,3 +169076,15 @@ SceneRoots:
   - {fileID: 949606887}
   - {fileID: 499455496}
   - {fileID: 1555809686}
+--- !u!114 &960000001828246295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1828246293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75e993a70bc94fb69c8101b86c0203f4, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:

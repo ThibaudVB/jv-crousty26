@@ -20,7 +20,7 @@ public class BusFlightController : MonoBehaviour
     public bool BonusEquipped { get; set; } = true;
     public bool CanReceiveCharges => UsesRemaining < 1 &&
         (inventory == null || inventory.CanAddPower(PowerUpInventory.PowerUpType.Flight));
-    [HideInInspector] public float flightDuration = 15f; // Legacy scene data; flight ends on demand/contact.
+    [Range(0.1f, 15f)] public float flightDuration = 15f;
 
     [Header("Impulsion initiale")]
     [Min(0f)] public float launchUpSpeed = 8f;
@@ -59,7 +59,9 @@ public class BusFlightController : MonoBehaviour
     public bool IsAirborne => mode != FlightMode.Ground;
     public bool IsFalling => mode == FlightMode.Falling;
     public FlightMode CurrentMode => mode;
-    public float RemainingFlightSeconds => mode == FlightMode.Flying ? float.PositiveInfinity : 0f;
+    public float RemainingFlightSeconds => mode == FlightMode.Flying ? timeRemaining : 0f;
+    public float FlightDurationSeconds => Mathf.Clamp(flightDuration, .1f, 15f);
+    public float RemainingFlightFraction => Mathf.Clamp01(RemainingFlightSeconds / FlightDurationSeconds);
     private float launchedAt;
 
     private Rigidbody rb;
@@ -92,6 +94,9 @@ public class BusFlightController : MonoBehaviour
 
     private void Awake()
     {
+        var hud = GetComponent<BusFlightHUD>();
+        if (hud == null) hud = gameObject.AddComponent<BusFlightHUD>();
+        hud.flightController = this;
         UsesRemaining = Mathf.Clamp(startingCharges, 0, 1);
         inventory = PowerUpInventory.EnsureFor(gameObject);
         if (inventory != null && UsesRemaining > 0)
@@ -161,12 +166,17 @@ public class BusFlightController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (!IsAirborne)
+        if (!IsAirborne || Time.timeScale <= 0f)
             return;
 
         float dt = Time.fixedDeltaTime;
-        if (city != null && !city.IsMovementReady(rb.position, rb.linearVelocity))
-        { rb.linearVelocity = Vector3.zero; return; }
+        if (mode == FlightMode.Flying)
+        {
+            timeRemaining = Mathf.Max(0f, timeRemaining - dt);
+            if (timeRemaining <= 0f) StartFalling();
+            // Streaming may delay steering, but must never erase airborne momentum or stop the timer.
+            else if (city != null && !city.IsMovementReady(rb.position, rb.linearVelocity)) return;
+        }
         if (mode == FlightMode.Flying) velocityBeforeFallStep = rb.linearVelocity;
 
         switch (mode)
@@ -242,7 +252,7 @@ public class BusFlightController : MonoBehaviour
         pitchInput = 0f;
         boostInput = false;
 
-        timeRemaining = 0f;
+        timeRemaining = FlightDurationSeconds;
         launchedAt = Time.time;
 
         boostRemaining = boostDuration;
@@ -422,6 +432,7 @@ public class BusFlightController : MonoBehaviour
         for (int i = 0; i < wheelColliders.Length; i++)
             if (wheelColliders[i] != null)
                 wheelColliders[i].enabled = originalWheelStates[i];
+        GetComponent<BusPropImpact>()?.IgnoreActiveProps();
     }
 
     // =====================================================

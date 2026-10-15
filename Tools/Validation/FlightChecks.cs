@@ -69,7 +69,7 @@ public static class FlightChecks
         Call(flight, "ActivateFlight");
         Assert(flight.RemainingFlightSeconds == remaining, "Activation cannot restart airborne timer");
         int ticks = 0;
-        Assert(float.IsPositiveInfinity(flight.RemainingFlightSeconds), "Flight has no expiry timer");
+        Assert(flight.RemainingFlightSeconds > 0 && flight.RemainingFlightSeconds <= 15, "Flight duration is capped at fifteen seconds");
         Assert(body.linearVelocity.y >= flight.launchUpSpeed, "Single upward launch impulse");
         Set(flight, "turnInput", 1f);
         float initialYaw = (float)Get(flight, "yaw");
@@ -82,9 +82,7 @@ public static class FlightChecks
         Assert((float)Get(flight, "boostRemaining") < boostBefore, "Boost consumes its budget");
         Set(flight, "boostInput", false);
         while (!flight.IsFalling && ticks++ < 760) Call(flight, "FixedUpdate");
-        Assert(!flight.IsFalling, "Flight remains controllable beyond the previous fifteen-second limit");
-        Assert(flight.StopFlight(), "Player can stop flight on demand");
-        Assert(flight.IsFalling && flight.RemainingFlightSeconds == 0, "Manual cancellation enters fall");
+        Assert(flight.IsFalling && flight.RemainingFlightSeconds == 0, "Fifteen-second expiry enters natural fall");
         Assert(body.useGravity && !drive.enabled && !rig.enabled, "Gravity enabled, ground drive still suspended");
         var fallEffect = flight.GetComponent<BusFallSpeedEffect>();
         Assert(fallEffect != null, "Fall speed effect automatically attached");
