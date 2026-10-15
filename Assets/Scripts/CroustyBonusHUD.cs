@@ -96,10 +96,10 @@ public sealed class CroustyBonusHUD : MonoBehaviour
 
     public void SetLanguage(BonusLanguage value)
     {
-        language = BonusLanguage.English;
+        language = value;
         foreach (Card card in new[] { gps, pet, rice, flight })
             if (card.nameText != null)
-                card.nameText.text = card.englishName;
+                card.nameText.text = language == BonusLanguage.English ? card.englishName : card.frenchName;
     }
 
     // Updated whenever a rice charge is spent.
@@ -168,7 +168,7 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         {
             Show(slotCard, currentInventory.GetChargesAt(inventorySlotIndex));
             if (slotCard.nameText != null)
-                slotCard.nameText.text = slotCard.englishName;
+                slotCard.nameText.text = language == BonusLanguage.English ? slotCard.englishName : slotCard.frenchName;
             return;
         }
 

@@ -191,7 +191,7 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
         UpdateLoop(ambience,CroustySound.Ambience,alive ? (stopped ? .35f : 1f) * Mathf.Lerp(1, .15f, chaseEnvelope) : 0,true);
         UpdateLoop(drift,CroustySound.Drift,driving ? driftAmount : 0);
         UpdateLoop(reverse,CroustySound.Reverse,driving && speed < -.5f ? 1 : 0);
-        if (!alive || flight == null || !flight.isActiveAndEnabled || flight.CurrentMode != BusFlightController.FlightMode.Flying)
+        if (!alive || flight == null || !flight.isActiveAndEnabled || !flight.IsAirborne)
         { wings.Stop(); wings.volume = 0; }
         else if (stopped) wings.Pause();
         else

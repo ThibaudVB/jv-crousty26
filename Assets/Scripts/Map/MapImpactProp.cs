@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -9,8 +8,6 @@ public class MapImpactProp : MonoBehaviour
 
     [Header("Type d'objet")]
     public ImpactType impactType;
-    [Tooltip("Le bus traverse cet objet sans choc physique ; le trigger conserve sa chute visuelle.")]
-    public bool passThroughBus;
     [Min(0f)] public float minimumImpactSpeedKmh = 2f;
     [Min(0.1f)] public float mass = 4f;
 
@@ -61,14 +58,6 @@ public class MapImpactProp : MonoBehaviour
 
     private void Awake()
     {
-        // Also cover trees and lamps already placed in the authored scenes.
-        foreach (Transform part in GetComponentsInChildren<Transform>(true))
-            if (Regex.IsMatch(part.name, @"(^|[ _])(Lamp|StreetLamp|Lamppost|StreetLight|StreetTree|Tree|Palm|FanPalm|FlowerTree|Cypress)(_|[ (]|$)", RegexOptions.IgnoreCase))
-            {
-                passThroughBus = true;
-                break;
-            }
-
         // Actualise aussi les anciennes valeurs d'une scene deja chargee dans l'editeur.
         if (impactType == ImpactType.FallingLamppost &&
             Mathf.Approximately(minimumFallSpeed, 0.6f) && Mathf.Approximately(maximumFallSpeed, 1.8f))

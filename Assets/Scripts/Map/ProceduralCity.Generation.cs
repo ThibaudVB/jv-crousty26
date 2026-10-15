@@ -478,7 +478,7 @@ public sealed partial class ProceduralCity
             @"(^|_)(Bench|Bin|BikeRack|Hydrant|BusStop|Cone|Bollard|Bush|FlowerBed)_", RegexOptions.IgnoreCase);
         bool protectedSign = Regex.IsMatch(part.name, @"(^|_)(Stop|StopSign|TrafficLight)(_|$)", RegexOptions.IgnoreCase);
         if (protectedSign) AddFixedStreetPhysics(mesh);
-        else if (streetProp || tree) AddImpactPhysics(mesh, root, tree || lamp || sign, tree, tree || lamp);
+        else if (streetProp || tree) AddImpactPhysics(mesh, root, tree || lamp || sign, tree);
         else if (building)
         {
             // Independent of mesh cooking and the caller's flag: every facade has a solid core.
@@ -565,7 +565,7 @@ public sealed partial class ProceduralCity
         collider.size = new Vector3(Mathf.Max(.15f, bounds.size.x), Mathf.Max(.15f, bounds.size.y), Mathf.Max(.15f, bounds.size.z));
     }
 
-    private static void AddImpactPhysics(GameObject mesh, Transform parent, bool pole, bool tree = false, bool passThroughBus = false)
+    private static void AddImpactPhysics(GameObject mesh, Transform parent, bool pole, bool tree = false)
     {
         // FBX mesh axes are rotated. Keep the physical root upright and preserve
         // the imported mesh's world transform, including its original proportions.
@@ -576,7 +576,6 @@ public sealed partial class ProceduralCity
         root.transform.position = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
         mesh.transform.SetParent(root.transform, true);
         var impact = ConfigureImpact(root, pole);
-        impact.passThroughBus = passThroughBus;
         if (tree) { impact.mass = 80f; impact.poleRadius = Mathf.Clamp(Mathf.Min(bounds.size.x, bounds.size.z) * .08f, .25f, .65f); }
         root.SetActive(true);
     }
