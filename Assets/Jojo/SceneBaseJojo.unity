@@ -38146,46 +38146,43 @@ MonoBehaviour:
   nameTag: {fileID: 0}
   nameTitle: {fileID: 0}
   deliveryStartLines:
-  - Here, deliver this. And don't touch the drumsticks, I counted them. Well... I
-    counted to 3.
-  - Order for old Mrs. Johnson. She ordered 3 days ago, but hey, she's not gonna
-    die. Hopefully.
-  - The chicken's still warm. Well, it was yesterday.
-  - Careful, this order is worth more than your salary. Okay, that's not hard.
-  - I dumped all my white sauce on it. The customer didn't ask for it, but trust
-    me, he'll love it.
-  - Drive fast, before the health inspector wakes up.
+  - 'Here, go deliver this. And don''t touch the drumsticks, I counted them. Well... I counted up to three.'
+  - 'Order for old Mrs. Johnson. She ordered three days ago, but hey, she won''t die. Well, hopefully.'
+  - 'The chicken is still hot. Well, it was yesterday.'
+  - 'Careful, this order is worth more than your paycheck. Granted, that''s not a high bar.'
+  - 'Drive fast, before the health inspector wakes up.'
+  - 'Honestly? I don''t even like Croustys. I''m more of a kebab guy. Keep it under your hat.'
+  - 'Oh shit, the rats got a taste of the order. Oh well... extra protein.'
   managerLines:
-  - Honestly? I don't even like Crousty chicken. I'm more of a kebab guy. Don't tell
-    anyone.
-  - Oh shoot, the rats tasted the order. Well... extra protein.
-  - No, that hair is not mine. I don't think so, anyway.
-  - The secret recipe? Chicken, breading, and a lot of prayers.
-  - I dropped the chicken on the floor. Five-second rule. Or five minutes, I forget.
-  - The fridge has been broken since Tuesday, but we call it 'dry-aged' now.
+  - 'A hair in the order? Is it short and curly? Oh... well, then that ain''t a hair.'
+  - 'The secret recipe? Chicken, breading, and a whole lot of prayers.'
+  - 'I dropped the chicken on the floor. Five-second rule. Or five minutes, I forget.'
+  - 'The customer left five stars. Okay, it was my mom, but it still counts.'
+  - 'I dumped all my special white sauce on it. The customer didn''t ask for any, but trust me, they''re gonna love it.'
   deliverySuccessLines:
-  - Nice job. You've earned the right not to be fired today.
-  - The customer left 5 stars. Okay, it was my mom, but it still counts.
-  - Amazing. I'm giving you a raise. Two cents. No, one.
-  - You're faster than Uber Eats. And cleaner than my kitchen.
+  - 'Great job. You''ve earned the right to maybe not get fired today.'
+  - 'Incredible. I''m giving you a raise. Two cents. Nah, make it one.'
+  - 'You''re faster than Uber Eats. And cleaner than my kitchen.'
   deliveryFailedLines:
-  - The customer called. He's crying. So is the chicken.
-  - You took so long the chicken had time to hatch.
-  - Even the rats deliver faster than you. And they get paid in crumbs.
-  - Next time, I'm sending my grandma. On a scooter.
+  - 'You took so long the chicken had time to hatch.'
+  - 'Even the rats deliver faster than you. And they get paid in crumbs.'
+  - 'Next time, I''m sending my grandma. On a scooter.'
+  - 'The customer called. They''re crying. So is the chicken.'
   policeChaseLines:
-  - If the cops ask, you never worked here. Neither did I, actually.
-  - Are they after you for speeding... or for my health permits? Good question.
-  - Throw them a drumstick, that usually calms them down.
-  - Cops are my best customers. Just not when they're on duty.
+  - 'If the cops ask you questions, you''ve never worked here. Neither have I, for that matter.'
+  - 'Are they chasing you for speeding... or for my health permits? Good question.'
+  - 'Throwing a chicken at ''em usually calms them down.'
+  - 'The cops are my best customers. Except when they''re on duty.'
   bonusBoxLines:
-  - A mystery box! I don't even remember what I put in there. Surprise for both of
-    us.
-  - Careful, the last driver who opened one of these flew. Literally.
+  - 'A mystery box! I don''t even remember what I put in there. It''s gonna be a surprise for both of us.'
   idleLines:
-  - Taking a break? The chicken isn't taking a break from getting cold.
-  - Hello? Did the bus stall, or did you?
-  - I'm not paying you by the hour to sightsee. Actually, I'm not paying you at all.
+  - 'You took so long the chicken had time to hatch.'
+  - 'Even the rats deliver faster than you. And they get paid in crumbs.'
+  - 'Next time, I''m sending my grandma. On a scooter.'
+  - 'Hello? Did the bus stall, or is it just you?'
+  - 'The customer called. They''re crying. So is the chicken.'
+  pauseLines:
+  - 'Taking a break? The chicken ain''t getting any colder... wait, I mean warmer. Keep moving.'
   randomLineInterval: 20
   idleSeconds: 10
   idleSpeedKmh: 3

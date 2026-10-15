@@ -15,6 +15,8 @@ public sealed class CroustyPauseMenu : MonoBehaviour
     private static int lastToggleFrame = -1;
 
     public static bool ToggledThisFrame => lastToggleFrame == Time.frameCount;
+    // Appelé quand le joueur reprend la partie (le gérant fait une remarque)
+    public static event System.Action Resumed;
 
     private void Awake()
     {
@@ -72,6 +74,7 @@ public sealed class CroustyPauseMenu : MonoBehaviour
         Time.timeScale = 1f;
         Cursor.lockState = previousLockState;
         Cursor.visible = previousCursorVisibility;
+        Resumed?.Invoke();
     }
 
     private void OnDisable()
