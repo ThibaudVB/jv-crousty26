@@ -21,6 +21,15 @@ public sealed class CroustyMenuPages : MonoBehaviour
     [Tooltip("Au survol, le ticket « Voir plus / Voir moins » sort un peu plus de l'écran (px)")]
     public float hoverPeek = 12f;
     public bool IsExpanded { get; private set; }
+    // The tab is a tall, clipped ticket: its centre is never the visible button.
+    public Vector2 ControllerPromptPosition
+    {
+        get
+        {
+            float height = ticketImage != null ? ticketImage.rectTransform.rect.height : tabHeight;
+            return new Vector2(24f, -tabHeight * .5f - Mathf.Lerp(0f, height - tabHeight, progress));
+        }
+    }
     public bool IsAnimating => Mathf.Abs(progress - (IsExpanded ? 1f : 0f)) > .0001f || Mathf.Abs(velocity) > .001f;
 
     private float progress, velocity, hoverAmount;
@@ -36,7 +45,9 @@ public sealed class CroustyMenuPages : MonoBehaviour
     {
         if (IsExpanded == expanded) return;
         IsExpanded = expanded;
-        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+        if (EventSystem.current != null && (navigationTab == null ||
+            EventSystem.current.currentSelectedGameObject != navigationTab.gameObject))
+            EventSystem.current.SetSelectedGameObject(null);
         CroustySoundDesignManager.PlayUI(CroustySound.Paper);
         Apply();
     }

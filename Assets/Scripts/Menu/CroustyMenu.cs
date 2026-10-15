@@ -128,8 +128,11 @@ public sealed class CroustyMenu : MonoBehaviour
         if (pauseMenu != null) return;
         var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
         var button = selected != null ? selected.GetComponent<Button>() : null;
+        bool navigationTicket = button != null && homePages != null &&
+            button.transform == homePages.navigationTab;
         bool visible = CroustyInput.MenuUsesController && button != null && button.IsInteractable() &&
-            button.isActiveAndEnabled && (nameEntry == null || !nameEntry.IsLaunching);
+            button.isActiveAndEnabled && (nameEntry == null || !nameEntry.IsLaunching) &&
+            (!navigationTicket || !homePages.IsAnimating);
         if (!visible)
         {
             if (controllerConfirmPrompt != null) controllerConfirmPrompt.gameObject.SetActive(false);
@@ -149,6 +152,11 @@ public sealed class CroustyMenu : MonoBehaviour
         rect.anchorMin = rect.anchorMax = new Vector2(0, .5f);
         rect.pivot = new Vector2(.5f, .5f);
         rect.anchoredPosition = new Vector2(24, 0);
+        if (navigationTicket)
+        {
+            rect.anchorMin = rect.anchorMax = new Vector2(0, 1);
+            rect.anchoredPosition = homePages.ControllerPromptPosition;
+        }
         rect.sizeDelta = new Vector2(28, 28);
         rect.SetAsLastSibling();
         var promptCanvas = controllerConfirmPrompt.GetComponent<Canvas>();
