@@ -386,7 +386,7 @@ public sealed partial class ProceduralCity
     }
 
     // Trigger invisible qui remplit l'anneau : le MeshCollider du cercle n'a que le contour.
-    private static void AddFireRingSoundZone(Transform ring, Bounds bounds)
+    private void AddFireRingSoundZone(Transform ring, Bounds bounds)
     {
         var zone = new GameObject("Visuel FireRing - Zone son");
         zone.transform.SetParent(ring, false);
@@ -400,6 +400,7 @@ public sealed partial class ProceduralCity
         for (int i = 0; i < 3; i++) size[i] = Mathf.Max(size[i], 4f / Mathf.Max(0.001f, Mathf.Abs(scale[i])));
         trigger.size = size;
         zone.AddComponent<FireRingSoundZone>();
+        CreateRoadPowerBox(ring.parent, ring.TransformPoint(bounds.center));
     }
 
     private static void AddGarageRepairZone(Transform garage)

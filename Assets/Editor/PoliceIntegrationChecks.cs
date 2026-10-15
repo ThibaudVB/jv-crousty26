@@ -216,7 +216,7 @@ public static class PoliceIntegrationChecks
                 Call(crash,"FixedUpdate");physics.Simulate(.02f);
             }
             Check(!behind.IsDestroyed&&crash.CarsExploded==before,"Rear pursuit collision preserves officer");
-            Check(damage.HitsTaken==1&&Mathf.Abs(damage.DamagePenalty-.05f)<.001f,"Rear impact counts once and reduces speed by five percent");
+            Check(damage.HitsTaken==1&&Mathf.Abs(damage.DamagePenalty-.025f)<.001f,"Rear impact counts once and reduces speed by 2.5 percent");
             Remove(behind);
             ResetBus(Quaternion.identity);
             tail=box.transform.TransformPoint(box.center-Vector3.forward*box.size.z*.5f);

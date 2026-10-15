@@ -13,6 +13,8 @@ public class PoliceGameOverManager : MonoBehaviour
     [SerializeField] private TMP_Text bonusText;
     [SerializeField] private TMP_Text explosionsText;
     [SerializeField] private TMP_Text totalText;
+    [SerializeField] private TMP_Text moneyText;
+    public int FinalScore { get; private set; }
 
     [Header("Bus")]
     [SerializeField] private BusController busController;
@@ -81,8 +83,8 @@ public class PoliceGameOverManager : MonoBehaviour
         DeliveryManager.Instance?.EndRunOnCapture();
         ShowResults();
         var delivery = DeliveryManager.Instance;
-        CroustyLeaderboardScores.Record(delivery != null ? delivery.Score : 0,
-            delivery != null ? delivery.PlayerName : CroustyPlayerProfile.PlayerName);
+        if (delivery != null) delivery.RecordFinalScore(FinalScore);
+        else CroustyLeaderboardScores.Record(FinalScore, CroustyPlayerProfile.PlayerName);
         if (busController != null)
         {
             var flight = busController.GetComponent<BusFlightController>();
@@ -110,12 +112,27 @@ public class PoliceGameOverManager : MonoBehaviour
     {
         var delivery = DeliveryManager.Instance;
         var crash = busController != null ? busController.GetComponent<BusCarCrash>() : null;
-        float seconds = Time.timeSinceLevelLoad;
-        SetText(timeText, $"{Mathf.FloorToInt(seconds / 60f):00}:{Mathf.FloorToInt(seconds % 60f):00}:{Mathf.FloorToInt(seconds * 100f % 100f):00}");
-        SetText(deliveriesText, delivery != null ? delivery.TotalDelivered.ToString() : "0");
-        SetText(bonusText, bonusUsed.ToString());
-        SetText(explosionsText, crash != null ? crash.CarsExploded.ToString() : "0");
-        SetText(totalText, delivery != null ? delivery.Score.ToString() : "0");
+        int seconds = Mathf.FloorToInt(Time.timeSinceLevelLoad);
+        int delivered = delivery != null ? delivery.TotalDelivered : 0;
+        int explosions = crash != null ? crash.CarsExploded : 0;
+        int earned = delivery != null ? delivery.MoneyEarned : 0;
+        FinalScore = CalculateFinalScore(seconds, delivered, bonusUsed, explosions, earned);
+        SetText(timeText, $"{seconds / 60:00}:{seconds % 60:00}  +{seconds * 20}");
+        SetText(deliveriesText, $"{delivered}  +{delivered * 100}");
+        SetText(bonusText, $"{bonusUsed}  +{bonusUsed * 5}");
+        SetText(explosionsText, $"{explosions}  +{explosions * 30}");
+        SetText(moneyText, $"${earned}  +{earned * 60}");
+        SetText(totalText, FinalScore.ToString());
+    }
+
+    public static int CalculateFinalScore(int seconds, int delivered, int bonuses, int explosions, int earned)
+        => Mathf.Max(0, seconds) * 20 + Mathf.Max(0, delivered) * 100 + Mathf.Max(0, bonuses) * 5
+            + Mathf.Max(0, explosions) * 30 + Mathf.Max(0, earned) * 60;
+
+    public void ReturnToMainMenu()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("CroustyMainMenu");
     }
 
     private static void SetText(TMP_Text text, string value)

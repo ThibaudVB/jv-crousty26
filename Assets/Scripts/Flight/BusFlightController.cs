@@ -244,7 +244,6 @@ public class BusFlightController : MonoBehaviour
 
         timeRemaining = 0f;
         launchedAt = Time.time;
-        CroustySoundDesignManager.Play(CroustySound.Flight);
 
         boostRemaining = boostDuration;
         // Une impulsion unique degage les roues, sans trajectoire ni delai imposes.

@@ -12,6 +12,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
     public const float BlockSize = 64f;
     public const float ChunkSize = BlockSize * 2f;
     public GameObject cityModel;
+    public GameObject roadPowerBoxPrefab;
     public Transform player;
     public DeliveryManager deliveries;
     public bool randomSeed = true;
@@ -362,6 +363,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
         }
         var roads = BuildRoadRuleSteps(chunk, coordinate);
         while (roads.MoveNext()) yield return null;
+        BuildPowerBoxRows(chunk, coordinate);
         chunk.complete = true;
         Physics.SyncTransforms();
         foreach (var address in chunk.addresses) deliveries.RegisterPoint(address);

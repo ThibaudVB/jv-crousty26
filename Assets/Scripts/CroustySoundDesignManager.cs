@@ -14,6 +14,9 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
     private Voice[] voices;
     private AudioSource ambience, drift, reverse, engine;
     private AudioSource chaseMusic, chaseIntro;
+    private AudioSource menuMusic;
+    private AudioSource wings;
+    private bool inMainMenu;
     private bool wasChasing, chaseAudioPaused;
     private float chaseIntroRemaining, chaseEnvelope;
     private bool chaseMusicStarted;
@@ -55,10 +58,13 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
         voices = new Voice[10];
         for (int i = 0; i < voices.Length; i++) voices[i] = new Voice { source = Source("Cue " + i), ui = i < 3 };
         ambience = Loop("Bus ambience", CroustySound.Ambience);
+        wings = Loop("Flight wings", CroustySound.Flight);
         drift = Loop("Drift", CroustySound.Drift);
         reverse = Loop("Reverse", CroustySound.Reverse);
         chaseMusic = Loop("Chase music", CroustySound.ChaseMusic);
         chaseMusic.priority = 30;
+        menuMusic = Loop("Main menu music", CroustySound.MenuMusic);
+        menuMusic.priority = 30;
         chaseIntro = Loop("Chase opening siren", CroustySound.PoliceSiren);
         chaseIntro.loop = false;
         chaseIntro.priority = 40;
@@ -91,6 +97,11 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
     }
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        if (mode == LoadSceneMode.Single)
+        {
+            inMainMenu = scene.name == "CroustyMainMenu";
+            if (!inMainMenu) { menuMusic.Stop(); menuMusic.volume = 0; }
+        }
         bus = FindAnyObjectByType<BusController>();
         body = bus != null ? bus.GetComponent<Rigidbody>() : null;
         rig = bus != null ? bus.GetComponent<BusWheelRig>() : null;
@@ -105,6 +116,7 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
         sirenEmitters.Clear();
         engine.Stop(); engine.volume = 0; engineGear = 0; engineRevs = engineLoad = 0;
         ResetChaseAudio();
+        wings.Stop(); wings.volume = 0;
         paused = false;
         foreach (var voice in voices) if (!voice.ui) voice.source.Stop();
         foreach (var root in scene.GetRootGameObjects())
@@ -153,6 +165,12 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
     }
     private void Update()
     {
+        var menuCue = bank != null ? bank.Find(CroustySound.MenuMusic) : null;
+        if (inMainMenu && menuMusic.clip != null)
+        {
+            menuMusic.volume = (menuCue != null ? menuCue.volume : 0) * musicVolume;
+            if (!menuMusic.isPlaying) menuMusic.Play();
+        }
         bool stopped = Time.timeScale <= 0;
         foreach (var voice in voices)
         {
@@ -173,8 +191,16 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
         UpdateLoop(ambience,CroustySound.Ambience,alive ? (stopped ? .35f : 1f) * Mathf.Lerp(1, .15f, chaseEnvelope) : 0,true);
         UpdateLoop(drift,CroustySound.Drift,driving ? driftAmount : 0);
         UpdateLoop(reverse,CroustySound.Reverse,driving && speed < -.5f ? 1 : 0);
+        if (!alive || flight == null || !flight.isActiveAndEnabled || !flight.IsAirborne)
+        { wings.Stop(); wings.volume = 0; }
+        else if (stopped) wings.Pause();
+        else
+        {
+            wings.UnPause();
+            UpdateLoop(wings, CroustySound.Flight, 1);
+        }
         UpdateEngine(alive, stopped, speed, Time.unscaledDeltaTime);
-        UpdatePoliceSirens(alive && !stopped && chaseMusic.clip == null, Time.unscaledDeltaTime);
+        UpdatePoliceSirens(alive && !stopped, Time.unscaledDeltaTime);
         if (alive && !stopped && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame) Play(CroustySound.Horn);
     }
     private void UpdateEngine(bool alive, bool stopped, float signedSpeed, float dt)
@@ -260,7 +286,7 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
             var source = emitter.Source;
             float distance = Vector3.Distance(ear, source.transform.position);
             float volume = pursuing ? cue.volume * effectsVolume * SirenDistanceGain(distance, near, far) * emitter.MixWeight / Mathf.Max(1, totalWeight) : 0;
-            source.volume = volume;
+            source.volume = volume * (chaseMusicStarted ? .35f : 1f);
             if (volume <= .0001f) { source.Pause(); continue; }
             if (source.clip != cue.clip) source.clip = cue.clip;
             if (!source.isPlaying)
@@ -309,7 +335,8 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
             chaseMusic.Stop(); chaseMusicStarted = false;
             chaseIntro.Stop(); chaseEnvelope = 1;
             chaseIntroRemaining = chaseIntro.clip != null ? Mathf.Min(bank.chaseIntroSeconds, chaseIntro.clip.length) : 0;
-            if (chaseIntroRemaining > 0) { chaseIntro.time = 0; chaseIntro.volume = bank.Find(CroustySound.PoliceSiren).volume * effectsVolume; chaseIntro.Play(); }
+            // The fleet plays the introductory siren from the actual cars.
+            // Keep this timer for the music entrance without a second 2D siren.
         }
         else if (chasing && chaseIntroRemaining > 0)
             chaseIntroRemaining = Mathf.Max(0, chaseIntroRemaining - dt);

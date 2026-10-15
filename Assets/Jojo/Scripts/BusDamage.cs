@@ -248,8 +248,8 @@ public class BusDamage : MonoBehaviour
         if (!CanTakeHit()) return;
         lastHitTime = Time.time;
         HitsTaken++;
-        // Five percent per hit with the default ten-hit resistance; never more than 50%.
-        DamagePenalty = .5f * Mathf.Clamp01((float)HitsTaken / Mathf.Max(1, hitsToDestroy));
+        // 2.5 percent per hit with the default ten-hit resistance; never more than 25%.
+        DamagePenalty = .25f * Mathf.Clamp01((float)HitsTaken / Mathf.Max(1, hitsToDestroy));
         IsDamaged = true;
         DarkenBody();
 
@@ -345,7 +345,7 @@ public class BusDamage : MonoBehaviour
         for (int i = 0; i < materials.Count; i++)
         {
             Color color = Color.Lerp(originalColors[i], burntColor,
-                Mathf.Lerp(darkening, .8f, Mathf.InverseLerp(.15f, .5f, DamagePenalty)));
+                Mathf.Lerp(darkening, .8f, Mathf.InverseLerp(.075f, .25f, DamagePenalty)));
             color.a = originalColors[i].a; // garde la transparence (vitres)
             materials[i].SetColor("_BaseColor", color);
         }
@@ -491,7 +491,7 @@ public class BusDamage : MonoBehaviour
         // Le bus abîmé fume en continu depuis chaque emplacement du feu
         if (IsDamaged && !extinguished)
         {
-            puffTimer += smokePerSecond * Mathf.Lerp(1f, 2.5f, DamagePenalty / .5f) * Time.deltaTime;
+            puffTimer += smokePerSecond * Mathf.Lerp(1f, 2.5f, DamagePenalty / .25f) * Time.deltaTime;
             while (puffTimer >= 1f)
             {
                 puffTimer -= 1f;

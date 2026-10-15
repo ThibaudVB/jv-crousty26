@@ -96,6 +96,7 @@ public class DeliveryManager : MonoBehaviour
     public bool TutorialPickupMarkerHidden { get; private set; }
     public float RunElapsed { get; private set; }  // secondes écoulées dans la tournée
     public int Score { get; private set; }
+    public int MoneyEarned => Score; // Gross earnings; purchases never reduce result points.
     public int Money => Mathf.Max(0, Score - moneySpent);
     private int moneySpent;
     public string PlayerName { get; private set; }
@@ -245,7 +246,6 @@ public class DeliveryManager : MonoBehaviour
 
         HasFailed = true;
         RunActive = false;
-        SaveBestScore();
 
         // Temps écoulé : on affiche l'écran de défaite
         if (timeIsUp)
@@ -297,17 +297,13 @@ public class DeliveryManager : MonoBehaviour
         ScoreChanged?.Invoke(Score, points);
     }
 
-    private void SaveBestScore()
+    public void RecordFinalScore(int finalScore)
     {
-        if (Score > BestScore)
+        BestScore = Mathf.Max(BestScore, finalScore);
+        CroustyLeaderboardScores.Record(finalScore, PlayerName);
+        if (finalScore > PlayerPrefs.GetInt(BestScoreKey, 0))
         {
-            BestScore = Score;
-            CroustyLeaderboardScores.Record(Score, PlayerName);
-        }
-        // Preserve the old overall statistic for compatible tools and older scenes.
-        if (Score > PlayerPrefs.GetInt(BestScoreKey, 0))
-        {
-            PlayerPrefs.SetInt(BestScoreKey, Score);
+            PlayerPrefs.SetInt(BestScoreKey, finalScore);
             PlayerPrefs.Save();
         }
     }
@@ -591,7 +587,6 @@ public class DeliveryManager : MonoBehaviour
     {
         RunActive = false;
         AddScore(completionBonus);
-        SaveBestScore();
         CroustySoundDesignManager.Play(CroustySound.RunComplete);
         RunCompleted?.Invoke();
     }

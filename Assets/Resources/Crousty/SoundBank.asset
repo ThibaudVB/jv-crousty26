@@ -64,12 +64,12 @@ MonoBehaviour:
     maximumDuration: 2.8
     startTime: 1.19
   - sound: 10
-    clip: {fileID: 8300000, guid: e0c52921ac18afa46bdb887b075a0670, type: 3}
+    clip: {fileID: 8300000, guid: c6608cd2afaa455ca76bb2d2d53bed36, type: 3}
     volume: 0.45
-    maximumDuration: 2.5
+    maximumDuration: 0
     startTime: 0
   - sound: 11
-    clip: {fileID: 8300000, guid: 140ab1b7fff540b08b40ee0fec8a4ba4, type: 3}
+    clip: {fileID: 8300000, guid: 35947462e1949a048a5ab8a695a394f6, type: 3}
     volume: 0.18
     maximumDuration: 0
     startTime: 0
@@ -96,6 +96,11 @@ MonoBehaviour:
   - sound: 16
     clip: {fileID: 8300000, guid: 0a7b6e6f73bb4a99946d0adb5b3fbcd9, type: 3}
     volume: 0.55
+    maximumDuration: 0
+    startTime: 0
+  - sound: 17
+    clip: {fileID: 8300000, guid: b876d51c02ab4b638abca70f6d2d7188, type: 3}
+    volume: 0.45
     maximumDuration: 0
     startTime: 0
   engineIdlePitch: 0.68

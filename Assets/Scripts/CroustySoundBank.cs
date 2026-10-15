@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public enum CroustySound { ButtonPop, Paper, DeliveryCoin, RunComplete, Alarm, Pet, Acceleration, Ambience, Drift, Explosion, Flight, PoliceSiren, Reverse, Horn, FireRing, Engine, ChaseMusic }
+public enum CroustySound { ButtonPop, Paper, DeliveryCoin, RunComplete, Alarm, Pet, Acceleration, Ambience, Drift, Explosion, Flight, PoliceSiren, Reverse, Horn, FireRing, Engine, ChaseMusic, MenuMusic }
 
 [CreateAssetMenu(menuName = "Crousty/Sound bank")]
 public sealed class CroustySoundBank : ScriptableObject
