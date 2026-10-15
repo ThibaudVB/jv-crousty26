@@ -86,6 +86,9 @@ public class CroustyHUD : MonoBehaviour
     private readonly List<Waypoint> waypoints = new List<Waypoint>();
 
     private Rigidbody busBody;
+    private BusGPS gps;
+    private Sprite garageWaypointIcon;
+    private static readonly Color GarageWaypointColor = new Color(0.04f, 0.56f, 0.96f);
     private Color timerNormalColor;
 
     // Animation du score
@@ -100,6 +103,10 @@ public class CroustyHUD : MonoBehaviour
     {
         if (manager == null)
             manager = DeliveryManager.Instance;
+        gps = FindAnyObjectByType<BusGPS>();
+        garageWaypointIcon = Resources.Load<Sprite>("Crousty/GarageRepairIcon");
+        if (garageWaypointIcon == null)
+            Debug.LogError("CroustyHUD : icône Resources/Crousty/GarageRepairIcon introuvable.", this);
 
         if (canvas == null || waypointTemplate == null || deliveryValue == null ||
             objectiveValue == null || speedValue == null || timeValue == null ||
@@ -289,20 +296,31 @@ public class CroustyHUD : MonoBehaviour
 
         if (showWaypoints && !PowerUnlockProgression.ChoiceOpen && cam != null && manager.player != null)
         {
-            // Magasin : seulement quand il faut y aller
-            if (manager.shop != null && manager.NeedsPickup && !manager.TutorialPickupMarkerHidden)
+            if (gps != null && gps.RoutingToGarage)
             {
-                ShowWaypoint(used, cam, manager.shop.transform.position, manager.shop.markerColor, manager.shop.screenLabel, shopWaypointIcon);
+                ShowWaypoint(used, cam, gps.GarageDestination, GarageWaypointColor,
+                    "Garage", garageWaypointIcon);
                 used++;
             }
-
-            // Adresses qui attendent une commande
-            foreach (DeliveryPoint point in manager.VisibleDestinations)
+            else
             {
-                if (point != null && point.IsWaiting)
+                // Magasin : seulement quand il faut y aller
+                if (manager.shop != null && manager.NeedsPickup && !manager.TutorialPickupMarkerHidden)
                 {
-                    ShowWaypoint(used, cam, point.transform.position, point.markerColor, null, deliveryWaypointIcon);
+                    ShowWaypoint(used, cam, manager.shop.transform.position, manager.shop.markerColor,
+                        manager.shop.screenLabel, shopWaypointIcon);
                     used++;
+                }
+
+                // Adresses qui attendent une commande
+                foreach (DeliveryPoint point in manager.VisibleDestinations)
+                {
+                    if (point != null && point.IsWaiting)
+                    {
+                        ShowWaypoint(used, cam, point.transform.position, point.markerColor,
+                            null, deliveryWaypointIcon);
+                        used++;
+                    }
                 }
             }
         }

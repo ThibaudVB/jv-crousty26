@@ -36,7 +36,7 @@ public sealed class BusGPSRoadGuide : MonoBehaviour
 
     private void Update()
     {
-        if (!gps.isActiveAndEnabled || gps.Target == null || !gps.Target.IsWaiting || gps.Route.Count < 2 ||
+        if (!gps.isActiveAndEnabled || !gps.RoutingToGarage || gps.Route.Count < 2 ||
             gps.deliveries == null || gps.deliveries.HasFailed)
         { root.gameObject.SetActive(false); return; }
         root.gameObject.SetActive(true);

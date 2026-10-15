@@ -88,6 +88,19 @@ public sealed partial class ProceduralCity : MonoBehaviour
         }
         results.Sort((a, b) => (a - position).sqrMagnitude.CompareTo((b - position).sqrMagnitude));
     }
+
+    public void SetGPSGarageMarker(Vector3? selectedGarage)
+    {
+        foreach (var chunk in chunks.Values)
+            foreach (Transform garage in chunk.garages)
+            {
+                if (garage == null) continue;
+                GarageGPSMarker marker = garage.GetComponent<GarageGPSMarker>();
+                if (marker != null)
+                    marker.SetSelected(selectedGarage.HasValue &&
+                        (garage.position - selectedGarage.Value).sqrMagnitude < 1f);
+            }
+    }
     private readonly List<Template> buildings = new List<Template>();
     private readonly List<Template> trees = new List<Template>();
     private readonly List<Landmark> landmarks = new List<Landmark>();
