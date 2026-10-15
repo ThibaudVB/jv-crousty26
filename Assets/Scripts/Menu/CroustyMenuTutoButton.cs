@@ -6,7 +6,7 @@ public sealed class CroustyMenuTutoButton : MonoBehaviour
 {
     public const string TutorialEnabledKey = "Crousty.TutorialEnabled";
 
-    private static readonly Color InactiveColor = new Color32(128, 128, 128, 255);
+    private static readonly Color InactiveColor = new Color32(255, 255, 255, 255);
     private static readonly Color ActiveColor = new Color32(233, 132, 36, 255);
 
     private Button button;
