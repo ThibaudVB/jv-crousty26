@@ -20795,31 +20795,31 @@ MonoBehaviour:
   policePrefab: {fileID: 5063324600036237687, guid: e508328d7bf644a48aa68e109d1df7af, type: 3}
   catchZone: {fileID: 831359855}
   flightController: {fileID: 0}
-  patrolCount: 1
-  startupGraceSeconds: 15
+  patrolCount: 3
+  startupGraceSeconds: 3
   patrolRadius: 115
   speedLimitKmh: 50
   visionRange: 75
   visionHalfAngle: 95
   closeAwareness: 22
-  spottingSeconds: 1.2
-  chaseSpeedKmh: 125
-  chaseAcceleration: 8
-  maxChasers: 4
+  spottingSeconds: 0.35
+  chaseSpeedKmh: 138
+  chaseAcceleration: 10
+  maxChasers: 5
   backupRadius: 260
   pursuitVisionRange: 90
   radioTrackingSeconds: 2.5
-  loseSightSeconds: 5
+  loseSightSeconds: 8
   escapeDistance: 170
   escapeCooldownSeconds: 8
   maximumHeat: 5
-  escalationSeconds: 50
-  maximumReinforcements: 6
-  deliveriesPerDifficultyLevel: 6
-  maximumDifficultyLevel: 8
-  latePatrolCount: 4
-  lateChaseSpeedBonusKmh: 36
-  maximumRoadblocks: 3
+  escalationSeconds: 30
+  maximumReinforcements: 12
+  deliveriesPerDifficultyLevel: 1
+  maximumDifficultyLevel: 4
+  latePatrolCount: 10
+  lateChaseSpeedBonusKmh: 42
+  maximumRoadblocks: 6
   roadblockLifetime: 90
   bustDistance: 9
   bustSpeedKmh: 22

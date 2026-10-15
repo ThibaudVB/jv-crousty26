@@ -24,7 +24,7 @@ public sealed class CroustySettings : MonoBehaviour
     static readonly int[] FrameRates = { 30, 60, 90, 120, -1 };
     static readonly float[] Scales = { .5f, .67f, .8f, 1f };
     static readonly float[] ShadowDistances = { 0f, 30f, 65f, 110f };
-    static readonly int[] TrafficCounts = { 12, 28, 48 };
+    static readonly int[] TrafficCounts = { 28, 48, 72 };
     static CroustySettings instance;
     UniversalRenderPipelineAsset originalGraphics, originalQuality, runtimePipeline;
     int originalVSync, originalFrameRate, originalTextureLimit;

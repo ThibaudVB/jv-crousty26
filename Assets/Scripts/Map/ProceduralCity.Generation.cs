@@ -21,7 +21,8 @@ public sealed partial class ProceduralCity
     public int RooftopPartCount => roofCourse.Count;
     public int NativeBlockCount => urbanBlocks.Count;
 
-    public bool IsCroustyBlock(int x, int z) => FloorMod(x, 16) == 0 && FloorMod(z, 16) == 0;
+    private const int CroustyBlockSpacing = 4; // 256 m between pickup districts.
+    public bool IsCroustyBlock(int x, int z) => FloorMod(x, CroustyBlockSpacing) == 0 && FloorMod(z, CroustyBlockSpacing) == 0;
     public bool IsParkBlock(int x, int z) => FloorMod(x, 12) >= 8 && FloorMod(x, 12) <= 9 &&
         FloorMod(z, 12) >= 8 && FloorMod(z, 12) <= 9;
     public bool IsRooftopBlock(int x, int z) => FloorMod(x, 12) >= 2 && FloorMod(x, 12) <= 5 &&
@@ -86,13 +87,13 @@ public sealed partial class ProceduralCity
     private void EnsureNearestShop()
     {
         Vector3 p = player.position - Origin;
-        int x = Mathf.RoundToInt(p.x / (BlockSize * 16)) * 16;
-        int z = Mathf.RoundToInt(p.z / (BlockSize * 16)) * 16;
+        int x = Mathf.RoundToInt(p.x / (BlockSize * CroustyBlockSpacing)) * CroustyBlockSpacing;
+        int z = Mathf.RoundToInt(p.z / (BlockSize * CroustyBlockSpacing)) * CroustyBlockSpacing;
         // Feature/rooftop lots take precedence. Search the surrounding shop lattice.
         float distance = float.PositiveInfinity;
         for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++)
         {
-            int bx = x + dx * 16, bz = z + dz * 16;
+            int bx = x + dx * CroustyBlockSpacing, bz = z + dz * CroustyBlockSpacing;
             var chunk = new Vector2Int(bx / 2, bz / 2);
             if (FeatureChunk(chunk) != null || IsRooftopBlock(bx, bz)) continue;
             float d = (new Vector3(bx * BlockSize + 32, 0, bz * BlockSize + 58) - p).sqrMagnitude;

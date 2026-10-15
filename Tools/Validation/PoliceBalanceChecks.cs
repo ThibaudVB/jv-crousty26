@@ -33,9 +33,9 @@ public sealed class PoliceBalanceChecks : MonoBehaviour
         police.BusBody.isKinematic = true;
         police.BusBody.GetComponent<BusController>().enabled = false;
         Set(manager, "TotalDelivered", 0); Set(manager, "runsLoaded", 1); Set(police, "heat", 1);
-        Check(police.DifficultyLevel == 0 && (int)Get(police, "CurrentPatrolCount") == 1, "BASE starts with one patrol and minimum pressure");
-        Check((int)Get(police, "PursuitLimit") == 1 && (int)Get(police, "RoadblockLimit") == 0, "tutorial starts with one pursuer and no roadblocks");
-        Check(police.ChaseSpeed * 3.6f < 132 && (float)Get(police, "ArrestDuration") >= 4 && (float)Get(police, "SpottingDuration") >= 1, "easy starting speed, detection and arrest timing");
+        Check(police.DifficultyLevel == 0 && (int)Get(police, "CurrentPatrolCount") == 3, "BASE restores three initial patrols");
+        Check((int)Get(police, "PursuitLimit") == 2 && (int)Get(police, "RoadblockLimit") == 0, "BASE restores two initial pursuers and no initial roadblocks");
+        Check(police.ChaseSpeed * 3.6f > 140 && (float)Get(police, "ArrestDuration") == 2.5f && (float)Get(police, "SpottingDuration") < .4f, "original starting speed, detection and arrest timing restored");
         Call(air, "Update");
         Check(!(bool)Get(air, "Eligible") && Get(air, "helicopter") == null, "no helicopter in first round even after time passes");
         Set(manager, "runsLoaded", 2); Call(air, "Update");
@@ -60,12 +60,12 @@ public sealed class PoliceBalanceChecks : MonoBehaviour
             Set(manager, "TotalDelivered", count); Set(police, "heat", (int)Get(police, "StartingHeat"));
             float pressure = police.ProgressionPressure;
             gradual &= pressure >= previous; previous = pressure;
-            bounded &= (int)Get(police, "PursuitLimit") <= 6 && (int)Get(police, "CurrentPatrolCount") <= 4 && (int)Get(police, "RoadblockLimit") <= 3;
+            bounded &= (int)Get(police, "PursuitLimit") <= 12 && (int)Get(police, "CurrentPatrolCount") <= 10 && (int)Get(police, "RoadblockLimit") <= 6;
             Debug.Log("BALANCE_ROW delivered=" + count + " pressure=" + pressure + " patrols=" + Get(police, "CurrentPatrolCount") + " pursuers=" + Get(police, "PursuitLimit") + " kmh=" + police.ChaseSpeed * 3.6f + " blocks=" + Get(police, "RoadblockLimit"));
-            if (count == 3) Check(pressure == 0 && (int)Get(police, "RoadblockLimit") == 0, "tutorial completion stays easy");
+            if (count == 3) Check(pressure == .75f && (int)Get(police, "RoadblockLimit") == 3, "difficulty and roadblocks rise after every delivery again");
         }
         Check(gradual && bounded, "pressure increases gradually and all vehicle/block caps hold");
-        Check(police.ProgressionPressure == 1 && police.ChaseSpeed * 3.6f < 181 && police.RearRamCooldown <= 1.8f && (float)Get(police, "SearchDuration") >= 20, "late pursuit stays intense with lower maximum speed");
+        Check(police.ProgressionPressure == 1 && police.ChaseSpeed * 3.6f > 190 && police.RearRamCooldown <= 1.8f && (float)Get(police, "SearchDuration") >= 20, "original intense late pursuit restored");
         Check((float)Get(air, "VisitDuration") <= 32 && (float)Get(air, "VisitCooldown") >= 60, "helicopter visits are short and well spaced at maximum pressure");
         Set(manager, "TotalDelivered", 3);
         Check((float)Get(air, "VisitDuration") == 22 && (float)Get(air, "VisitCooldown") == 95, "early helicopter is especially intermittent");
@@ -73,6 +73,10 @@ public sealed class PoliceBalanceChecks : MonoBehaviour
         Check(Get(air, "helicopter") != null && (float)Get(air, "leaveAt") > Time.time, "helicopter can spawn with a finite visit window");
         Set(air, "leaveAt", Time.time - 1); Call(air, "Update");
         Check(Get(air, "helicopter") == null && (float)Get(air, "nextSpawn") >= Time.time + 94, "helicopter leaves even during an ongoing chase and waits before returning");
+        var city = FindAnyObjectByType<ProceduralCity>();
+        Check(city.IsCroustyBlock(4, 0) && city.IsCroustyBlock(-4, 0) && !city.IsCroustyBlock(2, 0), "shop lattice reduced to 256m on both sides of origin");
+        int[] targets = (int[])typeof(CroustySettings).GetField("TrafficCounts", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+        Check(targets[0] == 28 && targets[1] == 48 && targets[2] == 72, "civilian traffic increased for every quality setting");
         Debug.Log("BALANCE_DONE failures=" + failures);
         EditorApplication.Exit(failures == 0 ? 0 : 1);
     }

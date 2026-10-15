@@ -95,7 +95,9 @@ public sealed partial class ProceduralCity
             trafficRoot = new GameObject("Trafic").transform;
             trafficRoot.SetParent(WorldRoot, false);
         }
-        float far = (viewDistance + .5f) * ChunkSize;
+        // Keep civilians in the same nearby streets instead of dispersing them
+        // across the entire streamed city as view distance increases.
+        float far = Mathf.Min(190f, (viewDistance + .5f) * ChunkSize);
         foreach (var car in traffic)
         {
             if (car.IsPolice) continue; // the police manager keeps its own patrols around the bus
@@ -186,8 +188,8 @@ public sealed partial class ProceduralCity
     // Spawns on a loaded street, away from the bus and out of its sight.
     private bool PlaceVehicle(CityTrafficCar car, bool initial)
     {
-        if (!TryFindStreetSpawn(car, initial ? 30f : 70f, Mathf.Min(200f, viewDistance * ChunkSize), !initial,
-                initial ? 60 : 24, out var from, out var to, out var at)) return false;
+        if (!TryFindStreetSpawn(car, initial ? 30f : 55f, Mathf.Min(160f, viewDistance * ChunkSize), !initial,
+                60, out var from, out var to, out var at)) return false;
         car.Place(from, to, at);
         return true;
     }

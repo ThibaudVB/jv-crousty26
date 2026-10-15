@@ -17,7 +17,9 @@ public sealed class PoliceAirSupport : MonoBehaviour
     private float leaveAt;
     private readonly RaycastHit[] sightHits = new RaycastHit[32];
     private bool Airborne => flight != null && flight.IsAirborne;
-    private float Pressure => police != null ? police.ProgressionPressure : 0f;
+    // Air support keeps its slower progression independently of ground-police tuning.
+    private float Pressure => DeliveryManager.Instance != null
+        ? Mathf.Clamp01((DeliveryManager.Instance.TotalDelivered / 6) / 8f) : 0f;
     private bool Eligible => DeliveryManager.Instance != null && DeliveryManager.Instance.RunsLoaded >= 2;
     private float VisitDuration => Mathf.Lerp(22f, 32f, Pressure);
     private float VisitCooldown => Mathf.Lerp(95f, 60f, Pressure);
