@@ -345,7 +345,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &26608238
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3627,7 +3627,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -4705,7 +4705,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &388373054
 RectTransform:
   m_ObjectHideFlags: 0
@@ -13580,7 +13580,21 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Scroll: mouse wheel / Up & Down / right stick\n\n<b>DEVELOPMENT</b>\nThibaud von Borowski\nJordan TCHA\nAntoine BASSET\n\n<b>3D ART & ANIMATION</b>\nEric Tran-Ky\n\n<b>COMMUNICATIONS</b>\nHélène TEA & Mathis Duclos\n\n<b>UI / UX</b>\nEdouard FORT & Eric Tran-Ky\n\n<b>AUDIOVISUAL PRODUCTION</b>\nEric Tran-Ky & Edouard FORT\n\n<b>PROJECT MANAGEMENT</b>\nEdouard FORT, Eric Tran-Ky & Helene TEA\n\n<b>EMOTIONAL SUPPORT</b>\nGwendal Judic & Robin Alonzo\n\n<b>DRINKS SUPPORT</b>\nCathy Duclos\n\n<b>FOOD SUPPORT</b>\nLa Fancy, HFC, Burger King & Super U\n\n<b>SPECIAL THANKS</b>\nGwendal Judic, Arthur Centimètre, Robin Alonzo,\nJulien BERTRAND, GIROUX GUILLAUME,\nHEURARD MAEL\n\n<b>WITH THANKS TO</b>\nBordeaux Montaigne University\nBordeaux Montaigne University Institute of Technology (IUT)\n\n<b>3D ASSET SOURCES</b>\nPoly Pizza — poly.pizza\nSketchfab — sketchfab.com\nThanks to the artists who shared their work.\n\n<b>MUSIC</b>\nWhat We Got — Infraction\n\n<b>SOUND EFFECTS</b>\nHeavy Wings Flapping — Dragon Studio\n\n<b>VISUAL EFFECTS</b>\nCinematic Explosions FREE — Mirza Beig\n\n<b>ENGINE & UI TECHNOLOGY</b>\nUnity & TextMesh Pro\n\nThanks for riding with us!"
+  m_text: "Scroll: mouse wheel / Up & Down / right stick\n\n<b>DEVELOPMENT</b>\nThibaud
+    von Borowski\nJordan TCHA\nAntoine BASSET\n\n<b>3D ART & ANIMATION</b>\nEric
+    Tran-Ky\n\n<b>COMMUNICATIONS</b>\nH\xE9l\xE8ne TEA & Mathis Duclos\n\n<b>UI /
+    UX</b>\nEdouard FORT & Eric Tran-Ky\n\n<b>AUDIOVISUAL PRODUCTION</b>\nEric Tran-Ky
+    & Edouard FORT\n\n<b>PROJECT MANAGEMENT</b>\nEdouard FORT, Eric Tran-Ky & Helene
+    TEA\n\n<b>EMOTIONAL SUPPORT</b>\nGwendal Judic & Robin Alonzo\n\n<b>DRINKS SUPPORT</b>\nCathy
+    Duclos\n\n<b>FOOD SUPPORT</b>\nLa Fancy, HFC, Burger King & Super U\n\n<b>SPECIAL
+    THANKS</b>\nGwendal Judic, Arthur Centim\xE8tre, Robin Alonzo,\nJulien BERTRAND,
+    GIROUX GUILLAUME,\nHEURARD MAEL\n\n<b>WITH THANKS TO</b>\nBordeaux Montaigne
+    University\nBordeaux Montaigne University Institute of Technology (IUT)\n\n<b>3D
+    ASSET SOURCES</b>\nPoly Pizza \u2014 poly.pizza\nSketchfab \u2014 sketchfab.com\nThanks
+    to the artists who shared their work.\n\n<b>MUSIC</b>\nWhat We Got \u2014 Infraction\n\n<b>SOUND
+    EFFECTS</b>\nHeavy Wings Flapping \u2014 Dragon Studio\n\n<b>VISUAL EFFECTS</b>\nCinematic
+    Explosions FREE \u2014 Mirza Beig\n\n<b>ENGINE & UI TECHNOLOGY</b>\nUnity & TextMesh
+    Pro\n\nThanks for riding with us!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -27578,12 +27592,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9d6214e1d60494489add15246f17584, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CroustyMenuVideoBackground
---- !u!1660057539 &9223372036854775807
-SceneRoots:
-  m_ObjectHideFlags: 0
-  m_Roots:
-  - {fileID: 1604330734}
-  - {fileID: 448125327}
 --- !u!114 &960000001013350262
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27594,5 +27602,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 75e993a70bc94fb69c8101b86c0203f4, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 1604330734}
+  - {fileID: 448125327}

@@ -30,6 +30,7 @@ public static class FlightDurationChecks
     {
         Time.timeScale = 1;
         CheckGodMode();
+        CheckMixedProgressionAndTutorial();
         CheckPickupAndRing();
         Physics.simulationMode = SimulationMode.Script;
         var flight = UnityEngine.Object.FindAnyObjectByType<BusFlightController>();
@@ -95,6 +96,79 @@ public static class FlightDurationChecks
             Call(damage, "FixedUpdate");
             Assert(upright ? damage.HitsTaken == 0 : damage.HitsTaken == 1,
                 upright ? "Upright landing after 100m fall does not damage bus" : "Roof-first landing still damages bus");
+        }
+    }
+    static void CheckMixedProgressionAndTutorial()
+    {
+        var progression = UnityEngine.Object.FindAnyObjectByType<PowerUnlockProgression>();
+        var bus = UnityEngine.Object.FindAnyObjectByType<BusController>();
+        var city = UnityEngine.Object.FindAnyObjectByType<ProceduralCity>();
+        var pet = bus.GetComponent<BusPetController>();
+        var inventory = PowerUpInventory.EnsureFor(bus.gameObject);
+        var unlocked = (System.Collections.Generic.HashSet<PowerUpInventory.PowerUpType>)typeof(PowerUnlockProgression)
+            .GetField("unlocked", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(progression);
+        var originalUnlocks = new System.Collections.Generic.List<PowerUpInventory.PowerUpType>(unlocked);
+        bool hadName = PlayerPrefs.HasKey(CroustyPlayerProfile.NameKey);
+        string originalName = PlayerPrefs.GetString(CroustyPlayerProfile.NameKey, "");
+        bool boxesEnabled = city.PowerBoxesEnabled;
+        int oldCharges = pet.UsesRemaining;
+        GameObject tutorial = null, district = null;
+        try
+        {
+            CroustyPlayerProfile.Save("IntegrationTest");
+            Assert(progression.randomStartingPower && progression.randomPrices && progression.flightLast,
+                "Scene enables the chosen incoming progression rules");
+            Assert(unlocked.Count == 1 && !progression.IsUnlocked(PowerUpInventory.PowerUpType.Flight),
+                "Ordinary profile starts with one ground power, never flight");
+            var offers = progression.GetOffers(5);
+            Assert(offers.Count == 2 && !offers.Contains(PowerUpInventory.PowerUpType.Flight),
+                "First choice offers the two remaining ground powers");
+            foreach (var power in offers)
+                Assert(progression.Price(power) >= 600 && progression.Price(power) <= 1400,
+                    "Rolled prices are used for ordinary profiles");
+            unlocked.Clear();
+            unlocked.Add(PowerUpInventory.PowerUpType.GPS);
+            inventory.Initialize();
+            Set(pet, "<UsesRemaining>k__BackingField", 0);
+            tutorial = new GameObject("Mixed progression tutorial pickup");
+            tutorial.AddComponent<BoxCollider>();
+            var box = tutorial.AddComponent<PowerUpBox>();
+            box.guaranteedPetDrop = true;
+            typeof(PowerUpBox).GetMethod("OnTriggerEnter", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(box, new object[] { bus.GetComponent<BoxCollider>() });
+            Assert(pet.UsesRemaining == 3 && inventory.PrimaryPower == PowerUpInventory.PowerUpType.Pet,
+                "Tutorial grants PET even when GPS is the rolled starting power");
+            Assert(!progression.IsUnlocked(PowerUpInventory.PowerUpType.Pet),
+                "Tutorial charge does not unlock PET for normal boxes");
+            unlocked.Add(PowerUpInventory.PowerUpType.Pet);
+            unlocked.Add(PowerUpInventory.PowerUpType.Rice);
+            offers = progression.GetOffers(15);
+            Assert(offers.Count == 1 && offers[0] == PowerUpInventory.PowerUpType.Flight,
+                "Flight is offered only after the three ground powers");
+
+            city.SetPowerBoxesEnabled(false);
+            district = new GameObject("Hidden box generation check");
+            district.transform.SetParent(city.WorldRoot, false);
+            typeof(ProceduralCity).GetMethod("CreateRoadPowerBox", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(city, new object[] { district.transform, bus.transform.position + Vector3.up * 100f });
+            var generated = district.GetComponentInChildren<PowerUpBox>(true);
+            Assert(generated != null && !generated.gameObject.activeInHierarchy,
+                "Boxes generated during tutorial exist but are hidden");
+            city.SetPowerBoxesEnabled(true);
+            Assert(generated.gameObject.activeInHierarchy,
+                "Finishing tutorial restores boxes generated while hidden");
+        }
+        finally
+        {
+            unlocked.Clear(); foreach (var power in originalUnlocks) unlocked.Add(power);
+            Set(pet, "<UsesRemaining>k__BackingField", oldCharges);
+            inventory.Initialize();
+            city.SetPowerBoxesEnabled(boxesEnabled);
+            if (tutorial != null) UnityEngine.Object.Destroy(tutorial);
+            if (district != null) UnityEngine.Object.Destroy(district);
+            if (hadName) PlayerPrefs.SetString(CroustyPlayerProfile.NameKey, originalName);
+            else PlayerPrefs.DeleteKey(CroustyPlayerProfile.NameKey);
+            PlayerPrefs.Save();
         }
     }
     static void CheckWingsAndStreaming(BusFlightController flight, Rigidbody rb)
@@ -259,10 +333,32 @@ public static class FlightDurationChecks
         var ringObject = new GameObject("Ring aperture check");
         ringObject.AddComponent<BoxCollider>();
         var ring = ringObject.AddComponent<FireRingSoundZone>();
-        ring.apertureExtents = new Vector3(5, 5, 1);
-        Assert(ring.InsideOpening(Vector3.zero), "Ring center accepts a crossing");
-        Assert(!ring.InsideOpening(new Vector3(0, -6, 0)), "Passing beneath the ring is rejected");
-        Assert(!ring.InsideOpening(new Vector3(4, 4, 0)), "Trigger corners outside the round hole are rejected");
+        // The incoming verification casts eight rays against the actual ring mesh.
+        var wall = new GameObject("Ring inner wall").AddComponent<MeshCollider>();
+        var mesh = new Mesh();
+        const int segments = 32;
+        var vertices = new Vector3[segments * 2];
+        var triangles = new int[segments * 6];
+        for (int i = 0; i < segments; i++)
+        {
+            float angle = i * 2f * Mathf.PI / segments;
+            vertices[i * 2] = new Vector3(Mathf.Cos(angle) * 5f, Mathf.Sin(angle) * 5f, -1f);
+            vertices[i * 2 + 1] = vertices[i * 2] + Vector3.forward * 2f;
+            int next = ((i + 1) % segments) * 2;
+            int t = i * 6;
+            triangles[t] = i * 2; triangles[t + 1] = i * 2 + 1; triangles[t + 2] = next;
+            triangles[t + 3] = next; triangles[t + 4] = i * 2 + 1; triangles[t + 5] = next + 1;
+        }
+        mesh.vertices = vertices; mesh.triangles = triangles; mesh.RecalculateBounds();
+        wall.sharedMesh = mesh;
+        ring.ringCollider = wall;
+        Physics.SyncTransforms();
+        var verify = typeof(FireRingSoundZone).GetMethod("IsInsideRing", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert((bool)verify.Invoke(ring, new object[] { Vector3.zero, Vector3.forward }), "Ring center accepts a crossing");
+        Assert(!(bool)verify.Invoke(ring, new object[] { new Vector3(0, -6, 0), Vector3.forward }), "Passing beneath the ring is rejected");
+        Assert(!(bool)verify.Invoke(ring, new object[] { new Vector3(4, 4, 0), Vector3.forward }), "Trigger corners outside the round hole are rejected");
+        UnityEngine.Object.Destroy(wall.gameObject);
+        UnityEngine.Object.Destroy(mesh);
         UnityEngine.Object.Destroy(ringObject);
     }
 

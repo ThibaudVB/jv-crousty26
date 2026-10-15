@@ -47,6 +47,8 @@ public sealed class CroustyMenu : MonoBehaviour
     private bool? requestedFullscreen;
     private bool animationReady;
     private int selectedCategory = -1;
+    private TMP_Text optionsTitle;
+    private string defaultOptionsTitle;
     public bool IsOptionsOpen { get; private set; }
     public bool IsLeaderboardOpen { get; private set; }
     public bool IsNameEntryOpen { get; private set; }
@@ -77,8 +79,19 @@ public sealed class CroustyMenu : MonoBehaviour
         RefreshFullscreenLabel(Screen.fullScreen);
         SetupTabHover();
         if (pauseMenu != null) RestyleSectionLabels();
+        foreach (TMP_Text text in optionsPanel.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (text.gameObject.name != "OPTIONS texte") continue;
+            optionsTitle = text;
+            defaultOptionsTitle = text.text;
+            break;
+        }
+        if (optionsTitle == null)
+            Debug.LogError("Le titre OPTIONS texte est introuvable dans le panneau des réglages.", this);
         SelectCategory(0);
         CloseOptions();
+        SetSettingsNavigationVisible(true);
+        SetSettingsCreditsTabVisible(false);
         if (leaderboardPanel != null) leaderboardPanel.SetActive(false);
         if (nameEntry != null) nameEntry.gameObject.SetActive(false);
         if (pauseMenu != null) mainPanel.SetActive(false);
@@ -133,6 +146,9 @@ public sealed class CroustyMenu : MonoBehaviour
     public void OpenOptions()
     {
         if (IsOptionsOpen) return;
+        SetCreditsPageMode(false);
+        SetSettingsNavigationVisible(true);
+        SetSettingsCreditsTabVisible(false);
         IsOptionsOpen = true;
         CroustyPanelMotion.Hide(mainPanel);
         CroustyPanelMotion.Show(optionsPanel);
@@ -143,14 +159,26 @@ public sealed class CroustyMenu : MonoBehaviour
 
     public void OpenSettings()
     {
+        SetCreditsPageMode(false);
+        SetSettingsNavigationVisible(true);
+        if (categoryPanels != null && categoryPanels.Length > 3 && categoryPanels[3] != null)
+            categoryPanels[3].SetActive(false);
         SelectCategory(0);
         OpenOptions();
     }
 
     public void OpenCredits()
     {
-        SelectCategory(3);
+        if (categoryPanels == null || categoryPanels.Length <= 3)
+        {
+            Debug.LogError("Le panneau de crédits doit être assigné comme quatrième catégorie.", this);
+            return;
+        }
         OpenOptions();
+        SetSettingsNavigationVisible(false);
+        SetSettingsCreditsTabVisible(false);
+        SetCreditsPageMode(true);
+        SelectCategory(3);
     }
 
     public void OpenLeaderboard()
@@ -174,6 +202,9 @@ public sealed class CroustyMenu : MonoBehaviour
     public void CloseOptions()
     {
         if (animationReady && !IsOptionsOpen) return;
+        SetCreditsPageMode(false);
+        SetSettingsNavigationVisible(true);
+        SetSettingsCreditsTabVisible(false);
         IsOptionsOpen = false;
         if (!animationReady) { optionsPanel.SetActive(false); mainPanel.SetActive(true); return; }
         CroustyPanelMotion.Hide(optionsPanel);
@@ -377,13 +408,52 @@ public sealed class CroustyMenu : MonoBehaviour
                 else CroustyPanelMotion.Hide(categoryPanels[i]);
             }
             else if (!animationReady) categoryPanels[i].SetActive(selected);
+            if (tabs == null || i >= tabs.Length) continue;
             tabs[i].highlighted = selected;
-            if (tabBackgrounds[i] is Image image && orangeRibbon != null && creamRibbon != null)
-                image.sprite = selected ? orangeRibbon : creamRibbon;
-            else tabBackgrounds[i].color = selected ? selectedColor : normalColor;
-            if (tabShadows[i] != null) tabShadows[i].color = selected ? inkColor : Color.clear;
-            tabLabels[i].color = selected ? selectedTextColor : inkColor;
+            if (tabBackgrounds != null && i < tabBackgrounds.Length && tabBackgrounds[i] != null)
+            {
+                if (tabBackgrounds[i] is Image image && orangeRibbon != null && creamRibbon != null)
+                    image.sprite = selected ? orangeRibbon : creamRibbon;
+                else tabBackgrounds[i].color = selected ? selectedColor : normalColor;
+            }
+            if (tabShadows != null && i < tabShadows.Length && tabShadows[i] != null)
+                tabShadows[i].color = selected ? inkColor : Color.clear;
+            if (tabLabels != null && i < tabLabels.Length && tabLabels[i] != null)
+                tabLabels[i].color = selected ? selectedTextColor : inkColor;
         }
+    }
+
+    private void SetCreditsPageMode(bool enabled)
+    {
+        if (optionsTitle != null)
+            optionsTitle.text = enabled ? "CREDITS" : defaultOptionsTitle;
+    }
+
+    private void SetSettingsNavigationVisible(bool visible)
+    {
+        if (tabs == null) return;
+        int count = Mathf.Min(3, tabs.Length);
+        for (int i = 0; i < count; i++)
+        {
+            if (tabs[i] != null) tabs[i].gameObject.SetActive(visible);
+            if (tabBackgrounds != null && i < tabBackgrounds.Length && tabBackgrounds[i] != null)
+                tabBackgrounds[i].gameObject.SetActive(visible);
+            if (tabShadows != null && i < tabShadows.Length && tabShadows[i] != null)
+                tabShadows[i].gameObject.SetActive(visible);
+        }
+    }
+
+    private void SetSettingsCreditsTabVisible(bool visible)
+    {
+        const int creditsTabIndex = 3;
+        if (tabs != null && creditsTabIndex < tabs.Length && tabs[creditsTabIndex] != null)
+            tabs[creditsTabIndex].gameObject.SetActive(visible);
+        if (tabBackgrounds != null && creditsTabIndex < tabBackgrounds.Length &&
+            tabBackgrounds[creditsTabIndex] != null)
+            tabBackgrounds[creditsTabIndex].gameObject.SetActive(visible);
+        if (tabShadows != null && creditsTabIndex < tabShadows.Length &&
+            tabShadows[creditsTabIndex] != null)
+            tabShadows[creditsTabIndex].gameObject.SetActive(visible);
     }
 
     public void SetSensitivity(float value)

@@ -40,6 +40,7 @@ public sealed class BusMinimap : MonoBehaviour
     private float nextReferenceSearch;
     [SerializeField] private Sprite circleSprite;
     [SerializeField] private Sprite arrowSprite;
+    private Sprite garageRepairSprite;
     [SerializeField] private RawImage mapImage;
     private BusGPS gps;
     [SerializeField] private TextMeshProUGUI gpsLabel;
@@ -53,6 +54,9 @@ public sealed class BusMinimap : MonoBehaviour
     private void Awake()
     {
         gps = GetComponent<BusGPS>();
+        garageRepairSprite = Resources.Load<Sprite>("Crousty/GarageRepairIcon");
+        if (garageRepairSprite == null)
+            Debug.LogError("BusMinimap : icône Resources/Crousty/GarageRepairIcon introuvable.", this);
         FindReferences();
         if (mapCanvas == null || deliveryIconTemplate == null)
         {
@@ -296,7 +300,7 @@ public sealed class BusMinimap : MonoBehaviour
 
     private void UpdateGPS()
     {
-        gpsLabel.gameObject.SetActive(gps != null && (!compactHud || gps.Target != null ||
+        gpsLabel.gameObject.SetActive(gps != null && (!compactHud ||
             gps.RoutingToGarage || gps.Charges > 0 && gps.BonusEquipped));
         if (gps != null) gpsLabel.text = gps.Status;
         routeGraphic.UpdateRoute(mapCamera,
@@ -358,6 +362,8 @@ public sealed class BusMinimap : MonoBehaviour
         nearbyGarages.Clear();
         // Guidance can end after the tutorial; permanent map landmarks must remain visible.
         if (city != null) city.GetNearbyGarages(bus.position, 5000f, nearbyGarages);
+        if (gps != null && gps.RoutingToGarage && !nearbyGarages.Contains(gps.GarageDestination))
+            nearbyGarages.Add(gps.GarageDestination);
         int shown = nearbyGarages.Count;
         while (garageIcons.Count < shown)
         {
@@ -382,8 +388,22 @@ public sealed class BusMinimap : MonoBehaviour
             if (i >= shown) continue;
             PlaceIcon(icon, nearbyGarages[i], 28f);
             icon.transform.SetAsLastSibling();
-            // Keep the G upright even when the edge arrow turns towards the garage.
-            icon.GetComponentInChildren<TMP_Text>().rectTransform.localRotation = Quaternion.Inverse(icon.rectTransform.localRotation);
+            bool isGpsDestination = gps != null && gps.RoutingToGarage &&
+                (nearbyGarages[i] - gps.GarageDestination).sqrMagnitude < 1f;
+            TMP_Text label = icon.GetComponentInChildren<TMP_Text>(true);
+            label.gameObject.SetActive(!isGpsDestination);
+            if (isGpsDestination && garageRepairSprite != null)
+            {
+                icon.sprite = garageRepairSprite;
+                icon.color = Color.white;
+                icon.rectTransform.sizeDelta = Vector2.one * 28f;
+            }
+            else
+            {
+                icon.color = new Color(.05f, .9f, .85f);
+                // Keep the G upright even when the edge arrow turns towards the garage.
+                label.rectTransform.localRotation = Quaternion.Inverse(icon.rectTransform.localRotation);
+            }
         }
     }
 

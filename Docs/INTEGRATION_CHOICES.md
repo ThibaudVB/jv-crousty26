@@ -1,5 +1,7 @@
 # Comparaison avant intégration — 15 octobre 2026
 
+**Décisions appliquées :** 1 garage uniquement ; 2 mixte ; 3 sortant ; 4 entrant ; 5 mixte ; 6 mixte ; 7 entrant ; 8 RetroBlendy main cohérent ; 9 sortant. Voir [INTEGRATION_RESULT.md](INTEGRATION_RESULT.md) pour le résultat et les validations. Le reste de ce document décrit l'analyse préalable.
+
 Analyse après `git fetch origin --prune`. Aucun checkout, merge, commit, stash ou remplacement de fichier du jeu effectué.
 
 ## Versions comparées

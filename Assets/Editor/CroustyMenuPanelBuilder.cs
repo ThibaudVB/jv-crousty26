@@ -59,13 +59,14 @@ public sealed class CroustyMenuPanelBuilder
         menu.mainPanel = mainRoot.gameObject;
         menu.optionsPanel = optionsRoot.gameObject;
         menu.categoryPanels = new GameObject[4];
-        for (int i = 0; i < 4; i++) menu.categoryPanels[i] = optionsContent.GetChild(i).gameObject;
+        for (int i = 0; i < menu.categoryPanels.Length; i++)
+            menu.categoryPanels[i] = optionsContent.GetChild(i).gameObject;
         menu.tabs = tabs;
-        menu.tabBackgrounds = new Graphic[4];
-        menu.tabShadows = new Graphic[4];
-        menu.tabLabels = new TMP_Text[4];
-        string[] names = { "COMMANDES", "AUDIO", "VIDÉO", "CRÉDITS" };
-        for (int i = 0; i < 4; i++)
+        menu.tabBackgrounds = new Graphic[3];
+        menu.tabShadows = new Graphic[3];
+        menu.tabLabels = new TMP_Text[3];
+        string[] names = { "COMMANDES", "AUDIO", "VIDÉO" };
+        for (int i = 0; i < names.Length; i++)
         {
             menu.tabBackgrounds[i] = optionsRoot.Find(names[i] + " couleur").GetComponent<Graphic>();
             menu.tabShadows[i] = optionsRoot.Find(names[i] + " ombre")?.GetComponent<Graphic>();
@@ -297,8 +298,8 @@ public sealed class CroustyMenuPanelBuilder
         Text(optionsRoot, "OPTIONS", 300, 47, 111, 35, 25, White,
             TextAlignmentOptions.Center);
 
-        tabs = new CroustyMenuHover[4];
-        string[] labels = { "COMMANDES", "AUDIO", "VIDÉO", "CRÉDITS" };
+        tabs = new CroustyMenuHover[3];
+        string[] labels = { "COMMANDES", "AUDIO", "VIDÉO" };
         for (int i = 0; i < labels.Length; i++)
         {
             int index = i;

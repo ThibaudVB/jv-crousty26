@@ -412,6 +412,7 @@ public sealed partial class ProceduralCity
 
     private static void AddGarageRepairZone(Transform garage)
     {
+        garage.gameObject.AddComponent<GarageGPSMarker>();
         var zone = new GameObject("Visuel Garage - Zone de reparation");
         zone.transform.SetParent(garage, false);
         zone.transform.localPosition = new Vector3(0f, 2.5f, 0f);
