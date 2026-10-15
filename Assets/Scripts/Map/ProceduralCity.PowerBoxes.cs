@@ -4,6 +4,8 @@ public sealed partial class ProceduralCity
 {
     private void BuildPowerBoxRows(Chunk chunk, Vector2Int coordinate)
     {
+        if (!PowerBoxesEnabled) return;
+
         for (int x = 0; x < 2; x++) for (int z = 0; z < 2; z++)
         {
             var from = coordinate * 2 + new Vector2Int(x, z);
@@ -23,7 +25,7 @@ public sealed partial class ProceduralCity
 
     private void CreateRoadPowerBox(Transform parent, Vector3 position)
     {
-        if (roadPowerBoxPrefab == null) return;
+        if (!PowerBoxesEnabled || roadPowerBoxPrefab == null) return;
         var root = new GameObject("Box bonus");
         root.transform.SetParent(parent, false);
         root.transform.position = position;
