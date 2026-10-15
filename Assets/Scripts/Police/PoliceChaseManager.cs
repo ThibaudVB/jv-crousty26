@@ -415,6 +415,7 @@ public class PoliceChaseManager : MonoBehaviour
     {
         if (Time.time < nextSpawn) return;
         nextSpawn = Time.time + .5f;
+        EnsureNearbyPatrol();
         bool reinforcing = chasing && (BusInSight || SecondsOutOfSight < RadioTrackingDuration);
         int mobileCars = 0;
         foreach (var car in cars) if (!car.IsRoadblock) mobileCars++;
@@ -438,6 +439,34 @@ public class PoliceChaseManager : MonoBehaviour
             }
             if (offset.magnitude > patrolRadius + 15f || !city.IsAreaReady(car.transform.position)) { Recycle(car); return; }
         }
+    }
+
+    // Visibility restrictions must never leave the loaded city without an operational patrol.
+    private void EnsureNearbyPatrol()
+    {
+        if (CurrentPatrolCount <= 0) return;
+        PoliceCarAI recoverable = null;
+        foreach (var car in cars)
+        {
+            if (car.IsRoadblock) continue;
+            Vector3 offset = car.transform.position - BusPosition;
+            offset.y = 0f;
+            if (car.isActiveAndEnabled && city.IsAreaReady(car.transform.position) &&
+                offset.sqrMagnitude <= Mathf.Pow(Mathf.Max(160f, patrolRadius) + 15f, 2f)) return;
+            if (recoverable == null) recoverable = car;
+        }
+        var traffic = recoverable != null ? recoverable.GetComponent<CityTrafficCar>() : null;
+        if (!city.TryFindStreetSpawn(traffic, 55f, Mathf.Max(160f, patrolRadius), false, 120,
+            out var from, out var to, out var at)) return;
+        if (recoverable == null)
+        {
+            recoverable = CreateCar();
+            cars.Add(recoverable);
+        }
+        recoverable.gameObject.SetActive(true);
+        recoverable.enabled = true;
+        backup.RemoveAll(entry => entry.car == recoverable);
+        recoverable.StartPatrol(from, to, at);
     }
 
     public void Recycle(PoliceCarAI car)

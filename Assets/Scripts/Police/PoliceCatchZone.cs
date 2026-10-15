@@ -23,6 +23,7 @@ public class PoliceCatchZone : MonoBehaviour
 
     public void SetProgress(float value)
     {
+        if (CroustyPlayerProfile.IsGodMode) { progress = 0f; return; }
         if (caught || !isActiveAndEnabled) return;
         progress = Mathf.Clamp01(value);
         if (progress < 1f) return;

@@ -404,44 +404,19 @@ public sealed partial class ProceduralCity
         int axis = 0;
         for (int i = 1; i < 3; i++) if (bounds.size[i] < bounds.size[axis]) axis = i;
         var sound = zone.AddComponent<FireRingSoundZone>();
+        sound.apertureExtents = bounds.extents * .75f;
         sound.localAxis = axis == 0 ? Vector3.right : axis == 1 ? Vector3.up : Vector3.forward;
         CreateRoadPowerBox(ring.parent, ring.TransformPoint(bounds.center));
     }
 
     private static void AddGarageRepairZone(Transform garage)
     {
-        GameObject zone = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        zone.name = "Visuel Garage - Zone de reparation";
+        var zone = new GameObject("Visuel Garage - Zone de reparation");
         zone.transform.SetParent(garage, false);
         zone.transform.localPosition = new Vector3(0f, 2.5f, 0f);
-        zone.transform.localScale = new Vector3(8f, 5f, 8f);
-
-        BoxCollider trigger = zone.GetComponent<BoxCollider>();
+        var trigger = zone.AddComponent<BoxCollider>();
+        trigger.size = new Vector3(8f, 5f, 8f);
         trigger.isTrigger = true;
-        Material material = zone.GetComponent<MeshRenderer>().material;
-        material.color = new Color(0.35f, 0.8f, 1f, 0.25f);
-        material.SetOverrideTag("RenderType", "Transparent");
-        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-            material.SetFloat("_Blend", 0f);
-            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            material.SetFloat("_ZWrite", 0f);
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        }
-        else if (material.HasProperty("_Mode"))
-        {
-            material.SetFloat("_Mode", 3f);
-            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            material.SetInt("_ZWrite", 0);
-            material.DisableKeyword("_ALPHATEST_ON");
-            material.EnableKeyword("_ALPHABLEND_ON");
-            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        }
     }
 
     private GameObject Visual(Template part, Transform parent, Vector3 position, Vector3 scale, float yaw, bool solid)

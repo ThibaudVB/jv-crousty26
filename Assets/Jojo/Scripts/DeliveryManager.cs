@@ -401,7 +401,7 @@ public class DeliveryManager : MonoBehaviour
         RunStarted?.Invoke();
     }
 
-    // Farthest-point sampling spreads the run across distinct streets, rather than the nearest block.
+    // Prefer nearby addresses with enough spacing to distinguish delivery stops.
     private List<DeliveryPoint> FindNearbyAddresses(int wanted)
     {
         List<DeliveryPoint> sorted = new List<DeliveryPoint>(deliveryPoints);
@@ -413,21 +413,21 @@ public class DeliveryManager : MonoBehaviour
 
         bool procedural = city != null && city.WorldRoot != null;
         sorted.RemoveAll(point => shop != null && Vector3.Distance(point.transform.position, shop.transform.position) <
-            (procedural ? 160f : shop.pickupRadius + point.deliveryRadius + 2f));
-        for (int selection = 0; selection < maxCount && sorted.Count > 0; selection++)
+            (procedural ? Mathf.Max(48f, shop.pickupRadius + point.deliveryRadius + 2f) : shop.pickupRadius + point.deliveryRadius + 2f));
+        sorted.Sort((a, b) => DistanceToPlayer(a).CompareTo(DistanceToPlayer(b)));
+        // Draw the run from the nearest neighborhood, not the farthest points in the city.
+        foreach (var candidate in sorted)
         {
-            DeliveryPoint point = null; float best = -1f;
-            foreach (var candidate in sorted)
-            {
-                float distance = DistanceToPlayer(candidate);
-                foreach (var previous in result)
-                    distance = Mathf.Min(distance, Vector3.Distance(previous.transform.position, candidate.transform.position));
-                if (distance > best) { best = distance; point = candidate; }
-            }
-            if (point == null) break;
-            if (procedural && result.Count > 0 && best < minimumAddressSpacing) break;
-            result.Add(point);
-            sorted.Remove(point);
+            if (result.Count >= maxCount) break;
+            if (procedural && result.Exists(previous => Vector3.Distance(previous.transform.position,
+                candidate.transform.position) < Mathf.Min(minimumAddressSpacing, 48f))) continue;
+            result.Add(candidate);
+        }
+        // Dense neighborhoods must still support the larger late-game runs.
+        foreach (var candidate in sorted)
+        {
+            if (result.Count >= maxCount) break;
+            if (!result.Contains(candidate)) result.Add(candidate);
         }
         return result;
     }

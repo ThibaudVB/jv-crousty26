@@ -83,6 +83,8 @@ public sealed partial class ProceduralCity : MonoBehaviour
     private Material asphalt, pavement, grass, markings, wood;
     private BusGPS gps;
     private BusMinimap minimap;
+    private Rigidbody playerBody;
+    private BoxCollider playerCollider;
     private static readonly ProfilerMarker StreamingMarker = new ProfilerMarker("Crousty.City.Streaming");
     private readonly Queue<Chunk> retiredChunks = new Queue<Chunk>();
     private readonly List<Transform> retirementParts = new List<Transform>();
@@ -109,6 +111,11 @@ public sealed partial class ProceduralCity : MonoBehaviour
     {
         CroustySettings.ApplyCity(this);
         if (player == null) player = FindAnyObjectByType<BusController>()?.transform;
+        if (player != null)
+        {
+            playerBody = player.GetComponent<Rigidbody>();
+            playerCollider = player.GetComponent<BoxCollider>();
+        }
         if (deliveries == null) deliveries = FindAnyObjectByType<DeliveryManager>();
         if (player == null || deliveries == null || cityModel == null)
         {
@@ -167,6 +174,37 @@ public sealed partial class ProceduralCity : MonoBehaviour
 
         Debug.Log("Ville procedurale : seed " + Seed + ", " + buildings.Count +
             " batiments et " + landmarks.Count + " lieux remarquables.", this);
+    }
+
+    private void FixedUpdate()
+    {
+        if (WorldRoot == null || playerBody == null || IsPrewarming) return;
+        // Streaming normally finishes ahead of the bus. Under heavy delivery
+        // preparation, finish the imminent collision footprint before physics can
+        // move the bus into a district whose facades have not been built yet.
+        Vector3 start = playerCollider != null ? playerCollider.bounds.center : playerBody.position;
+        Vector3 end = start + playerBody.linearVelocity * Time.fixedDeltaTime;
+        Vector3 margin = playerCollider != null ? playerCollider.bounds.extents : Vector3.one * 5f;
+        margin += Vector3.one * 2f;
+        Vector2Int first = ChunkAt(Vector3.Min(start, end) - margin);
+        Vector2Int last = ChunkAt(Vector3.Max(start, end) + margin);
+        bool changed = false;
+        for (int x = first.x; x <= last.x; x++) for (int z = first.y; z <= last.y; z++)
+        {
+            var coordinate = new Vector2Int(x, z);
+            if (chunks.TryGetValue(coordinate, out var chunk) && chunk.complete) continue;
+            // Import work is shared: complete the current iterator before starting
+            // another one, avoiding duplicated buildings and mismatched colliders.
+            if (activeBuild != null)
+            {
+                while (activeBuild.MoveNext()) { }
+                (activeBuild as IDisposable)?.Dispose();
+                activeBuild = null;
+            }
+            LoadChunk(coordinate);
+            changed = true;
+        }
+        if (changed) Physics.SyncTransforms();
     }
 
     private void Update()

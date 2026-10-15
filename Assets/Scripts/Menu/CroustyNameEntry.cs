@@ -56,14 +56,19 @@ public sealed class CroustyNameEntry : MonoBehaviour
             nameInput.ActivateInputField();
             return;
         }
+        if (CroustyPlayerProfile.IsReservedNameVariant(nameInput.text))
+        {
+            hint.text = "THIS NAME MUST BE ENTERED EXACTLY, WITHOUT EXTRA CHARACTERS";
+            return;
+        }
         if (!Application.CanStreamedLevelBeLoaded("SceneBase"))
         {
             hint.text = "THE GAME LEVEL IS UNAVAILABLE";
             return;
         }
+        CroustyPlayerProfile.Save(nameInput.text);
         nameInput.SetTextWithoutNotify(playerName);
         nameInput.DeactivateInputField();
-        CroustyPlayerProfile.Save(playerName);
         CroustyMenuTutoButton.SaveSelection();
         IsLaunching = true;
         controls.interactable = controls.blocksRaycasts = false;
@@ -102,6 +107,15 @@ public static class CroustyPlayerProfile
 {
     public const string NameKey = "Crousty.PlayerName";
     public const int MaximumNameLength = 20;
+    private const string GodName = "CathyLaVodka";
+    // Ordinal and case-sensitive: no prefixes, aliases or normalized comparisons.
+    public static bool IsGodMode =>
+        IsGodName(PlayerPrefs.GetString(NameKey, ""));
+    public static bool IsGodName(string value) =>
+        string.Equals(value, GodName, System.StringComparison.Ordinal);
+    public static bool IsReservedNameVariant(string value) =>
+        string.Equals(Normalize(value), GodName, System.StringComparison.Ordinal) &&
+        !string.Equals(value, GodName, System.StringComparison.Ordinal);
     public static string StoredName => Normalize(PlayerPrefs.GetString(NameKey, ""));
     public static string PlayerName => StoredName.Length > 0 ? StoredName : "You";
 
@@ -127,7 +141,14 @@ public static class CroustyPlayerProfile
     public static void Save(string value)
     {
         string name = Normalize(value);
-        if (name.Length == 0) return;
+        // Do not let trimming or stripped control characters turn another input into
+        // the reserved identity. Invalid saves must also revoke a previous GOD name.
+        if (name.Length == 0 || IsReservedNameVariant(value))
+        {
+            PlayerPrefs.DeleteKey(NameKey);
+            PlayerPrefs.Save();
+            return;
+        }
         PlayerPrefs.SetString(NameKey, name);
         PlayerPrefs.Save();
     }

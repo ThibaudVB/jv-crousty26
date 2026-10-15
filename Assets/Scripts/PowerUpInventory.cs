@@ -35,6 +35,26 @@ public sealed class PowerUpInventory : MonoBehaviour
         }
     }
 
+    // A randomized bag shared by all boxes for this bus prevents repeated two-item streaks.
+    private readonly System.Collections.Generic.List<CroustyBonusHUD.SelectedBonus> dropBag =
+        new System.Collections.Generic.List<CroustyBonusHUD.SelectedBonus>();
+
+    public int ChooseBoxReward(System.Collections.Generic.List<CroustyBonusHUD.SelectedBonus> eligible)
+    {
+        if (eligible.Count == 0) return -1;
+        var choices = new System.Collections.Generic.List<CroustyBonusHUD.SelectedBonus>();
+        foreach (var type in eligible) if (dropBag.Contains(type)) choices.Add(type);
+        if (choices.Count == 0)
+        {
+            dropBag.Clear();
+            dropBag.AddRange(eligible);
+            choices.AddRange(eligible);
+        }
+        var selected = choices[Random.Range(0, choices.Count)];
+        dropBag.Remove(selected);
+        return eligible.IndexOf(selected);
+    }
+
     public Slot primary = new Slot();
     public Slot secondary = new Slot();
     [Range(0, 3)] public int startingCharges = 0;

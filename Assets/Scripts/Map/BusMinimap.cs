@@ -356,11 +356,9 @@ public sealed class BusMinimap : MonoBehaviour
     private void UpdateGarages()
     {
         nearbyGarages.Clear();
-        if (gps == null || gps.ShowGarageMarkers)
-        {
-            if (city != null) city.GetNearbyGarages(bus.position, 250f, nearbyGarages);
-        }
-        int shown = Mathf.Min(3, nearbyGarages.Count);
+        // Guidance can end after the tutorial; permanent map landmarks must remain visible.
+        if (city != null) city.GetNearbyGarages(bus.position, 5000f, nearbyGarages);
+        int shown = nearbyGarages.Count;
         while (garageIcons.Count < shown)
         {
             var icon = Instantiate(deliveryIconTemplate, maskRect);
@@ -383,6 +381,7 @@ public sealed class BusMinimap : MonoBehaviour
             icon.gameObject.SetActive(i < shown);
             if (i >= shown) continue;
             PlaceIcon(icon, nearbyGarages[i], 28f);
+            icon.transform.SetAsLastSibling();
             // Keep the G upright even when the edge arrow turns towards the garage.
             icon.GetComponentInChildren<TMP_Text>().rectTransform.localRotation = Quaternion.Inverse(icon.rectTransform.localRotation);
         }

@@ -76,6 +76,7 @@ public class BusFlightController : MonoBehaviour
     private bool originalBusEnabled;
     private bool originalWheelRigEnabled;
     private bool originalGravity;
+    private float originalLinearDamping;
 
     private RigidbodyConstraints originalConstraints;
     private CollisionDetectionMode originalCollisionMode;
@@ -169,6 +170,11 @@ public class BusFlightController : MonoBehaviour
         if (!IsAirborne || Time.timeScale <= 0f)
             return;
 
+        if (mode == FlightMode.Flying && Time.time - launchedAt >= .35f)
+        {
+            CheckWheelContact();
+            if (!IsAirborne) return;
+        }
         float dt = Time.fixedDeltaTime;
         if (mode == FlightMode.Flying)
         {
@@ -209,6 +215,7 @@ public class BusFlightController : MonoBehaviour
             wheelRig != null && wheelRig.enabled;
 
         originalGravity = rb.useGravity;
+        originalLinearDamping = rb.linearDamping;
         originalConstraints = rb.constraints;
         originalCollisionMode = rb.collisionDetectionMode;
 
@@ -238,6 +245,7 @@ public class BusFlightController : MonoBehaviour
 
         // Le mode avion prend le controle du Rigidbody.
         rb.useGravity = false;
+        rb.linearDamping = 0f;
         rb.constraints = RigidbodyConstraints.None;
         rb.collisionDetectionMode =
             CollisionDetectionMode.ContinuousDynamic;
@@ -357,7 +365,8 @@ public class BusFlightController : MonoBehaviour
         // No glide, velocity cap or auto-leveling: preserve momentum and let gravity act.
         rb.useGravity = true;
         velocityBeforeFallStep = rb.linearVelocity;
-        RestoreWheelColliders();
+        // Keep wheel physics and road controls suspended until actual contact.
+        // Re-enabling tires here can apply ground friction before landing is handled.
     }
 
     public bool StopFlight()
@@ -367,25 +376,42 @@ public class BusFlightController : MonoBehaviour
         return true;
     }
 
-    private void CheckGroundContact()
+    private void CheckWheelContact()
     {
-        // Wheel suspension reports real contact, not a raycast landing above the road.
         if (wheelColliders == null) return;
-        foreach (var wheel in wheelColliders)
+        for (int i = 0; i < wheelColliders.Length; i++)
         {
-            if (wheel != null && wheel.enabled && wheel.GetGroundHit(out var hit) &&
-                IsGroundSurface(hit.collider, hit.normal))
+            var wheel = wheelColliders[i];
+            if (wheel == null || !originalWheelStates[i]) continue;
+            // Airborne modes disable wheel colliders. Probe only the actual tire footprint,
+            // not the suspension travel, so touching the road ends flight without snapping down.
+            Vector3 center = wheel.transform.TransformPoint(wheel.center);
+            float radius = wheel.radius * Mathf.Abs(wheel.transform.lossyScale.y);
+            foreach (var hit in Physics.RaycastAll(center, -wheel.transform.up, radius + .03f,
+                groundLayers, QueryTriggerInteraction.Ignore))
             {
+                if (!IsGroundSurface(hit.collider, hit.normal)) continue;
+                velocityBeforeFallStep = rb.linearVelocity;
                 FinishLanding(hit.point, hit.normal, hit.collider);
                 return;
             }
         }
+    }
+
+    private void CheckGroundContact()
+    {
+        // Probe the tire footprint while wheels remain disabled, just as during flight.
+        // Body collision callbacks still handle roof/chassis impacts.
+        CheckWheelContact();
         velocityBeforeFallStep = rb.linearVelocity;
     }
 
     private bool IsGroundSurface(Collider surface, Vector3 normal)
     {
-        return surface != null && surface.attachedRigidbody != rb &&
+        if (surface == null) return false;
+        var prop = surface.GetComponentInParent<MapImpactProp>();
+        if (prop != null && prop.passThroughBus) return false;
+        return surface.attachedRigidbody != rb &&
             (groundLayers.value & (1 << surface.gameObject.layer)) != 0 && normal.y >= 0.5f;
     }
 
@@ -445,6 +471,7 @@ public class BusFlightController : MonoBehaviour
             return;
 
         rb.useGravity = originalGravity;
+        rb.linearDamping = originalLinearDamping;
         rb.constraints = originalConstraints;
         rb.collisionDetectionMode = originalCollisionMode;
 

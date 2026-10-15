@@ -46129,11 +46129,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusWings
   wingModel: {fileID: 919132149155446097, guid: abe4f761cd0498146a2b47c9902c3bcb, type: 3}
-  modelRotation: {x: 90, y: 0, z: 0}
+  modelRotation: {x: 0, y: 0, z: 0}
   wingColor: {r: 1, g: 0.98, b: 0.92, a: 1}
   wingSize: 0.4
-  alongBus: 0.05
-  height: 0.25
+  alongBus: 0.1
+  height: 0
   sweepAngle: 15
   flapSpeed: 2.2
   flapAmplitude: 35

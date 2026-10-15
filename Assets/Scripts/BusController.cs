@@ -67,6 +67,9 @@ public class BusController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        // Keep swept collisions on the road as well as in flight: a fast bus can
+        // otherwise cross a thin facade between discrete physics steps.
+        if (!rb.isKinematic) rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         city = FindAnyObjectByType<ProceduralCity>();
         damage = GetComponent<BusDamage>();
         pet = GetComponent<BusPetController>();

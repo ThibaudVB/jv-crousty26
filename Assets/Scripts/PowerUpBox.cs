@@ -67,7 +67,7 @@ public sealed class PowerUpBox : MonoBehaviour
             : other.GetComponentInParent<BusController>();
         if (bus == null) return;
 
-        PowerUpInventory.EnsureFor(bus.gameObject);
+        var inventory = PowerUpInventory.EnsureFor(bus.gameObject);
         var progression = bus.GetComponent<PowerUnlockProgression>();
 
         var candidates = new List<System.Func<bool>>(4);
@@ -101,17 +101,21 @@ public sealed class PowerUpBox : MonoBehaviour
         if (guaranteedPetDrop)
         {
             int petIndex = candidateTypes.IndexOf(CroustyBonusHUD.SelectedBonus.Pet);
-            if (petIndex < 0)
-                return;
-            candidates = new List<System.Func<bool>> { candidates[petIndex] };
-            candidateTypes = new List<CroustyBonusHUD.SelectedBonus> { CroustyBonusHUD.SelectedBonus.Pet };
+            if (petIndex >= 0)
+            {
+                candidates = new List<System.Func<bool>> { candidates[petIndex] };
+                candidateTypes = new List<CroustyBonusHUD.SelectedBonus> { CroustyBonusHUD.SelectedBonus.Pet };
+            }
+            else { candidates.Clear(); candidateTypes.Clear(); }
         }
-        if (candidates.Count == 0) return;
-        int awardedIndex = Random.Range(0, candidates.Count);
-        if (!candidates[awardedIndex]()) return;
+        int awardedIndex = guaranteedPetDrop ? (candidates.Count > 0 ? 0 : -1) : inventory.ChooseBoxReward(candidateTypes);
+        bool awarded = awardedIndex >= 0 && candidates[awardedIndex]();
+        if (awarded)
+            foreach (CroustyBonusHUD hud in FindObjectsByType<CroustyBonusHUD>())
+                hud.SelectBonus(candidateTypes[awardedIndex]);
 
-        foreach (CroustyBonusHUD hud in FindObjectsByType<CroustyBonusHUD>())
-            hud.SelectBonus(candidateTypes[awardedIndex]);
+        // Consume even when both slots are full, and prevent duplicate collider callbacks.
+        SetAvailable(false);
 
         if (pickupSound != null)
             AudioSource.PlayClipAtPoint(pickupSound, transform.position, pickupVolume);

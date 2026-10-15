@@ -12,11 +12,9 @@ public sealed partial class ProceduralCity
                 var heading = axis == 0 ? Vector2Int.right : Vector2Int.up;
                 int along = axis == 0 ? from.x : from.y;
                 int street = axis == 0 ? from.y : from.x;
-                if (FloorMod(along + street, 5) != 1 || !IsRoadEdgeOpen(from, from + heading)) continue;
+                if (FloorMod(along + street, 10) != 1 || !IsRoadEdgeOpen(from, from + heading)) continue;
                 Vector3 center = JunctionPosition(from) + Flat(heading) * (BlockSize * .5f) + Vector3.up * 1.4f;
-                Vector3 across = new Vector3(heading.y, 0, -heading.x);
-                for (int box = 0; box < 4; box++)
-                    CreateRoadPowerBox(chunk.root.transform, center + across * (-6f + box * 4f));
+                CreateRoadPowerBox(chunk.root.transform, center);
             }
         }
     }

@@ -78,13 +78,13 @@ public class BusAirTricks : MonoBehaviour
         float dt = Time.deltaTime;
 
         // Pendant le pouvoir de vol, les touches servent à piloter : pas de figure
-        if (flight != null && flight.IsAirborne)
+        if (flight != null && flight.CurrentMode == BusFlightController.FlightMode.Flying)
         {
             ResetTrick();
             return;
         }
 
-        if (wheelRig.IsGrounded)
+        if ((flight == null || !flight.IsFalling) && wheelRig.IsGrounded)
         {
             if (airTime > 0f) Land();
             airTime = 0f;
@@ -99,6 +99,16 @@ public class BusAirTricks : MonoBehaviour
         }
 
         wheelRig.trickRotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(pitch, 0f, 0f);
+    }
+
+    private void LateUpdate()
+    {
+        // Falling keeps the driving rig disabled to preserve inertia. Update only
+        // its existing visual animation, without enabling tire physics or steering.
+        if (flight == null || !flight.IsFalling || wheelRig == null ||
+            wheelRig.enabled || !wheelRig.IsReady || Time.timeScale <= 0f) return;
+        wheelRig.UpdateArcadeVisuals(Time.deltaTime);
+        wheelRig.UpdateMeshes();
     }
 
     private void UpdateAirControls(float dt)

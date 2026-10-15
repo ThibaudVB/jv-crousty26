@@ -107,6 +107,7 @@ public class BusWheelRig : MonoBehaviour
     }
 
     private Transform visualPivot;
+    public Transform VisualPivot => visualPivot;
     // Rotation des figures en l'air (galipettes, 360), donnée par BusAirTricks
     [NonSerialized] public Quaternion trickRotation = Quaternion.identity;
     private Vector3 visualAngles;

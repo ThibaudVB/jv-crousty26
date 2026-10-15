@@ -43,9 +43,9 @@ public static class BusWingsChecks
             var component=controller.GetComponent<BusWings>();
             if(component==null)component=controller.gameObject.AddComponent<BusWings>();
             component.wingModel=model;
-            component.modelRotation=new Vector3(90,0,0);
-            component.height=.25f;
-            component.alongBus=.05f;
+            component.modelRotation=Vector3.zero;
+            component.height=0f;
+            component.alongBus=.1f;
             EditorUtility.SetDirty(component);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);

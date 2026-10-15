@@ -43,7 +43,8 @@ public sealed class PowerUnlockProgression : MonoBehaviour
     private RenderTexture blurred;
     private int openedFrame;
 
-    public bool IsUnlocked(Power power) => unlocked.Contains(power);
+    public bool IsUnlocked(Power power) => unlocked.Contains(power) ||
+        CroustyPlayerProfile.IsGodMode && System.Enum.IsDefined(typeof(Power), power);
     public int Price(Power power) => Mathf.Max(0, power == Power.Flight ? flightPrice : power == Power.Rice ? ricePrice : gpsPrice);
 
     private void Awake()

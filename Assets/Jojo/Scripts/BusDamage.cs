@@ -224,7 +224,7 @@ public class BusDamage : MonoBehaviour
 
     private bool CanTakeHit()
     {
-        if (!DamageEnabled)
+        if (!DamageEnabled || CroustyPlayerProfile.IsGodMode)
             return false;
 
         bool cooldownOver = Time.time - lastHitTime >= hitCooldown;

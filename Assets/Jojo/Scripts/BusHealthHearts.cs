@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 // Vies du bus affichées en cœurs dans le HUD (sous l'argent et les commandes).
 // Elles suivent BusDamage : chaque choc enlève de la vie, le garage remet tous les cœurs.
-//   Hits To Destroy = 10 et 5 cœurs -> un cœur se vide tous les 2 chocs.
+//   Hits To Destroy = 10 et 5 cœurs -> un demi-cœur se vide à chaque choc.
 //
 // À placer sur un objet UI (RectTransform) du HUD : les cœurs sont créés dedans, en ligne et centrés.
 public class BusHealthHearts : MonoBehaviour
@@ -28,6 +28,7 @@ public class BusHealthHearts : MonoBehaviour
     [Min(0.01f)] public float lostPopDuration = 0.3f;
 
     private readonly List<Image> hearts = new List<Image>();
+    private readonly List<Image> fills = new List<Image>();
     private readonly List<float> popTimes = new List<float>();
     private int shownLives = -1;
 
@@ -53,18 +54,31 @@ public class BusHealthHearts : MonoBehaviour
             var image = heart.GetComponent<Image>();
             image.raycastTarget = false;
             image.preserveAspect = true;
+            image.sprite = emptyHeart;
+            var fill = new GameObject("Fill", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            fill.transform.SetParent(heart.transform, false);
+            fill.rectTransform.anchorMin = Vector2.zero;
+            fill.rectTransform.anchorMax = Vector2.one;
+            fill.rectTransform.offsetMin = fill.rectTransform.offsetMax = Vector2.zero;
+            fill.sprite = fullHeart;
+            fill.preserveAspect = true;
+            fill.raycastTarget = false;
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fills.Add(fill);
             hearts.Add(image);
             popTimes.Add(-999f);
         }
     }
 
-    // Nombre de cœurs encore pleins
+    // Remaining half-heart units
     private int LivesLeft()
     {
-        if (busDamage == null) return heartCount;
+        if (busDamage == null) return heartCount * 2;
         int maxHits = Mathf.Max(1, busDamage.hitsToDestroy);
         int hitsLeft = Mathf.Clamp(maxHits - busDamage.HitsTaken, 0, maxHits);
-        return Mathf.CeilToInt(hitsLeft * heartCount / (float)maxHits);
+        return Mathf.CeilToInt(hitsLeft * heartCount * 2 / (float)maxHits);
     }
 
     private void Update()
@@ -74,11 +88,12 @@ public class BusHealthHearts : MonoBehaviour
         {
             // Les cœurs qui viennent de se vider font un petit « pop »
             if (shownLives >= 0)
-                for (int i = lives; i < shownLives && i < hearts.Count; i++)
-                    popTimes[i] = Time.unscaledTime;
+                for (int i = 0; i < hearts.Count; i++)
+                    if (Mathf.Clamp01((lives - i * 2) * .5f) < Mathf.Clamp01((shownLives - i * 2) * .5f))
+                        popTimes[i] = Time.unscaledTime;
             shownLives = lives;
             for (int i = 0; i < hearts.Count; i++)
-                hearts[i].sprite = i < lives ? fullHeart : emptyHeart;
+                fills[i].fillAmount = Mathf.Clamp01((lives - i * 2) * .5f);
         }
 
         for (int i = 0; i < hearts.Count; i++)

@@ -26,6 +26,7 @@ public sealed class CroustyLeaderboard : MonoBehaviour
 
     public void Show(CroustyLeaderboardScores.Board board)
     {
+        CroustyLeaderboardScores.RemoveExcludedScores(board);
         for (int i = 0; i < podiums.Length; i++) Fill(podiums[i], i, board);
         for (int i = 0; i < rows.Length; i++) Fill(rows[i], i + 3, board);
         if (status != null) status.text = board.entries.Count == 0
@@ -72,6 +73,7 @@ public static class CroustyLeaderboardScores
         try { board = JsonUtility.FromJson<Board>(PlayerPrefs.GetString(storageKey, "")); }
         catch (ArgumentException) { board = null; }
         if (board == null) board = new Board();
+        RemoveExcludedScores(board);
         var sources = new List<Entry>();
         if (board.records != null) sources.AddRange(board.records);
         if (board.entries != null) sources.AddRange(board.entries);
@@ -113,6 +115,20 @@ public static class CroustyLeaderboardScores
         if (latest != null) board.latestId = latest.id;
     }
 
+    public static void RemoveExcludedScores(Board board)
+    {
+        // Filter BEFORE case-insensitive personal-best grouping: a GOD record must
+        // never overwrite or absorb an eligible player's differently-cased name.
+        board.records?.RemoveAll(e => e != null && CroustyPlayerProfile.IsGodName(e.player));
+        board.entries?.RemoveAll(e => e != null && CroustyPlayerProfile.IsGodName(e.player));
+        if (CroustyPlayerProfile.IsGodName(board.latestPlayer))
+        {
+            board.latestId = null;
+            board.latestPlayer = null;
+            board.latestScore = 0;
+        }
+    }
+
     public static string NormalizePlayer(string value)
     {
         string name = CroustyPlayerProfile.Normalize(value);
@@ -127,15 +143,17 @@ public static class CroustyLeaderboardScores
 
     public static int BestForPlayer(string player, Board board)
     {
+        if (CroustyPlayerProfile.IsGodName(player)) return 0;
         var records = board.records != null && board.records.Count > 0 ? board.records : board.entries;
-        var record = records.Find(e => SamePlayer(e.player, player));
+        var record = records.Find(e => !CroustyPlayerProfile.IsGodName(e.player) && SamePlayer(e.player, player));
         return record != null ? record.score : 0;
     }
 
     public static void Record(int score, string player = "You", string storageKey = StorageKey)
     {
-        var board = Load(storageKey);
         string name = NormalizePlayer(player);
+        if (CroustyPlayerProfile.IsGodName(name)) return;
+        var board = Load(storageKey);
         score = Mathf.Max(0, score);
         var entry = board.records.Find(e => SamePlayer(e.player, name));
         if (entry == null)

@@ -22,7 +22,7 @@ public class BusWings : MonoBehaviour
     [Tooltip("Position le long du bus (0 = milieu, 0.5 = avant, -0.5 = arrière)")]
     [Range(-0.5f, 0.5f)] public float alongBus = 0.1f;
     [Tooltip("Hauteur de la charnière (0 = milieu du bus, 0.5 = toit)")]
-    [Range(-1.5f, 1.5f)] public float height = -0.15f;
+    [Range(-1.5f, 1.5f)] public float height = 0f;
     [Tooltip("Inclinaison des ailes vers l'arrière (degrés)")]
     public float sweepAngle = 15f;
 
@@ -31,7 +31,7 @@ public class BusWings : MonoBehaviour
     public float flapSpeed = 2.2f;
     [Tooltip("Amplitude du battement (degrés)")]
     public float flapAmplitude = 35f;
-    [Tooltip("Angle moyen des ailes (0 = à plat, 90 = vers le haut)")]
+    [Tooltip("Inclinaison des ailes dans leur pose de repos (degrés)")]
     public float restAngle = 10f;
     [Tooltip("Angle des ailes repliées (degrés)")]
     public float foldedAngle = -80f;
@@ -99,6 +99,11 @@ public class BusWings : MonoBehaviour
         wingsRoot.SetParent(transform, false);
         wingsRoot.localPosition = busCenter;
         wingsRoot.localScale = new Vector3(1f / busScale.x, 1f / busScale.y, 1f / busScale.z);
+        // Follow the same visual pivot as the body during flips and arcade banking.
+        // Preserve the authored chassis-space placement and metre-based scale.
+        var rig = GetComponent<BusWheelRig>();
+        if (rig != null && rig.VisualPivot != null)
+            wingsRoot.SetParent(rig.VisualPivot, true);
 
         // Dans le modèle, l'aile s'étend le long de X. La charnière est le bout le plus proche de 0.
         Bounds bounds = mesh.bounds;
@@ -168,6 +173,7 @@ public class BusWings : MonoBehaviour
     // LateUpdate : après le mouvement du bus
     private void LateUpdate()
     {
+        if (flight == null || wingsRoot == null) return;
         bool airborne = flight.isActiveAndEnabled && flight.IsAirborne;
         if (!airborne)
         {
@@ -205,7 +211,11 @@ public class BusWings : MonoBehaviour
 
         foreach (Transform hinge in hinges)
         {
-            hinge.localRotation = Quaternion.Euler(0f, sweepAngle, angle);
+            // The upright wing faces the front of the bus: flap around its vertical
+            // hinge, not around the bus's forward axis. Keep the authored rest pose.
+            // The mirrored side roots automatically give opposite left/right motion.
+            hinge.localRotation = Quaternion.Euler(0f, sweepAngle, restAngle) *
+                Quaternion.AngleAxis(angle - restAngle, Vector3.up);
             hinge.localScale = Vector3.one * grow;
         }
     }

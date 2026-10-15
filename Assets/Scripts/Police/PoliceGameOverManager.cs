@@ -76,7 +76,7 @@ public class PoliceGameOverManager : MonoBehaviour
         => TriggerGameOver(true);
     private void TriggerGameOver(bool timeout)
     {
-        if (gameOver)
+        if (gameOver || !timeout && CroustyPlayerProfile.IsGodMode)
             return;
         CountBonuses();
         gameOver = true;

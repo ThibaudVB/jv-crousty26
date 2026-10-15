@@ -2,10 +2,16 @@
 
 Le bonus donne immédiatement 15 secondes de vol pilotable. F déclenche une seule impulsion verticale de 8 m/s pour dégager les roues, sans phase de décollage automatique ; ZQSD dirige le vol, Espace utilise jusqu’à 3 secondes cumulées de boost. À expiration, la gravité Unity reprend immédiatement : aucun vol plané, plafonnement de vitesse verticale, redressement, freinage aérien ou déplacement forcé à l’atterrissage. L’élan acquis est conservé ; une vitesse ascendante peut donc encore faire monter brièvement le bus avant sa chute.
 
+Après expiration ou arrêt manuel du vol, les figures existantes sont disponibles pendant la chute : Z/S pour les saltos, Q/D pour les rotations, ou le stick de la manette. Les conditions habituelles de hauteur et de temps en l’air restent applicables. Seule l’animation visuelle est mise à jour pendant que le rig de conduite reste désactivé ; les figures ne modifient ni la vitesse ni la rotation physique du bus. Les récompenses d’atterrissage existantes sont conservées.
+
+Les ailes suivent désormais le pivot visuel de la carrosserie, y compris pendant les saltos, avec leur placement et leur échelle conservés. Elles n’ajoutent aucun collider.
+
+Protection des collisions avec les bâtiments : le bus utilise la détection continue au sol aussi. Avant chaque pas de physique, la ville vérifie les quartiers couverts par le volume du bus et son déplacement imminent. Si le chargement est en retard, elle termine la génération nécessaire avant de laisser la physique avancer, sans créer un second générateur concurrent. Ce rattrapage peut occasionner un ralentissement ponctuel. Les vérifications ajoutées couvrent l’attache des ailes pendant les rotations et les frontières de quartiers dans les deux sens ; leur compilation réussit, mais leur exécution Unity et le scénario signalé à 25/25 restent à valider en jeu.
+
 ## Corrections
 
 - Remplacement de Gliding par Falling à la même valeur d’énumération. Suppression des paramètres et méthodes de vol plané, de la détection anticipée par rayons et de la remise à plat forcée.
-- Les WheelCollider sont suspendus en vol puis réactivés à expiration avec leur état initial. BusController et BusWheelRig restent désactivés pendant la chute : aucune commande de conduite ne peut réécrire la vitesse ou la rotation aérienne.
+- Les WheelCollider restent suspendus en vol et pendant la chute, puis retrouvent leur état initial au contact du sol. Un rayon limité à l’empreinte des pneus détecte ce contact ; les collisions du châssis restent actives. BusController et BusWheelRig restent désactivés pendant la chute : aucune commande de conduite ne peut réécrire la vitesse ou la rotation aérienne. L’amortissement linéaire est nul dans ces deux états et retrouve sa valeur d’origine à l’atterrissage ou à la désactivation.
 - Retour à la conduite sur contact réel des roues ou du châssis avec une surface orientée vers le haut. Un impact sur le toit rend aussi les commandes, permettant le reset R existant. Les murs seuls ne déclenchent pas ce retour.
 - SceneBaseGrounding ne stabilise plus le bus et n’ajoute plus de gravité pendant que la conduite ou le rig sont désactivés. Il reste activé pour préserver ses réglages de suspension et de centre de masse.
 - Les commandes terrestres mémorisées sont vidées à la désactivation ; BusWheelRig conserve sa remise à zéro existante du drift et des couples. La fumée n’émet pas lorsque le rig ou ses roues sont désactivés.
