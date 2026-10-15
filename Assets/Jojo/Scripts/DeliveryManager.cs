@@ -208,10 +208,7 @@ public class DeliveryManager : MonoBehaviour
             bool flying = IsBusFlying();
             DeliveryPoint ringTarget = UpdateRings(flying);
             if (ringTarget != null)
-            {
-                CroustySoundDesignManager.Play(CroustySound.FireRing);
                 ThrowCrousty(ringTarget);
-            }
             if (flying)
                 return;
         }
