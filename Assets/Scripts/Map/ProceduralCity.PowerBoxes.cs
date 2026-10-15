@@ -50,5 +50,8 @@ public sealed partial class ProceduralCity
         var pickup = root.AddComponent<PowerUpBox>();
         pickup.visual = visual;
         pickup.respawnDelay = 18f;
+        // Build hidden boxes too: completing a district during the tutorial must
+        // not permanently remove its rewards when normal gameplay resumes.
+        root.SetActive(PowerBoxesEnabled);
     }
 }

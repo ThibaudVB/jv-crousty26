@@ -78,7 +78,9 @@ public sealed class PowerUpBox : MonoBehaviour
         var flight = bus.GetComponent<BusFlightController>();
         if (gps == null) gps = FindAnyObjectByType<BusGPS>();
 
-        if ((progression == null || progression.IsUnlocked(PowerUpInventory.PowerUpType.Pet)) && pet != null && pet.isActiveAndEnabled && pet.CanReceiveCharges)
+        // The tutorial grants a one-off PET charge even when another starting
+        // power was rolled. This does not unlock PET for ordinary world boxes.
+        if ((guaranteedPetDrop || progression == null || progression.IsUnlocked(PowerUpInventory.PowerUpType.Pet)) && pet != null && pet.isActiveAndEnabled && pet.CanReceiveCharges)
         {
             candidates.Add(() => pet.AddCharges(3, 3));
             candidateTypes.Add(CroustyBonusHUD.SelectedBonus.Pet);

@@ -15,6 +15,20 @@ public sealed class PowerUnlockProgression : MonoBehaviour
     [Min(0)] public int ricePrice = 130;
     [Min(0)] public int gpsPrice = 130;
     [Min(0)] public int flightPrice = 5000;
+
+    [Header("Progression variée (désactivé = règles d'origine)")]
+    [Tooltip("Premier pouvoir tiré au hasard entre PET, GPS et riz (jamais le vol). Décoché : toujours le PET.")]
+    public bool randomStartingPower;
+    [Tooltip("Le vol n'est proposé qu'une fois les 3 autres pouvoirs débloqués.")]
+    public bool flightLast;
+    [Tooltip("Prix tirés au hasard à chaque partie pour les 2 pouvoirs à débloquer (le vol garde Flight Price).")]
+    public bool randomPrices;
+    [Tooltip("Prix du pouvoir le moins cher (min, max)")]
+    public Vector2Int cheapPriceRange = new Vector2Int(600, 900);
+    [Tooltip("Prix du pouvoir le plus cher (min, max)")]
+    public Vector2Int expensivePriceRange = new Vector2Int(1000, 1400);
+    public Sprite petSprite;
+
     [Header("Authored panels")]
     public GameObject choicePanel;
     public GameObject backdrop;
@@ -33,7 +47,8 @@ public sealed class PowerUnlockProgression : MonoBehaviour
     public Material blurMaterial;
 
     public static bool ChoiceOpen { get; private set; }
-    private readonly HashSet<Power> unlocked = new HashSet<Power> { Power.Pet };
+    private readonly HashSet<Power> unlocked = new HashSet<Power>();
+    private readonly Dictionary<Power, int> rolledPrices = new Dictionary<Power, int>();
     private readonly List<Power> offers = new List<Power>();
     private int completedChoices;
     private bool open;
@@ -45,10 +60,33 @@ public sealed class PowerUnlockProgression : MonoBehaviour
 
     public bool IsUnlocked(Power power) => unlocked.Contains(power) ||
         CroustyPlayerProfile.IsGodMode && System.Enum.IsDefined(typeof(Power), power);
-    public int Price(Power power) => Mathf.Max(0, power == Power.Flight ? flightPrice : power == Power.Rice ? ricePrice : gpsPrice);
+    public int Price(Power power)
+    {
+        if (power != Power.Flight && rolledPrices.TryGetValue(power, out int rolled)) return rolled;
+        return Mathf.Max(0, power == Power.Flight ? flightPrice : power == Power.Rice ? ricePrice : gpsPrice);
+    }
+
+    private static readonly Power[] GroundPowers = { Power.Pet, Power.GPS, Power.Rice };
 
     private void Awake()
     {
+        // Premier pouvoir : le PET, ou un des 3 pouvoirs au sol au hasard
+        unlocked.Add(randomStartingPower ? GroundPowers[Random.Range(0, GroundPowers.Length)] : Power.Pet);
+
+        // Les 2 autres pouvoirs au sol : un prix bas et un prix haut, dans un ordre au hasard
+        if (randomPrices)
+        {
+            var locked = new List<Power>();
+            foreach (var power in GroundPowers) if (!unlocked.Contains(power)) locked.Add(power);
+            if (locked.Count == 2 && Random.value < 0.5f) locked.Reverse();
+            for (int i = 0; i < locked.Count; i++)
+            {
+                Vector2Int range = i == 0 ? cheapPriceRange : expensivePriceRange;
+                int price = Random.Range(Mathf.Min(range.x, range.y), Mathf.Max(range.x, range.y) + 1);
+                rolledPrices[locked[i]] = Mathf.RoundToInt(price / 10f) * 10; // prix ronds (650 $, pas 653 $)
+            }
+        }
+
         choicePanel.SetActive(false);
         backdrop.SetActive(false);
         for (int i = 0; i < choices.Length; i++)
@@ -74,9 +112,12 @@ public sealed class PowerUnlockProgression : MonoBehaviour
         var result = new List<Power>(2);
         int milestone = completedChoices == 0 ? 5 : completedChoices == 1 ? 10 : 15;
         if (completedChoices >= 3 || runSize < milestone) return result;
+        if (randomStartingPower && !IsUnlocked(Power.Pet)) result.Add(Power.Pet);
         if (!IsUnlocked(Power.GPS)) result.Add(Power.GPS);
         if (!IsUnlocked(Power.Rice)) result.Add(Power.Rice);
-        if (completedChoices > 0 && !IsUnlocked(Power.Flight)) result.Add(Power.Flight);
+        // Le vol : en dernier obligatoirement (option), sinon dès le 2e choix comme à l'origine
+        bool flightAllowed = flightLast ? result.Count == 0 : completedChoices > 0;
+        if (flightAllowed && !IsUnlocked(Power.Flight)) result.Add(Power.Flight);
         return result;
     }
 
@@ -122,8 +163,10 @@ public sealed class PowerUnlockProgression : MonoBehaviour
             choices[i].gameObject.SetActive(i < offers.Count);
             if (i >= offers.Count) continue;
             var power = offers[i];
-            artwork[i].sprite = power == Power.GPS ? gpsSprite : power == Power.Rice ? riceSprite : flightSprite;
-            titles[i].text = power == Power.GPS ? "Express GPS" : power == Power.Rice ? "Asian Rice" : "Flying Bus";
+            artwork[i].sprite = power == Power.GPS ? gpsSprite : power == Power.Rice ? riceSprite :
+                power == Power.Pet ? petSprite : flightSprite;
+            titles[i].text = power == Power.GPS ? "Express GPS" : power == Power.Rice ? "Asian Rice" :
+                power == Power.Pet ? "Toxic Gas" : "Flying Bus";
             prices[i].text = "$" + Price(power).ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
             choices[i].interactable = deliveries.Money >= Price(power);
             artwork[i].color = choices[i].interactable ? Color.white : new Color(.55f, .55f, .55f, 1);

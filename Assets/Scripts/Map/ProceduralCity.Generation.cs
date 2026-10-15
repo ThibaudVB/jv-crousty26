@@ -404,8 +404,9 @@ public sealed partial class ProceduralCity
         int axis = 0;
         for (int i = 1; i < 3; i++) if (bounds.size[i] < bounds.size[axis]) axis = i;
         var sound = zone.AddComponent<FireRingSoundZone>();
-        sound.apertureExtents = bounds.extents * .75f;
         sound.localAxis = axis == 0 ? Vector3.right : axis == 1 ? Vector3.up : Vector3.forward;
+        sound.ringCollider = ring.GetComponent<MeshCollider>();
+        sound.searchDistance = Mathf.Max(bounds.size.x * Mathf.Abs(scale.x), bounds.size.y * Mathf.Abs(scale.y), bounds.size.z * Mathf.Abs(scale.z));
         CreateRoadPowerBox(ring.parent, ring.TransformPoint(bounds.center));
     }
 

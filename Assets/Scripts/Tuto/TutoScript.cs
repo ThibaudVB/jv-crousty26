@@ -28,6 +28,7 @@ public sealed class TutoScript : MonoBehaviour
     private AudioSource musicSource;
     private DeliveryManager deliveryManager;
     private PoliceChaseManager policeManager;
+    private ProceduralCity proceduralCity;
     private BusDamage busDamage;
     private Rigidbody introBusBody;
     private BusController introBusController;
@@ -43,6 +44,8 @@ public sealed class TutoScript : MonoBehaviour
     private bool tutorialPowerBoxCollected;
     private bool tutorialDamageStateCaptured;
     private bool damageWasEnabledBeforeTutorial;
+    private bool tutorialPowerBoxStateCaptured;
+    private bool powerBoxesWereEnabled;
 
     private const string IntroMessage =
         "Alright rookie, eyes on the screen! See that yellow spot? Get your butt over there and pick up the order. Chop chop, time is money!";
@@ -59,6 +62,7 @@ public sealed class TutoScript : MonoBehaviour
     private const float CameraStartDelay = 2f;
     private const float CameraLookDuration = 3f;
     private const float CameraTurnDuration = 0.4f;
+    private const float PowerBoxDropDuration = 3f;
 
     private void Awake()
     {
@@ -87,25 +91,32 @@ public sealed class TutoScript : MonoBehaviour
         deliveryManager = GetComponent<DeliveryManager>();
         if (policeManager == null)
             policeManager = FindAnyObjectByType<PoliceChaseManager>();
+        if (tutorialEnabled)
+            proceduralCity = FindAnyObjectByType<ProceduralCity>();
 
         if (deliveryCanvas == null || tutorialCanvas == null ||
             hudMaquette == null || atouts == null || atoutsAlternate == null ||
             dialogueCanvas == null || lbDialogue == null || managerDialogue == null ||
-            tutorialEnabled && (deliveryManager == null || policeManager == null))
+            tutorialEnabled && (deliveryManager == null || policeManager == null || proceduralCity == null))
         {
-            Debug.LogError("TutoScript : assigner les Canvas, les HUD, LB dialogue et le dialogue du gérant; vérifier aussi les managers du tutoriel.", this);
+            Debug.LogError("TutoScript : assigner les Canvas, les HUD, LB dialogue et le dialogue du gérant; vérifier aussi les managers du tutoriel et ProceduralCity.", this);
             enabled = false;
             yield break;
         }
 
         if (tutorialEnabled)
         {
+            powerBoxesWereEnabled = proceduralCity.PowerBoxesEnabled;
+            tutorialPowerBoxStateCaptured = true;
+            proceduralCity.SetPowerBoxesEnabled(false);
+
             busDamage = deliveryManager.player != null
                 ? deliveryManager.player.GetComponentInParent<BusDamage>()
                 : null;
             if (busDamage == null)
             {
                 Debug.LogError("TutoScript : BusDamage est requis pour détecter la réparation du camion.", this);
+                RestoreTutorialPowerBoxState();
                 enabled = false;
                 yield break;
             }
@@ -117,6 +128,7 @@ public sealed class TutoScript : MonoBehaviour
             if (!LockBusForIntro())
             {
                 RestoreTutorialDamageState();
+                RestoreTutorialPowerBoxState();
                 enabled = false;
                 yield break;
             }
@@ -230,12 +242,23 @@ public sealed class TutoScript : MonoBehaviour
             busDamage.Repaired -= OnBusRepaired;
             RestoreTutorialDamageState();
         }
+        RestoreTutorialPowerBoxState();
+    }
+
+    private void RestoreTutorialPowerBoxState()
+    {
+        if (!tutorialPowerBoxStateCaptured || proceduralCity == null)
+            return;
+
+        proceduralCity.SetPowerBoxesEnabled(powerBoxesWereEnabled);
+        tutorialPowerBoxStateCaptured = false;
     }
 
     private void OnRunStarted()
     {
         if (tutorialPowerBoxCollected)
         {
+            RestoreTutorialPowerBoxState();
             if (musicSource != null)
                 musicSource.Stop();
             if (policeManager != null)
@@ -318,7 +341,7 @@ public sealed class TutoScript : MonoBehaviour
             flightController.enabled = false;
 
         Vector3 forward = busBody.rotation * Vector3.forward;
-        Vector3 startPosition = busBody.position - forward * 28f;
+        Vector3 startPosition = busBody.position - forward * 40f;
         Quaternion policeRotation = Quaternion.LookRotation(forward, Vector3.up);
         PoliceCarAI policeCar = policeManager.CreateTutorialPoliceCar(startPosition, policeRotation);
 
@@ -349,7 +372,7 @@ public sealed class TutoScript : MonoBehaviour
             forward * (policeManager.BusHalfLength + policeCar.HalfLength - 0.15f);
         Rigidbody policeBody = policeCar.GetComponent<Rigidbody>();
         Vector3 carStart = policeBody.position;
-        float chargeDuration = 1.35f;
+        float chargeDuration = 2.4f;
         float elapsed = 0f;
         while (elapsed < chargeDuration)
         {
@@ -554,7 +577,7 @@ public sealed class TutoScript : MonoBehaviour
             Destroy(band.GetComponent<Collider>());
             SetLootboxColor(band.GetComponent<Renderer>(), new Color(0.18f, 0.78f, 0.28f));
         }
-        powerUpBox.BeginTutorialDrop(landingPosition, 3f);
+        powerUpBox.BeginTutorialDrop(landingPosition, PowerBoxDropDuration);
         return box;
     }
 
@@ -590,9 +613,9 @@ public sealed class TutoScript : MonoBehaviour
         cameraFollow.enabled = false;
 
         Vector3 busForward = Vector3.ProjectOnPlane(busBody.transform.forward, Vector3.up).normalized;
-        GetBusFront(busBody, busForward, out Vector3 frontCenter, out _, out float busHalfLength);
-        Vector3 cameraPosition = frontCenter + busForward * (busHalfLength + 2f) +
-            Vector3.up * 3f;
+        GetBusFront(busBody, busForward, out _, out _, out float busHalfLength);
+        Vector3 cameraPosition = busBody.position - busForward * (busHalfLength + 5f) +
+            Vector3.up * 6f;
         Quaternion cameraRotation = Quaternion.LookRotation(
             lootbox.position + Vector3.up * 0.3f - cameraPosition, Vector3.up);
         const float transitionDuration = 0.5f;
@@ -608,7 +631,16 @@ public sealed class TutoScript : MonoBehaviour
         }
 
         mainCamera.transform.SetPositionAndRotation(cameraPosition, cameraRotation);
-        yield return new WaitForSeconds(2f);
+        float displayElapsed = 0f;
+        while (displayElapsed < PowerBoxDropDuration)
+        {
+            displayElapsed += Time.deltaTime;
+            Vector3 lookDirection = lootbox.position + Vector3.up * 0.3f -
+                mainCamera.transform.position;
+            if (lookDirection.sqrMagnitude > 0.001f)
+                mainCamera.transform.rotation = Quaternion.LookRotation(lookDirection, Vector3.up);
+            yield return null;
+        }
 
         elapsed = 0f;
         Vector3 displayPosition = mainCamera.transform.position;

@@ -31,6 +31,19 @@ public sealed partial class ProceduralCity : MonoBehaviour
     public int BuildingVariantCount => buildings.Count;
     public int LandmarkVariantCount => landmarks.Count;
     public Vector3 Origin { get; private set; }
+    public bool PowerBoxesEnabled => powerBoxesEnabled;
+
+    public void SetPowerBoxesEnabled(bool enabled)
+    {
+        powerBoxesEnabled = enabled;
+        if (WorldRoot == null) return;
+
+        foreach (PowerUpBox powerBox in WorldRoot.GetComponentsInChildren<PowerUpBox>(true))
+        {
+            if (!powerBox.enabled) continue;
+            powerBox.gameObject.SetActive(enabled);
+        }
+    }
 
     private sealed class Template
     {
@@ -95,6 +108,7 @@ public sealed partial class ProceduralCity : MonoBehaviour
     private readonly Queue<ImportWork> importWork = new Queue<ImportWork>();
     private bool deferImports;
     private bool previousFog, fogConfigured;
+    private bool powerBoxesEnabled = true;
     private FogMode previousFogMode;
     private Color previousFogColor;
     private float previousFogStart, previousFogEnd, nextMaintenance;

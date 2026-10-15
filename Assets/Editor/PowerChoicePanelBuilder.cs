@@ -13,13 +13,27 @@ public static class PowerChoicePanelBuilder
     private static Sprite Sprite(string path) => AssetDatabase.LoadAssetAtPath<Sprite>(path);
 
     [MenuItem("Tools/Crousty/Installer le panel de choix des pouvoirs")]
-    public static void Install()
+    public static void Install() => InstallIn("Assets/SceneBase.unity", false);
+
+    // Même panel dans SceneBaseJojo, avec la progression variée : premier pouvoir au hasard,
+    // prix au hasard, et le vol en dernier.
+    [MenuItem("Tools/Crousty/Installer le panel de choix des pouvoirs dans SceneBaseJojo")]
+    public static void InstallJojo() => InstallIn("Assets/Jojo/SceneBaseJojo.unity", true);
+
+    private static void InstallIn(string scenePath, bool variedProgression)
     {
-        var scene = EditorSceneManager.OpenScene("Assets/SceneBase.unity");
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        var scene = EditorSceneManager.OpenScene(scenePath);
         var bus = UnityEngine.Object.FindAnyObjectByType<BusController>();
-        if (bus.GetComponent<PowerUnlockProgression>() != null) return;
+        if (bus.GetComponent<PowerUnlockProgression>() != null)
+        {
+            Debug.Log("Le panel de choix des pouvoirs est déjà installé dans " + scenePath);
+            return;
+        }
         var progression = bus.gameObject.AddComponent<PowerUnlockProgression>();
         progression.deliveries = UnityEngine.Object.FindAnyObjectByType<DeliveryManager>();
+        progression.randomStartingPower = progression.flightLast = progression.randomPrices = variedProgression;
+        progression.petSprite = Sprite("Assets/UI/Bonuses/BONUS_PET.png");
         font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Menu/RetroBlendy SDF.asset");
         progression.gpsSprite = Sprite("Assets/UI/Bonuses/BONUS_GPS.png");
         progression.riceSprite = Sprite("Assets/UI/Bonuses/BONUS_RIZ.png");
