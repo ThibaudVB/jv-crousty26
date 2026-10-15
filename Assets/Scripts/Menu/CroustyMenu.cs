@@ -137,7 +137,7 @@ public sealed class CroustyMenu : MonoBehaviour
         }
         if (controllerConfirmPrompt == null)
         {
-            var prompt = new GameObject("Controller confirm A", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var prompt = new GameObject("Controller confirm A", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Canvas));
             controllerConfirmPrompt = prompt.GetComponent<Image>();
             controllerConfirmPrompt.sprite = Resources.Load<Sprite>("Crousty/ControllerConfirmA");
             controllerConfirmPrompt.raycastTarget = false;
@@ -145,10 +145,20 @@ public sealed class CroustyMenu : MonoBehaviour
         }
         var rect = controllerConfirmPrompt.rectTransform;
         rect.SetParent(button.transform, false);
-        rect.anchorMin = rect.anchorMax = new Vector2(1, .5f);
-        rect.pivot = new Vector2(0, .5f);
-        rect.anchoredPosition = new Vector2(8, 0);
-        rect.sizeDelta = new Vector2(40, 40);
+        // Keep the prompt inside the ribbon, before its label, away from the bus artwork.
+        rect.anchorMin = rect.anchorMax = new Vector2(0, .5f);
+        rect.pivot = new Vector2(.5f, .5f);
+        rect.anchoredPosition = new Vector2(24, 0);
+        rect.sizeDelta = new Vector2(28, 28);
+        rect.SetAsLastSibling();
+        var promptCanvas = controllerConfirmPrompt.GetComponent<Canvas>();
+        var menuCanvas = button.GetComponentInParent<Canvas>();
+        promptCanvas.overrideSorting = true;
+        if (menuCanvas != null)
+        {
+            promptCanvas.sortingLayerID = menuCanvas.rootCanvas.sortingLayerID;
+            promptCanvas.sortingOrder = menuCanvas.rootCanvas.sortingOrder + 1;
+        }
         controllerConfirmPrompt.gameObject.SetActive(true);
     }
 
