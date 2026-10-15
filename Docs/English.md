@@ -18,3 +18,16 @@ separately from game errors.
 
 ![English HUD](Previews/hud-english.png)
 ![English name entry](Previews/name-english.png)
+
+## English text and credits update — 15 October 2026
+
+Translated the remaining serialized French labels and delivery messages in SceneBaseJojo.
+Bonus card labels now always use their English names. The main menu and gameplay options
+contain the full team, support, special thanks, institution and asset-source credits.
+Credits remain editable in the scenes and scroll with the mouse wheel, keyboard arrows,
+or the controller right stick. The editor menu builder uses Resources/Crousty/Credits.txt.
+
+This revision: C# compilation succeeded, all five edited scenes passed object-reference
+checks, and the authored text audit found no remaining French in player-facing fields.
+Every supplied name and source was checked against the shared credits content.
+The updated credits layout has not been visually verified in Unity Play mode.

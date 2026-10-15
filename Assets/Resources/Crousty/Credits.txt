@@ -1,0 +1,58 @@
+Scroll: mouse wheel / Up & Down / right stick
+
+<b>DEVELOPMENT</b>
+Thibaud von Borowski
+Jordan TCHA
+Antoine BASSET
+
+<b>3D ART & ANIMATION</b>
+Eric Tran-Ky
+
+<b>COMMUNICATIONS</b>
+Hélène TEA & Mathis Duclos
+
+<b>UI / UX</b>
+Edouard FORT & Eric Tran-Ky
+
+<b>AUDIOVISUAL PRODUCTION</b>
+Eric Tran-Ky & Edouard FORT
+
+<b>PROJECT MANAGEMENT</b>
+Edouard FORT, Eric Tran-Ky & Helene TEA
+
+<b>EMOTIONAL SUPPORT</b>
+Gwendal Judic & Robin Alonzo
+
+<b>DRINKS SUPPORT</b>
+Cathy Duclos
+
+<b>FOOD SUPPORT</b>
+La Fancy, HFC, Burger King & Super U
+
+<b>SPECIAL THANKS</b>
+Gwendal Judic, Arthur Centimètre, Robin Alonzo,
+Julien BERTRAND, GIROUX GUILLAUME,
+HEURARD MAEL
+
+<b>WITH THANKS TO</b>
+Bordeaux Montaigne University
+Bordeaux Montaigne University Institute of Technology (IUT)
+
+<b>3D ASSET SOURCES</b>
+Poly Pizza — poly.pizza
+Sketchfab — sketchfab.com
+Thanks to the artists who shared their work.
+
+<b>MUSIC</b>
+What We Got — Infraction
+
+<b>SOUND EFFECTS</b>
+Heavy Wings Flapping — Dragon Studio
+
+<b>VISUAL EFFECTS</b>
+Cinematic Explosions FREE — Mirza Beig
+
+<b>ENGINE & UI TECHNOLOGY</b>
+Unity & TextMesh Pro
+
+Thanks for riding with us!

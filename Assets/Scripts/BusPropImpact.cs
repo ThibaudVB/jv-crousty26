@@ -30,7 +30,7 @@ public class BusPropImpact : MonoBehaviour
     }
     private void OnDisable() => ActiveBuses.Remove(this);
 
-    private void IgnoreActiveProps()
+    internal void IgnoreActiveProps()
     {
         foreach (MapImpactProp prop in MapImpactProp.ActiveProps)
             if (prop != null) IgnorePropCollisions(prop);
@@ -41,7 +41,8 @@ public class BusPropImpact : MonoBehaviour
 
     internal void IgnorePropCollisions(MapImpactProp prop)
     {
-        if (!prop.HasBeenHit) return;
+        // Ignore trees and lamps before contact, including slow approaches.
+        if (!prop.HasBeenHit && !prop.passThroughBus) return;
         if (busColliders == null) busColliders = GetComponentsInChildren<Collider>();
         Collider[] propColliders = prop.GetComponentsInChildren<Collider>();
         foreach (Collider busCollider in busColliders)
