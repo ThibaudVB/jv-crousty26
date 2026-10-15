@@ -195,10 +195,20 @@ public class BusFlightController : MonoBehaviour
     // ACTIVATION DU BONUS
     // =====================================================
 
-    public void ActivateFlight()
+    public void ActivateFlight() => ActivateFlight(false);
+
+    // Pour tester (BusDebugFlightKey) : vole tout de suite, même sans avoir le pouvoir dans l'inventaire
+    public void ActivateFlightForTesting()
+    {
+        if (IsAirborne) return;
+        UsesRemaining = Mathf.Max(UsesRemaining, 1);
+        ActivateFlight(true);
+    }
+
+    private void ActivateFlight(bool ignoreInventory)
     {
         if (IsAirborne || UsesRemaining <= 0 || !isActiveAndEnabled || Time.timeScale <= 0f ||
-            (inventory != null && inventory.PrimaryPower != PowerUpInventory.PowerUpType.Flight) ||
+            (!ignoreInventory && inventory != null && inventory.PrimaryPower != PowerUpInventory.PowerUpType.Flight) ||
             rb.isKinematic || !busController.enabled)
             return;
 

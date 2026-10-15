@@ -408,6 +408,8 @@ GameObject:
   - component: {fileID: 920000000000000004}
   - component: {fileID: 920000000000000056}
   - component: {fileID: 920000000000000057}
+  - component: {fileID: 930000000000000300}
+  - component: {fileID: 930000000000000301}
   m_Layer: 0
   m_Name: CroustyBus
   m_TagString: Untagged
@@ -169291,3 +169293,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75e993a70bc94fb69c8101b86c0203f4, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+--- !u!114 &930000000000000300
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8cc7c5d0dbfd47f28d70103b5d89be94, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BusFlightInertia
+  slowdownKmhPerSecond: 6
+--- !u!114 &930000000000000301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21662975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a157d7f7c0494dd7a56fc82bad0c4a5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BusDebugFlightKey
+  flyKey: 39

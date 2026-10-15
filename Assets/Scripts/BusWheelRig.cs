@@ -109,6 +109,8 @@ public class BusWheelRig : MonoBehaviour
     private Transform visualPivot;
     // Rotation des figures en l'air (galipettes, 360), donnée par BusAirTricks
     [NonSerialized] public Quaternion trickRotation = Quaternion.identity;
+    // Ralentissement (m/s²) quand le bus dépasse sa vitesse max, donné par BusFlightInertia. 0 = bridé d'un coup (normal).
+    [NonSerialized] public float inertiaDeceleration;
     private Vector3 visualAngles;
     private Vector3 visualAngularVelocity;
     private float visualAcceleration;
@@ -400,7 +402,15 @@ public class BusWheelRig : MonoBehaviour
         float targetSpeed = rawThrottle < 0f ? -settings.maxReverseSpeedKmh / 3.6f : maxSpeed;
         if (grounded)
         {
-            if (handbrake)
+            float upperLimit = maxSpeed;
+            if (inertiaDeceleration > 0f && signedSpeed > maxSpeed && !handbrake && rawThrottle >= 0f)
+            {
+                // Inertie (BusFlightInertia) : trop rapide après le vol, le bus ralentit doucement
+                // jusqu'à sa vitesse max au lieu d'être bridé d'un coup.
+                signedSpeed = Mathf.Max(maxSpeed, signedSpeed - inertiaDeceleration * dt);
+                upperLimit = signedSpeed;
+            }
+            else if (handbrake)
                 signedSpeed = Mathf.MoveTowards(signedSpeed, 0f, arcadeBrakeDeceleration * 0.45f * dt);
             else if (Mathf.Abs(rawThrottle) < 0.01f)
                 signedSpeed = Mathf.MoveTowards(signedSpeed, 0f, arcadeCoastDeceleration * dt);
@@ -413,7 +423,7 @@ public class BusWheelRig : MonoBehaviour
                 signedSpeed = Mathf.MoveTowards(signedSpeed, targetSpeed, acceleration * dt);
             }
             // Le bonus de sortie aide l'acceleration, sans depasser la vitesse maximale.
-            signedSpeed = Mathf.Clamp(signedSpeed, -settings.maxReverseSpeedKmh / 3.6f, maxSpeed);
+            signedSpeed = Mathf.Clamp(signedSpeed, -settings.maxReverseSpeedKmh / 3.6f, upperLimit);
             float speedRatio = Mathf.Clamp01(Mathf.Abs(signedSpeed) / Mathf.Max(1f, maxSpeed));
             float authority = Mathf.Lerp(1f, 0.78f, speedRatio);
             float yaw = progressiveSteering * arcadeTurnSpeed * authority *
