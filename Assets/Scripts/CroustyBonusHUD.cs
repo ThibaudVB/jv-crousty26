@@ -46,10 +46,10 @@ public sealed class CroustyBonusHUD : MonoBehaviour
     }
 
     [Header("Cartes placées dans la scène")]
-    [SerializeField] private Card gps = new Card { englishName = "GPS", frenchName = "GPS" };
-    [SerializeField] private Card pet = new Card { englishName = "PET", frenchName = "PET" };
-    [SerializeField] private Card rice = new Card { englishName = "RICE", frenchName = "RICE" };
-    [SerializeField] private Card flight = new Card { englishName = "FLIGHT", frenchName = "FLIGHT" };
+    [SerializeField] private Card gps = new Card { englishName = "Express GPS", frenchName = "Express GPS" };
+    [SerializeField] private Card pet = new Card { englishName = "Toxic Gas", frenchName = "Toxic Gas" };
+    [SerializeField] private Card rice = new Card { englishName = "Asian Rice", frenchName = "Asian Rice" };
+    [SerializeField] private Card flight = new Card { englishName = "Crousty Flight", frenchName = "Crousty Flight" };
     [SerializeField] private Material grayMaterial;
     [SerializeField] private Sprite emptySprite;
     [SerializeField] private BonusLanguage language = BonusLanguage.English;
@@ -83,6 +83,8 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         if (petController == null) petController = FindAnyObjectByType<BusPetController>();
         if (flightController == null) flightController = FindAnyObjectByType<BusFlightController>();
         if (riceController == null) riceController = FindAnyObjectByType<BusRiceThrower>();
+        gps.englishName = "Express GPS"; pet.englishName = "Toxic Gas";
+        rice.englishName = "Asian Rice"; flight.englishName = "Crousty Flight";
         SetLanguage(language);
         Refresh();
     }
@@ -99,7 +101,12 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         language = BonusLanguage.English;
         foreach (Card card in new[] { gps, pet, rice, flight })
             if (card.nameText != null)
+            {
                 card.nameText.text = card.englishName;
+                card.nameText.fontSizeMax = card.nameText.fontSize;
+                card.nameText.fontSizeMin = 12;
+                card.nameText.enableAutoSizing = true;
+            }
     }
 
     // Updated whenever a rice charge is spent.

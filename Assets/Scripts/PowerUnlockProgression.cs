@@ -166,7 +166,7 @@ public sealed class PowerUnlockProgression : MonoBehaviour
             artwork[i].sprite = power == Power.GPS ? gpsSprite : power == Power.Rice ? riceSprite :
                 power == Power.Pet ? petSprite : flightSprite;
             titles[i].text = power == Power.GPS ? "Express GPS" : power == Power.Rice ? "Asian Rice" :
-                power == Power.Pet ? "Toxic Gas" : "Flying Bus";
+                power == Power.Pet ? "Toxic Gas" : "Crousty Flight";
             prices[i].text = "$" + Price(power).ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
             choices[i].interactable = deliveries.Money >= Price(power);
             artwork[i].color = choices[i].interactable ? Color.white : new Color(.55f, .55f, .55f, 1);

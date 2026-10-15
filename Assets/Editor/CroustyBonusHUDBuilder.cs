@@ -9,7 +9,7 @@ public static class CroustyBonusHUDBuilder
 {
     private const string SpriteFolder = "Assets/UI/Bonuses/";
     private static readonly string[] FileNames = { "BONUS_GPS.png", "BONUS_PET.png", "BONUS_RIZ.png", "BONUS_VOL.png" };
-    private static readonly string[] CardNames = { "GPS", "PET", "RICE", "FLIGHT" };
+    private static readonly string[] CardNames = { "Express GPS", "Toxic Gas", "Asian Rice", "Crousty Flight" };
     private static readonly string[] Fields = { "gps", "pet", "rice", "flight" };
 
     [MenuItem("Tools/Crousty/Placer les atouts dans le HUD")]

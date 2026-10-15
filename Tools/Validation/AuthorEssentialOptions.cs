@@ -56,12 +56,12 @@ public static class AuthorEssentialOptions
 
         var audio=menu.categoryPanels[1].transform;
         Heading(audio,"TURN UP THE CRUNCH","AUDIO");
-        var master=AudioRow(audio,151,"MASTER",out var masterValue);
+        var master=AudioRow(audio,151,"Master",out var masterValue);
         menu.volumeSlider=master;menu.volumeLabel=masterValue;
         UnityEventTools.AddPersistentListener(master.onValueChanged,menu.SetVolume);
-        var music=AudioRow(audio,221,"AMBIENCE",out var musicValue);
+        var music=AudioRow(audio,221,"Music",out var musicValue);
         var musicOption=music.gameObject.AddComponent<CroustyAudioOption>();musicOption.music=true;musicOption.value=musicValue;
-        var effects=AudioRow(audio,291,"EFFECTS",out var effectsValue);
+        var effects=AudioRow(audio,291,"Effect",out var effectsValue);
         var effectOption=effects.gameObject.AddComponent<CroustyAudioOption>();effectOption.value=effectsValue;
         Text(audio,"Audio hint","Changes are saved automatically.",358,370,370,20,12,Ink);
 

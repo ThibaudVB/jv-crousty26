@@ -1,9 +1,10 @@
 using UnityEngine;
 
-// À mettre sur le bus : au contact d'un objet dont le nom commence par "Visuel Garage",
-// les flammes s'éteignent. Marche avec la génération aléatoire (pas besoin de tag).
+// À mettre sur le bus : la réparation se déclenche uniquement dans le cube bleu du garage.
 public class BusGarageRepair : MonoBehaviour
 {
+    private const string RepairZoneName = "Visuel Garage - Zone de reparation";
+
     [Tooltip("Début du nom des objets garage (Visuel Garage_01, Visuel Garage_02, ...)")]
     public string garageNamePrefix = "Visuel Garage";
 
@@ -33,7 +34,14 @@ public class BusGarageRepair : MonoBehaviour
     {
         if (logTouched) Debug.Log($"{name} touche : {other.name}", other);
 
-        if (IsGarage(other)) Repair();
+        if (IsRepairZone(other)) Repair();
+    }
+
+    private static bool IsRepairZone(Transform other)
+    {
+        for (Transform t = other; t != null; t = t.parent)
+            if (t.name == RepairZoneName) return true;
+        return false;
     }
 
     public bool IsGarage(Transform other)

@@ -48,6 +48,7 @@ public sealed class CroustyMenu : MonoBehaviour
     private bool animationReady;
     private int selectedCategory = -1;
     private TMP_Text optionsTitle;
+    private Image controllerConfirmPrompt;
     private string defaultOptionsTitle;
     public bool IsOptionsOpen { get; private set; }
     public bool IsLeaderboardOpen { get; private set; }
@@ -103,6 +104,7 @@ public sealed class CroustyMenu : MonoBehaviour
 
     private void Update()
     {
+        CroustyInput.UpdateMenuDevice();
         if (pauseMenu == null || IsOptionsOpen)
             EnsureControllerSelection(IsOptionsOpen ? optionsPanel : IsLeaderboardOpen ? leaderboardPanel :
                 IsNameEntryOpen ? nameEntry.gameObject : mainPanel);
@@ -119,6 +121,35 @@ public sealed class CroustyMenu : MonoBehaviour
         if (requestedFullscreen.HasValue && Screen.fullScreen == requestedFullscreen.Value)
             requestedFullscreen = null;
         if (!requestedFullscreen.HasValue) RefreshFullscreenLabel(Screen.fullScreen);
+    }
+
+    private void LateUpdate()
+    {
+        if (pauseMenu != null) return;
+        var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        var button = selected != null ? selected.GetComponent<Button>() : null;
+        bool visible = CroustyInput.MenuUsesController && button != null && button.IsInteractable() &&
+            button.isActiveAndEnabled && (nameEntry == null || !nameEntry.IsLaunching);
+        if (!visible)
+        {
+            if (controllerConfirmPrompt != null) controllerConfirmPrompt.gameObject.SetActive(false);
+            return;
+        }
+        if (controllerConfirmPrompt == null)
+        {
+            var prompt = new GameObject("Controller confirm A", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            controllerConfirmPrompt = prompt.GetComponent<Image>();
+            controllerConfirmPrompt.sprite = Resources.Load<Sprite>("Crousty/ControllerConfirmA");
+            controllerConfirmPrompt.raycastTarget = false;
+            controllerConfirmPrompt.preserveAspect = true;
+        }
+        var rect = controllerConfirmPrompt.rectTransform;
+        rect.SetParent(button.transform, false);
+        rect.anchorMin = rect.anchorMax = new Vector2(1, .5f);
+        rect.pivot = new Vector2(0, .5f);
+        rect.anchoredPosition = new Vector2(8, 0);
+        rect.sizeDelta = new Vector2(40, 40);
+        controllerConfirmPrompt.gameObject.SetActive(true);
     }
 
     // Select authored controls after transitions, page changes or controller connection.

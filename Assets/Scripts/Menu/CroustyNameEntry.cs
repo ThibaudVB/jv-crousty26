@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 // Input and navigation only: the artwork and animation clips are authored in the scene.
 public sealed class CroustyNameEntry : MonoBehaviour
@@ -18,12 +19,45 @@ public sealed class CroustyNameEntry : MonoBehaviour
     [Min(0f)] public float departureHoldSeconds = .65f;
     public bool IsLaunching { get; private set; }
     static readonly int Launch = Animator.StringToHash("Launch");
+    private Button tutorialButton;
+
+    private void ConfigureNavigation()
+    {
+        var tutorial = GetComponentInChildren<CroustyMenuTutoButton>(true);
+        tutorialButton = tutorial != null ? tutorial.GetComponent<Button>() : null;
+        if (tutorialButton == null) return;
+        var controls = new System.Collections.Generic.List<Selectable> { nameInput, tutorialButton, playButton };
+        foreach (var button in GetComponentsInChildren<Button>(true))
+            if (button != tutorialButton && button != playButton) controls.Add(button);
+        for (int i = 0; i < controls.Count; i++)
+        {
+            var navigation = new Navigation { mode = Navigation.Mode.Explicit };
+            navigation.selectOnUp = navigation.selectOnLeft = controls[(i + controls.Count - 1) % controls.Count];
+            navigation.selectOnDown = navigation.selectOnRight = controls[(i + 1) % controls.Count];
+            controls[i].navigation = navigation;
+        }
+    }
+
+    private void Update()
+    {
+        if (IsLaunching || !nameInput.isFocused || Gamepad.current == null || tutorialButton == null) return;
+        var pad = Gamepad.current;
+        if (pad.dpad.down.wasPressedThisFrame || pad.dpad.right.wasPressedThisFrame ||
+            pad.leftStick.down.wasPressedThisFrame || pad.leftStick.right.wasPressedThisFrame)
+        {
+            nameInput.DeactivateInputField();
+            tutorialButton.Select();
+        }
+    }
 
     private void OnEnable()
     {
         IsLaunching = false;
+        ConfigureNavigation();
         controls.interactable = controls.blocksRaycasts = true;
         nameInput.SetTextWithoutNotify(CroustyPlayerProfile.StoredName);
+        if (CroustyInput.MenuUsesController && string.IsNullOrEmpty(nameInput.text))
+            nameInput.SetTextWithoutNotify("Player");
         if (departure != null) { departure.Rebind(); departure.Update(0); }
         Refresh(nameInput.text);
         StartCoroutine(FocusAfterEntrance());
@@ -33,6 +67,16 @@ public sealed class CroustyNameEntry : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(.55f);
         if (IsLaunching) yield break;
+        if (CroustyInput.MenuUsesController && tutorialButton != null)
+        {
+            if (string.IsNullOrEmpty(nameInput.text))
+            {
+                nameInput.SetTextWithoutNotify("Player");
+                Refresh(nameInput.text);
+            }
+            tutorialButton.Select();
+            yield break;
+        }
         nameInput.Select();
         nameInput.ActivateInputField();
     }
@@ -44,7 +88,12 @@ public sealed class CroustyNameEntry : MonoBehaviour
         hint.text = valid ? "READY TO FIRE UP THE ENGINE?" : "ENTER YOUR NAME TO GET BEHIND THE WHEEL";
     }
 
-    public void Submit(string value) => ConfirmPlay();
+    public void Submit(string value)
+    {
+        nameInput.DeactivateInputField();
+        if (tutorialButton != null) tutorialButton.Select();
+        else playButton.Select();
+    }
 
     public void ConfirmPlay()
     {

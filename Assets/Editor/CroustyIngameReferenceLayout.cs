@@ -160,8 +160,8 @@ public static class CroustyIngameReferenceLayout
             PlaceCentered(count.rectTransform, new Vector2(36, 79), new Vector2(46, 35));
             if (field == "pet")
             {
-                card.FindPropertyRelative("englishName").stringValue = "TOXIC GAS";
-                name.text = "TOXIC GAS";
+                card.FindPropertyRelative("englishName").stringValue = "Toxic Gas";
+                name.text = "Toxic Gas";
             }
             rect.gameObject.SetActive(field == "pet");
         }

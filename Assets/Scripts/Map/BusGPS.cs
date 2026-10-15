@@ -5,6 +5,8 @@ using UnityEngine.AI;
 [DisallowMultipleComponent]
 public sealed class BusGPS : MonoBehaviour
 {
+    private const float GuidanceDurationSeconds = 10f;
+
     public DeliveryManager deliveries;
     [Tooltip("Racine des routes et obstacles. A renseigner apres generation procedurale.")]
     public Transform navigationRoot;
@@ -28,6 +30,8 @@ public sealed class BusGPS : MonoBehaviour
     private ProceduralCity proceduralCity;
     private readonly List<Vector3> proceduralRoute = new List<Vector3>();
     private PowerUpInventory inventory;
+    private float guidanceExpiresAt;
+    private bool guidanceTimed;
     private PowerUpInventory Inventory
     {
         get
@@ -55,6 +59,7 @@ public sealed class BusGPS : MonoBehaviour
     {
         proceduralCity?.SetGPSGarageMarker(null);
         RoutingToGarage = false;
+        guidanceTimed = false;
         Route.Clear();
     }
     public void GrantBonus() => AddCharges(1, 1);
@@ -65,6 +70,7 @@ public sealed class BusGPS : MonoBehaviour
         if (Inventory != null && !Inventory.TryAddPower(PowerUpInventory.PowerUpType.GPS, addedAmount))
             return false;
         Charges += addedAmount;
+        ShowGarageMarkers = true;
         Status = "[E] GPS: nearest garage";
         BonusEquipped = true;
         return true;
@@ -195,6 +201,7 @@ public sealed class BusGPS : MonoBehaviour
     {
         ShowGarageMarkers = false;
         RoutingToGarage = false;
+        guidanceTimed = false;
         proceduralCity?.SetGPSGarageMarker(null);
         Route.Clear();
         Status = Charges > 0 ? "[E] GPS: nearest garage" : "GPS depleted";
@@ -207,11 +214,19 @@ public sealed class BusGPS : MonoBehaviour
 
         Charges--;
         Inventory?.Consume(PowerUpInventory.PowerUpType.GPS);
+        ShowGarageMarkers = true;
+        guidanceTimed = true;
+        guidanceExpiresAt = Time.time + GuidanceDurationSeconds;
         return true;
     }
     private void Update()
     {
         if (Time.timeScale <= 0f) return;
+        if (guidanceTimed && Time.time >= guidanceExpiresAt)
+        {
+            DisableGarageGuidance();
+            return;
+        }
         if (deliveries == null || deliveries.HasFailed) { Route.Clear(); return; }
         if (!RoutingToGarage) { Route.Clear(); return; }
         if (Time.time < nextRepath) return;
