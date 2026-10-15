@@ -715,13 +715,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76d9872c30b071b4caa2a06c4fd53dd1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusAirTricks
   flipSpeed: 240
   spinSpeed: 270
   finishSpeed: 220
   landingSnapSpeed: 900
   minAirTime: 0.15
+  minHeightAboveGround: 4
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  landingTolerance: 35
+  boostDuration: 10
+  boostPerTurn: 0.5
+  maxBoostMultiplier: 4
+  safeLandingSeconds: 0.75
+  currentHeight: 0
 --- !u!114 &920000000000000059
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -732,7 +742,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: db8a080464c413a4fa1518c150b04414, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusBoostDisplay
   heightAboveBus: 5
   textSize: 12
@@ -3382,6 +3392,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &230788716
 GameObject:
   m_ObjectHideFlags: 0
@@ -7149,6 +7163,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &430473432
 GameObject:
   m_ObjectHideFlags: 0
@@ -10445,9 +10463,14 @@ MonoBehaviour:
   afterFirstPickupVoice: {fileID: 8300000, guid: 49c0c21dc4ba4e14798f8748484c895b, type: 3}
   afterFirstDeliveryVoice: {fileID: 8300000, guid: 492cac95f5d15e84b8cfc56f9ae2f2ac, type: 3}
   repairGarageVoice: {fileID: 8300000, guid: 3b04b105ca18dfc4ab6554dd47bf6e76, type: 3}
+  beforePowerBoxPickupVoice: {fileID: 8300000, guid: 6da95546309c0fd44a19048c3d0230f3, type: 3}
+  afterPowerBoxPickupVoice: {fileID: 8300000, guid: 27bb2fbb720b88a48820a83d1075a85a, type: 3}
+  tutorialMusic: {fileID: 0}
+  tutorialMusicVolume: 1
   policeImpactSound: {fileID: 8300000, guid: a13cfad261ad9904980e357b7a10b2b4, type: 3}
   policeImpactVolume: 1
   tutorialLootboxPrefab: {fileID: 8264346837173044115, guid: 99021d0afec2ffc4e8c616f5b3043013, type: 3}
+  dialogueMaquetteScale: 2
 --- !u!1 &646106510
 GameObject:
   m_ObjectHideFlags: 0
@@ -15923,13 +15946,13 @@ MonoBehaviour:
   ordersStep: 5
   nearbyAddressPool: 8
   minimumAddressSpacing: 160
-  flightDeliveryNeedsRing: 1
   secondsPerOrder: 15
   alarmSecondsLeft: 15
   pointsPerDelivery: 100
   completionBonus: 500
   pointsPerRemainingSecond: 0
   deliverFromAnyHeight: 1
+  flightDeliveryNeedsRing: 1
   useParachute: 1
   parachuteMinHeight: 8
   parachuteFallSpeed: 6
@@ -20289,6 +20312,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &1352833108
 GameObject:
   m_ObjectHideFlags: 0
@@ -20486,8 +20513,8 @@ MonoBehaviour:
   deliveriesText: {fileID: 965852440}
   bonusText: {fileID: 620668671}
   explosionsText: {fileID: 1051753995}
-  moneyText: {fileID: 940000000000001009}
   totalText: {fileID: 1908022087}
+  moneyText: {fileID: 940000000000001009}
   busController: {fileID: 21662976}
 --- !u!114 &1357885540
 MonoBehaviour:
@@ -20887,6 +20914,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &1403806733
 GameObject:
   m_ObjectHideFlags: 0
@@ -26377,6 +26408,10 @@ MonoBehaviour:
   markerColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &1792458707
 GameObject:
   m_ObjectHideFlags: 0
@@ -31940,6 +31975,10 @@ MonoBehaviour:
   markerColor: {r: 0.2725346, g: 1, b: 0.19999999, a: 1}
   beamHeight: 150
   beamWidth: 2.5
+  ringMinHeight: 50
+  ringMaxHeight: 60
+  ringRadius: 7
+  ringThickness: 0.6
 --- !u!1 &2126649344
 GameObject:
   m_ObjectHideFlags: 0
@@ -45871,43 +45910,51 @@ MonoBehaviour:
   nameTag: {fileID: 0}
   nameTitle: {fileID: 0}
   deliveryStartLines:
-  - 'Here, go deliver this. And don''t touch the drumsticks, I counted them. Well... I counted up to three.'
-  - 'Order for old Mrs. Johnson. She ordered three days ago, but hey, she won''t die. Well, hopefully.'
-  - 'The chicken is still hot. Well, it was yesterday.'
-  - 'Careful, this order is worth more than your paycheck. Granted, that''s not a high bar.'
-  - 'Drive fast, before the health inspector wakes up.'
-  - 'Honestly? I don''t even like Croustys. I''m more of a kebab guy. Keep it under your hat.'
-  - 'Oh shit, the rats got a taste of the order. Oh well... extra protein.'
+  - Here, go deliver this. And don't touch the drumsticks, I counted them. Well...
+    I counted up to three.
+  - Order for old Mrs. Johnson. She ordered three days ago, but hey, she won't die.
+    Well, hopefully.
+  - The chicken is still hot. Well, it was yesterday.
+  - Careful, this order is worth more than your paycheck. Granted, that's not a high
+    bar.
+  - Drive fast, before the health inspector wakes up.
+  - Honestly? I don't even like Croustys. I'm more of a kebab guy. Keep it under
+    your hat.
+  - Oh shit, the rats got a taste of the order. Oh well... extra protein.
   managerLines:
-  - 'A hair in the order? Is it short and curly? Oh... well, then that ain''t a hair.'
-  - 'The secret recipe? Chicken, breading, and a whole lot of prayers.'
-  - 'I dropped the chicken on the floor. Five-second rule. Or five minutes, I forget.'
-  - 'The customer left five stars. Okay, it was my mom, but it still counts.'
-  - 'I dumped all my special white sauce on it. The customer didn''t ask for any, but trust me, they''re gonna love it.'
+  - A hair in the order? Is it short and curly? Oh... well, then that ain't a hair.
+  - The secret recipe? Chicken, breading, and a whole lot of prayers.
+  - I dropped the chicken on the floor. Five-second rule. Or five minutes, I forget.
+  - The customer left five stars. Okay, it was my mom, but it still counts.
+  - I dumped all my special white sauce on it. The customer didn't ask for any, but
+    trust me, they're gonna love it.
   deliverySuccessLines:
-  - 'Great job. You''ve earned the right to maybe not get fired today.'
-  - 'Incredible. I''m giving you a raise. Two cents. Nah, make it one.'
-  - 'You''re faster than Uber Eats. And cleaner than my kitchen.'
+  - Great job. You've earned the right to maybe not get fired today.
+  - Incredible. I'm giving you a raise. Two cents. Nah, make it one.
+  - You're faster than Uber Eats. And cleaner than my kitchen.
   deliveryFailedLines:
-  - 'You took so long the chicken had time to hatch.'
-  - 'Even the rats deliver faster than you. And they get paid in crumbs.'
-  - 'Next time, I''m sending my grandma. On a scooter.'
-  - 'The customer called. They''re crying. So is the chicken.'
+  - You took so long the chicken had time to hatch.
+  - Even the rats deliver faster than you. And they get paid in crumbs.
+  - Next time, I'm sending my grandma. On a scooter.
+  - The customer called. They're crying. So is the chicken.
   policeChaseLines:
-  - 'If the cops ask you questions, you''ve never worked here. Neither have I, for that matter.'
-  - 'Are they chasing you for speeding... or for my health permits? Good question.'
-  - 'Throwing a chicken at ''em usually calms them down.'
-  - 'The cops are my best customers. Except when they''re on duty.'
+  - If the cops ask you questions, you've never worked here. Neither have I, for
+    that matter.
+  - Are they chasing you for speeding... or for my health permits? Good question.
+  - Throwing a chicken at 'em usually calms them down.
+  - The cops are my best customers. Except when they're on duty.
   bonusBoxLines:
-  - 'A mystery box! I don''t even remember what I put in there. It''s gonna be a surprise for both of us.'
+  - A mystery box! I don't even remember what I put in there. It's gonna be a surprise
+    for both of us.
   idleLines:
-  - 'You took so long the chicken had time to hatch.'
-  - 'Even the rats deliver faster than you. And they get paid in crumbs.'
-  - 'Next time, I''m sending my grandma. On a scooter.'
-  - 'Hello? Did the bus stall, or is it just you?'
-  - 'The customer called. They''re crying. So is the chicken.'
+  - You took so long the chicken had time to hatch.
+  - Even the rats deliver faster than you. And they get paid in crumbs.
+  - Next time, I'm sending my grandma. On a scooter.
+  - Hello? Did the bus stall, or is it just you?
+  - The customer called. They're crying. So is the chicken.
   pauseLines:
-  - 'Taking a break? The chicken ain''t getting any colder... wait, I mean warmer. Keep moving.'
+  - Taking a break? The chicken ain't getting any colder... wait, I mean warmer.
+    Keep moving.
   randomLineInterval: 20
   idleSeconds: 10
   idleSpeedKmh: 3
@@ -176923,7 +176970,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4c4bc962dc0749749cdda7bcd90b98c1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusHealthHearts
   busDamage: {fileID: 920000000000000050}
   heartCount: 5
@@ -177018,7 +177065,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -177155,7 +177202,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -177292,7 +177339,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -177435,7 +177482,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
   m_Navigation:
     m_Mode: 4
@@ -177479,7 +177526,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 0}
@@ -177554,7 +177601,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -177691,7 +177738,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dfc8c0da186354ab6b066e33d812bd99, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CroustyVectorGraphic
   m_Material: {fileID: 0}
   m_Color: {r: 0.14901961, g: 0.14901961, b: 0.19607843, a: 1}
@@ -177797,7 +177844,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -177934,7 +177981,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dfc8c0da186354ab6b066e33d812bd99, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CroustyVectorGraphic
   m_Material: {fileID: 0}
   m_Color: {r: 0.14901961, g: 0.14901961, b: 0.19607843, a: 1}
@@ -178040,7 +178087,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -178116,7 +178163,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 0}
@@ -178191,7 +178238,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -178328,7 +178375,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -178403,7 +178450,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -178521,7 +178568,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -178593,7 +178640,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -178714,7 +178761,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GraphicRaycaster
   m_IgnoreReversedGraphics: 1
   m_BlockingObjects: 0
@@ -178731,7 +178778,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
@@ -178837,7 +178884,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
   m_Navigation:
     m_Mode: 3
@@ -178881,7 +178928,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -178938,7 +178985,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
   m_Navigation:
     m_Mode: 4
@@ -178982,7 +179029,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 0}
@@ -179081,7 +179128,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -179194,7 +179241,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -179331,7 +179378,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dfc8c0da186354ab6b066e33d812bd99, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CroustyVectorGraphic
   m_Material: {fileID: 0}
   m_Color: {r: 0.56078434, g: 1, b: 0.3019608, a: 1}
@@ -179437,7 +179484,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dfc8c0da186354ab6b066e33d812bd99, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CroustyVectorGraphic
   m_Material: {fileID: 0}
   m_Color: {r: 0.56078434, g: 1, b: 0.3019608, a: 1}
@@ -179543,7 +179590,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -179600,7 +179647,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GraphicRaycaster
   m_IgnoreReversedGraphics: 1
   m_BlockingObjects: 0
@@ -179617,7 +179664,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
@@ -179722,7 +179769,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -179732,7 +179779,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text:
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
   m_sharedMaterial: {fileID: 6862918184447617196, guid: 6a57f33945af343e29f1558f4a2c90f0, type: 2}
@@ -179859,7 +179906,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.09, g: 0.08, b: 0.12, a: 0.48}
@@ -179934,7 +179981,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -180009,7 +180056,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -180109,7 +180156,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c2dd7c2266c230f408161e9a33aece8a, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PowerUnlockProgression
   deliveries: {fileID: 962319297}
   ricePrice: 130

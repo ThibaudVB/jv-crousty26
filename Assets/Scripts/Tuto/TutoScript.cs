@@ -15,11 +15,17 @@ public sealed class TutoScript : MonoBehaviour
     [SerializeField] private AudioClip afterFirstPickupVoice;
     [SerializeField] private AudioClip afterFirstDeliveryVoice;
     [SerializeField] private AudioClip repairGarageVoice;
+    [SerializeField] private AudioClip beforePowerBoxPickupVoice;
+    [SerializeField] private AudioClip afterPowerBoxPickupVoice;
+    [SerializeField] private AudioClip tutorialMusic;
+    [SerializeField, Range(0f, 1f)] private float tutorialMusicVolume = 1f;
     [SerializeField] private AudioClip policeImpactSound;
     [SerializeField, Range(0f, 1f)] private float policeImpactVolume = 1f;
     [SerializeField] private GameObject tutorialLootboxPrefab;
+    [SerializeField, Min(1f)] private float dialogueMaquetteScale = 1.5f;
 
     private AudioSource voiceSource;
+    private AudioSource musicSource;
     private DeliveryManager deliveryManager;
     private PoliceChaseManager policeManager;
     private BusDamage busDamage;
@@ -27,12 +33,16 @@ public sealed class TutoScript : MonoBehaviour
     private BusController introBusController;
     private BusFlightController introFlightController;
     private RigidbodyConstraints introBusConstraints;
+    private Transform[] dialogueContent;
+    private Vector3[] dialogueContentBaseScales;
     private bool introControllerWasEnabled;
     private bool introFlightWasEnabled;
     private bool firstPickupDialogueShown;
     private bool firstDeliveryDialogueShown;
     private bool tutorialRewardSpawned;
     private bool tutorialPowerBoxCollected;
+    private bool tutorialDamageStateCaptured;
+    private bool damageWasEnabledBeforeTutorial;
 
     private const string IntroMessage =
         "Alright rookie, eyes on the screen! See that yellow spot? Get your butt over there and pick up the order. Chop chop, time is money!";
@@ -42,6 +52,10 @@ public sealed class TutoScript : MonoBehaviour
         "Boom! Nice move kid! But don’t pop the champagne yet, they're still behind us! Grab the next order and keep pushing; it’s only getting faster from here!";
     private const string RepairGarageMessage =
         "Those cops wrecked the truck! Set the GPS route to the nearest garage and get it repaired!";
+    private const string BeforePowerBoxPickupMessage =
+        "Hey kid, pick up that crate and let's see what's inside.";
+    private const string AfterPowerBoxPickupMessage =
+        "Hey quick, press the {0} and use your fart! Yeah, you heard me, let it rip and lose those badge-wearing party poopers, and get the job done!";
     private const float CameraStartDelay = 2f;
     private const float CameraLookDuration = 3f;
     private const float CameraTurnDuration = 0.4f;
@@ -50,6 +64,11 @@ public sealed class TutoScript : MonoBehaviour
     {
         if (PlayerPrefs.GetInt(CroustyMenuTutoButton.TutorialEnabledKey, 0) != 1)
             return;
+
+        if (managerDialogue != null)
+            managerDialogue.SetAutomaticDialogueEnabled(false);
+        else
+            Debug.LogError("TutoScript : GerantDialogue est nécessaire pour couper ses répliques automatiques pendant le tutoriel.", this);
 
         policeManager = FindAnyObjectByType<PoliceChaseManager>();
         if (policeManager == null)
@@ -81,9 +100,23 @@ public sealed class TutoScript : MonoBehaviour
 
         if (tutorialEnabled)
         {
+            busDamage = deliveryManager.player != null
+                ? deliveryManager.player.GetComponentInParent<BusDamage>()
+                : null;
+            if (busDamage == null)
+            {
+                Debug.LogError("TutoScript : BusDamage est requis pour détecter la réparation du camion.", this);
+                enabled = false;
+                yield break;
+            }
+
+            damageWasEnabledBeforeTutorial = busDamage.DamageEnabled;
+            tutorialDamageStateCaptured = true;
+            busDamage.SetDamageEnabled(false);
             policeManager.SetSpawningEnabled(false);
             if (!LockBusForIntro())
             {
+                RestoreTutorialDamageState();
                 enabled = false;
                 yield break;
             }
@@ -96,16 +129,6 @@ public sealed class TutoScript : MonoBehaviour
             deliveryManager.ConfigureTutorialOrderCounts(1, 3);
             deliveryManager.RunStarted += OnRunStarted;
             deliveryManager.DeliveryCompleted += OnDeliveryCompleted;
-            busDamage = deliveryManager.player != null
-                ? deliveryManager.player.GetComponentInParent<BusDamage>()
-                : null;
-            if (busDamage == null)
-            {
-                Debug.LogError("TutoScript : BusDamage est requis pour détecter la réparation du camion.", this);
-                UnlockBusAfterIntro();
-                enabled = false;
-                yield break;
-            }
             busDamage.Repaired += OnBusRepaired;
         }
 
@@ -117,14 +140,25 @@ public sealed class TutoScript : MonoBehaviour
 
         if (tutorialEnabled)
         {
-            dialogueCanvas.transform.localScale = Vector3.one;
+            CacheDialogueContentScales();
+            SetDialogueMaquetteScale(dialogueMaquetteScale);
             dialogueCanvas.enabled = true;
-            lbDialogue.SetActive(true);
+            lbDialogue.SetActive(false);
             voiceSource = GetComponent<AudioSource>();
             if (voiceSource == null)
                 voiceSource = gameObject.AddComponent<AudioSource>();
             voiceSource.playOnAwake = false;
             voiceSource.spatialBlend = 0f;
+            if (tutorialMusic != null)
+            {
+                musicSource = gameObject.AddComponent<AudioSource>();
+                musicSource.clip = tutorialMusic;
+                musicSource.volume = tutorialMusicVolume;
+                musicSource.loop = true;
+                musicSource.playOnAwake = false;
+                musicSource.spatialBlend = 0f;
+                musicSource.Play();
+            }
             StartCoroutine(ShowIntroAfterDialogueStarts());
             StartCoroutine(LookAtShopLight());
         }
@@ -172,28 +206,73 @@ public sealed class TutoScript : MonoBehaviour
             introFlightController.enabled = introFlightWasEnabled;
     }
 
+    private void RestoreTutorialDamageState()
+    {
+        if (!tutorialDamageStateCaptured || busDamage == null)
+            return;
+
+        busDamage.SetDamageEnabled(damageWasEnabledBeforeTutorial);
+        tutorialDamageStateCaptured = false;
+    }
+
     private void OnDestroy()
     {
         UnlockBusAfterIntro();
+        if (musicSource != null)
+            musicSource.Stop();
         if (deliveryManager != null)
         {
             deliveryManager.RunStarted -= OnRunStarted;
             deliveryManager.DeliveryCompleted -= OnDeliveryCompleted;
         }
         if (busDamage != null)
+        {
             busDamage.Repaired -= OnBusRepaired;
+            RestoreTutorialDamageState();
+        }
     }
 
     private void OnRunStarted()
     {
-        if (tutorialPowerBoxCollected && policeManager != null)
-            policeManager.SetSpawningEnabled(true);
+        if (tutorialPowerBoxCollected)
+        {
+            if (musicSource != null)
+                musicSource.Stop();
+            if (policeManager != null)
+                policeManager.SetSpawningEnabled(true);
+            managerDialogue.SetAutomaticDialogueEnabled(true);
+            SetDialogueMaquetteScale(1f);
+            lbDialogue.SetActive(true);
+        }
 
         if (firstPickupDialogueShown)
             return;
 
         firstPickupDialogueShown = true;
         StartCoroutine(ShowAfterFirstPickupDialogue());
+    }
+
+    private void CacheDialogueContentScales()
+    {
+        int childCount = dialogueCanvas.transform.childCount;
+        dialogueContent = new Transform[childCount];
+        dialogueContentBaseScales = new Vector3[childCount];
+        for (int i = 0; i < childCount; i++)
+        {
+            Transform child = dialogueCanvas.transform.GetChild(i);
+            dialogueContent[i] = child;
+            dialogueContentBaseScales[i] = child.localScale;
+        }
+    }
+
+    private void SetDialogueMaquetteScale(float scale)
+    {
+        if (dialogueContent == null || dialogueContentBaseScales == null)
+            return;
+
+        for (int i = 0; i < dialogueContent.Length; i++)
+            if (dialogueContent[i] != null)
+                dialogueContent[i].localScale = dialogueContentBaseScales[i] * scale;
     }
 
     private void OnDeliveryCompleted(DeliveryPoint point)
@@ -290,6 +369,7 @@ public sealed class TutoScript : MonoBehaviour
         {
             if (policeImpactSound != null)
                 AudioSource.PlayClipAtPoint(policeImpactSound, busBody.position, policeImpactVolume);
+            busDamage.SetDamageEnabled(true);
             busDamage.ApplyTutorialImpact();
         }
         else
@@ -417,6 +497,12 @@ public sealed class TutoScript : MonoBehaviour
 
         GameObject box = SpawnGuaranteedPetBox(busBody);
         box.GetComponent<PowerUpBox>().PickedUp += OnTutorialPowerBoxPickedUp;
+        managerDialogue.SetMessage(BeforePowerBoxPickupMessage);
+        if (beforePowerBoxPickupVoice != null)
+        {
+            voiceSource.Stop();
+            voiceSource.PlayOneShot(beforePowerBoxPickupVoice);
+        }
         yield return ShowLootboxWithCamera(busBody, box.transform);
 
         busBody.constraints = originalConstraints;
@@ -475,6 +561,13 @@ public sealed class TutoScript : MonoBehaviour
     private void OnTutorialPowerBoxPickedUp()
     {
         tutorialPowerBoxCollected = true;
+        string inputButton = CroustyInput.UsesController ? "X button (console)" : "E key (PC)";
+        managerDialogue.SetMessage(string.Format(AfterPowerBoxPickupMessage, inputButton));
+        if (afterPowerBoxPickupVoice != null)
+        {
+            voiceSource.Stop();
+            voiceSource.PlayOneShot(afterPowerBoxPickupVoice);
+        }
         if (deliveryManager != null)
             deliveryManager.SetTutorialPickupMarkerHidden(false);
     }
