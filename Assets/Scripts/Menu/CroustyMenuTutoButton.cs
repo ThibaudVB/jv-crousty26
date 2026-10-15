@@ -39,6 +39,7 @@ public sealed class CroustyMenuTutoButton : MonoBehaviour
     {
         if (button == null) button = GetComponent<Button>();
         button.onClick.AddListener(ToggleColor);
+        Debug.Log($"CroustyMenuTutoButton: IsTutorialActive = {IsTutorialActive}");
     }
 
     private void OnDisable()

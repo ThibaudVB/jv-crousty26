@@ -16,6 +16,7 @@ public class PoliceCarAI : MonoBehaviour
     public bool InPursuit => State == Mode.Chase;
     public bool IsDestroyed => State == Mode.Destroyed;
     public bool IsRoadblock => State == Mode.Roadblock;
+    public bool IsTutorialImpactCar { get; private set; }
     public bool IsRammingBus { get; private set; }
     public float RiceSpeedFactor { get; private set; } = 1f;
 
@@ -26,6 +27,7 @@ public class PoliceCarAI : MonoBehaviour
         RiceSpeedFactor = factor;
         if (patrol != null) patrol.SetSurfaceSpeedFactor(factor);
     }
+    public void MarkAsTutorialImpactCar() => IsTutorialImpactCar = true;
     // Cached by the manager at a few hertz.
     public bool SeesBus { get; set; }
 
