@@ -355,6 +355,12 @@ public class BusDamage : MonoBehaviour
 
     private void CreateFires()
     {
+        // Le feu est accroché à la carrosserie animée (créée par BusWheelRig) :
+        // il suit les figures en l'air (galipettes, 360) au lieu de rester sur le bus physique, qui reste droit.
+        Transform body = transform.Find("Carrosserie - Animation arcade");
+        if (body == null)
+            body = transform;
+
         bool hasPoint = false;
         if (firePoint != null)
         {
@@ -362,6 +368,8 @@ public class BusDamage : MonoBehaviour
             {
                 if (point != null)
                 {
+                    if (point.parent == transform && body != transform)
+                        point.SetParent(body, true); // même place à l'écran, mais suit la carrosserie
                     CreateFire(point, Vector3.zero);
                     hasPoint = true;
                 }
@@ -369,7 +377,7 @@ public class BusDamage : MonoBehaviour
         }
 
         if (!hasPoint)
-            CreateFire(transform, customFirePosition);
+            CreateFire(body, body.InverseTransformPoint(transform.TransformPoint(customFirePosition)));
     }
 
     private void CreateFire(Transform parent, Vector3 localPosition)

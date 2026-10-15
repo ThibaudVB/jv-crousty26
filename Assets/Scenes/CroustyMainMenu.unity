@@ -4769,6 +4769,7 @@ MonoBehaviour:
   - {fileID: 300252599}
   transitionDuration: 0.55
   tabHeight: 88
+  hoverPeek: 12
 --- !u!1 &391395982
 GameObject:
   m_ObjectHideFlags: 0
@@ -9990,7 +9991,7 @@ MonoBehaviour:
   colorTarget: {fileID: 0}
   textTarget: {fileID: 798744789}
   activeImageColor: {r: 1, g: 1, b: 1, a: 1}
-  activeTextColor: {r: 1, g: 1, b: 1, a: 1}
+  activeTextColor: {r: 0.15686275, g: 0.15686275, b: 0.20000002, a: 1}
   ribbonImage: {fileID: 806571406}
   idleRibbon: {fileID: 21300000, guid: f0920b341d6dc49b0adaa02dcac89e5a, type: 3}
   activeRibbon: {fileID: 21300000, guid: 8464a98a6654546078e252ec7852d070, type: 3}
