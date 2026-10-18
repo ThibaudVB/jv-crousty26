@@ -2,10 +2,12 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using TMPro;
 
 [DisallowMultipleComponent]
 public sealed class CroustyMenuPages : MonoBehaviour
 {
+    public TMP_FontAsset ticketFont;
     public RectTransform viewport;
     public RectTransform firstPage;
     public RectTransform secondPage;
@@ -35,7 +37,53 @@ public sealed class CroustyMenuPages : MonoBehaviour
     private float progress, velocity, hoverAmount;
     private CroustyMenuHover tabHover;
 
-    private void Awake() => Apply();
+    private void Awake()
+    {
+        TranslateTicket();
+        Apply();
+    }
+
+    private void TranslateTicket()
+    {
+        if (ticketImage == null) return;
+        var font = ticketFont;
+        if (font == null)
+            foreach (var label in GetComponentInParent<Canvas>().GetComponentsInChildren<TMP_Text>(true))
+                if (label.font != null && label.font.name.Contains("RetroBlendy"))
+                { font = label.font; break; }
+        var labels = new[] { "More", "Less" };
+        var centres = new[] { .896f, .111f };
+        for (int i = 0; i < labels.Length; i++)
+        {
+            var cover = new GameObject(labels[i] + " label", typeof(RectTransform), typeof(Image));
+            cover.transform.SetParent(ticketImage.transform, false);
+            var rect = (RectTransform)cover.transform;
+            rect.anchorMin = new Vector2(.12f, centres[i] - .03f);
+            rect.anchorMax = new Vector2(.88f, centres[i] + .03f);
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            var paper = cover.GetComponent<Image>();
+            paper.color = new Color32(238, 232, 223, 255);
+            paper.raycastTarget = false;
+            var textObject = new GameObject("English text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            textObject.transform.SetParent(rect, false);
+            var text = textObject.GetComponent<TextMeshProUGUI>();
+            text.rectTransform.anchorMin = Vector2.zero;
+            text.rectTransform.anchorMax = Vector2.one;
+            text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;
+            CroustyTypography.Apply(text);
+            if (font != null)
+            {
+                text.font = font;
+                text.fontSharedMaterial = font.material;
+            }
+            text.text = labels[i];
+            text.fontSize = 25;
+            text.alignment = TextAlignmentOptions.Center;
+            text.verticalAlignment = VerticalAlignmentOptions.Geometry;
+            text.color = new Color32(38, 38, 50, 255);
+            text.raycastTarget = false;
+        }
+    }
     private void OnEnable() => Apply();
     private void OnRectTransformDimensionsChange() => Apply();
 
@@ -54,6 +102,7 @@ public sealed class CroustyMenuPages : MonoBehaviour
 
     private void Update()
     {
+        if (CroustyMenuVideoBackground.IsStartupPlaying) return;
         if (IsAnimating)
         {
             CroustyPanelMotion.Spring(ref progress, ref velocity, IsExpanded ? 1f : 0f,

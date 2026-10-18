@@ -209,30 +209,11 @@ public class CroustyHUD : MonoBehaviour
     // Heure du cycle jour / nuit, en format 12 h (ex : 06:30 AM)
     private void UpdateClock()
     {
-        CroustyDayNightCycle cycle = CroustyDayNightCycle.Instance;
-        if (cycle == null)
-            return;
-
-        int totalMinutes = Mathf.FloorToInt(cycle.Hour * 60f) % 1440;
-        int hour = totalMinutes / 60;
-        int minute = totalMinutes % 60;
-
-        // Style maquette : heure sur 24 h, sans la période de la journée
-        if (referenceHudStyle)
-        {
-            timeValue.text = $"{hour:00}:{minute:00}";
-            return;
-        }
-
-        int twelveHour = hour % 12;
-        if (twelveHour == 0)
-            twelveHour = 12;
-        string amPm = hour < 12 ? "AM" : "PM";
-        string phase = cycle.Phase.ToString().ToUpperInvariant();
-
-        timeValue.text = $"{twelveHour:00}:{minute:00} {amPm}\n<size=52%>{phase}</size>";
+        if (timeValue == null) return;
+        var panel = timeValue.transform.parent;
+        if (panel != null && panel.name == "Time of day") panel.gameObject.SetActive(false);
+        else timeValue.gameObject.SetActive(false);
     }
-
     private void UpdateTimer()
     {
         if (timerValue == null) return;

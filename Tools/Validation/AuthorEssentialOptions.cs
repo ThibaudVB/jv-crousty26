@@ -109,7 +109,7 @@ public static class AuthorEssentialOptions
         var slider=rect.gameObject.AddComponent<Slider>();slider.minValue=0;slider.maxValue=1;slider.value=1;
         var rail=Rect(rect,"Rail",0,10,385,4).gameObject.AddComponent<Image>();rail.color=Ink;rail.raycastTarget=false;
         var area=Rect(rect,"Handle area",8,0,369,24);
-        var handle=Rect(area,"Handle",0,0,16,24);handle.pivot=new Vector2(.5f,.5f);handle.anchorMin=handle.anchorMax=new Vector2(0,.5f);handle.anchoredPosition=Vector2.zero;
+        var handle=Rect(area,"Handle",0,0,10,16);handle.pivot=new Vector2(.5f,.5f);handle.anchorMin=handle.anchorMax=new Vector2(0,.5f);handle.anchoredPosition=Vector2.zero;
         var thumb=handle.gameObject.AddComponent<Image>();thumb.color=Orange;thumb.raycastTarget=false;
         slider.handleRect=handle;slider.targetGraphic=thumb;
         var colors=slider.colors;colors.highlightedColor=new Color(1,.84f,.6f);colors.selectedColor=colors.highlightedColor;slider.colors=colors;

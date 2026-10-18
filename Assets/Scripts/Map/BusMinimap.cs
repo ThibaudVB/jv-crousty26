@@ -300,9 +300,7 @@ public sealed class BusMinimap : MonoBehaviour
 
     private void UpdateGPS()
     {
-        gpsLabel.gameObject.SetActive(gps != null && (!compactHud ||
-            gps.RoutingToGarage || gps.Charges > 0 && gps.BonusEquipped));
-        if (gps != null) gpsLabel.text = gps.Status;
+        if (gpsLabel != null) gpsLabel.gameObject.SetActive(false);
         routeGraphic.UpdateRoute(mapCamera,
             gps != null && gps.isActiveAndEnabled ? gps.Route : null,
             radar != null ? radar.GroundHeight : 0f);
@@ -369,16 +367,9 @@ public sealed class BusMinimap : MonoBehaviour
         {
             var icon = Instantiate(deliveryIconTemplate, maskRect);
             icon.name = "Garage - reparation";
-            icon.color = new Color(.05f, .9f, .85f);
+            icon.color = Color.white;
+            icon.preserveAspect = true;
             icon.raycastTarget = false;
-            var labelObject = new GameObject("G", typeof(RectTransform));
-            labelObject.transform.SetParent(icon.transform, false);
-            var label = labelObject.AddComponent<TextMeshProUGUI>();
-            CroustyTypography.Apply(label);
-            label.text = "G"; label.fontSize = 16; label.color = new Color(.02f, .12f, .15f);
-            label.alignment = TextAlignmentOptions.Center; label.raycastTarget = false;
-            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
             garageIcons.Add(icon);
         }
         for (int i = 0; i < garageIcons.Count; i++)
@@ -388,21 +379,13 @@ public sealed class BusMinimap : MonoBehaviour
             if (i >= shown) continue;
             PlaceIcon(icon, nearbyGarages[i], 28f);
             icon.transform.SetAsLastSibling();
-            bool isGpsDestination = gps != null && gps.RoutingToGarage &&
-                (nearbyGarages[i] - gps.GarageDestination).sqrMagnitude < 1f;
-            TMP_Text label = icon.GetComponentInChildren<TMP_Text>(true);
-            label.gameObject.SetActive(!isGpsDestination);
-            if (isGpsDestination && garageRepairSprite != null)
+            // Every garage uses the GPS repair artwork, including when guidance is off.
+            if (garageRepairSprite != null)
             {
                 icon.sprite = garageRepairSprite;
                 icon.color = Color.white;
                 icon.rectTransform.sizeDelta = Vector2.one * 28f;
-            }
-            else
-            {
-                icon.color = new Color(.05f, .9f, .85f);
-                // Keep the G upright even when the edge arrow turns towards the garage.
-                label.rectTransform.localRotation = Quaternion.Inverse(icon.rectTransform.localRotation);
+                icon.rectTransform.localRotation = Quaternion.identity;
             }
         }
     }

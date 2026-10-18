@@ -57,6 +57,8 @@ public sealed class PowerUnlockProgression : MonoBehaviour
     private bool previousCursor;
     private RenderTexture blurred;
     private int openedFrame;
+    private bool opening;
+    private CanvasGroup backdropGroup;
 
     public bool IsUnlocked(Power power) => unlocked.Contains(power) ||
         CroustyPlayerProfile.IsGodMode && System.Enum.IsDefined(typeof(Power), power);
@@ -89,6 +91,9 @@ public sealed class PowerUnlockProgression : MonoBehaviour
 
         choicePanel.SetActive(false);
         backdrop.SetActive(false);
+        CroustyPanelMotion.Prepare(choicePanel);
+        backdropGroup = backdrop.GetComponent<CanvasGroup>();
+        if (backdropGroup == null) backdropGroup = backdrop.AddComponent<CanvasGroup>();
         for (int i = 0; i < choices.Length; i++)
         {
             int index = i;
@@ -128,6 +133,7 @@ public sealed class PowerUnlockProgression : MonoBehaviour
         offers.AddRange(GetOffers(deliveries.OrdersTotal));
         if (offers.Count == 0) return;
         open = ChoiceOpen = true;
+        opening = true;
         openedFrame = Time.frameCount;
         previousTimeScale = Time.timeScale;
         previousLock = Cursor.lockState;
@@ -146,8 +152,19 @@ public sealed class PowerUnlockProgression : MonoBehaviour
         if (!open) yield break;
         try { CaptureWorld(); }
         catch (System.Exception error) { Debug.LogException(error, this); }
+        backdropGroup.alpha = 0f;
         backdrop.SetActive(true);
-        choicePanel.SetActive(true);
+        CroustyPanelMotion.Show(choicePanel);
+        // Use unscaled time: choosing a power pauses the driving simulation.
+        const float entranceDuration = .55f;
+        for (float elapsed = 0f; elapsed < entranceDuration; elapsed += Time.unscaledDeltaTime)
+        {
+            if (!open) yield break;
+            backdropGroup.alpha = Mathf.SmoothStep(0f, 1f, elapsed / entranceDuration);
+            yield return null;
+        }
+        backdropGroup.alpha = 1f;
+        opening = false;
         for (int i = 0; i < offers.Count; i++)
             if (choices[i].interactable) { choices[i].Select(); yield break; }
         continueButton.Select();
@@ -160,6 +177,7 @@ public sealed class PowerUnlockProgression : MonoBehaviour
         bool affordable = false;
         for (int i = 0; i < choices.Length; i++)
         {
+            confirmHints[i].SetActive(false);
             choices[i].gameObject.SetActive(i < offers.Count);
             if (i >= offers.Count) continue;
             var power = offers[i];
@@ -180,7 +198,7 @@ public sealed class PowerUnlockProgression : MonoBehaviour
 
     private void Update()
     {
-        if (!open || !choicePanel.activeSelf) return;
+        if (!open || opening || !choicePanel.activeSelf) return;
         CroustyMenu.EnsureControllerSelection(choicePanel);
         var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
         for (int i = 0; i < offers.Count; i++)
@@ -194,7 +212,7 @@ public sealed class PowerUnlockProgression : MonoBehaviour
 
     public bool Purchase(int index)
     {
-        if (!open || Time.frameCount <= openedFrame || index < 0 || index >= offers.Count || deliveries.HasFailed) return false;
+        if (!open || opening || Time.frameCount <= openedFrame || index < 0 || index >= offers.Count || deliveries.HasFailed) return false;
         var power = offers[index];
         if (IsUnlocked(power) || !deliveries.TrySpendMoney(Price(power))) return false;
         unlocked.Add(power);
@@ -206,7 +224,7 @@ public sealed class PowerUnlockProgression : MonoBehaviour
 
     private void ContinueWithoutPurchase()
     {
-        if (!open || offers.Exists(p => deliveries.Money >= Price(p))) return;
+        if (!open || opening || offers.Exists(p => deliveries.Money >= Price(p))) return;
         Close();
         deliveries.ContinueAfterPowerChoice();
     }
@@ -245,6 +263,7 @@ public sealed class PowerUnlockProgression : MonoBehaviour
     {
         if (!open) return;
         open = ChoiceOpen = false;
+        opening = false;
         choicePanel.SetActive(false);
         backdrop.SetActive(false);
         blurredWorld.texture = null;

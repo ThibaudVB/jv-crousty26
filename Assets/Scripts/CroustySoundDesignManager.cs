@@ -87,6 +87,7 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
         source.volume = 0;
         return source;
     }
+    private void Start() => OnSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
     private AudioSource Loop(string name, CroustySound sound)
     {
         var source = Source(name);
@@ -165,12 +166,18 @@ public sealed class CroustySoundDesignManager : MonoBehaviour
     }
     private void Update()
     {
+        inMainMenu = SceneManager.GetActiveScene().name == "CroustyMainMenu";
         var menuCue = bank != null ? bank.Find(CroustySound.MenuMusic) : null;
         if (inMainMenu && menuMusic.clip != null)
         {
-            menuMusic.volume = (menuCue != null ? menuCue.volume : 0) * musicVolume;
-            if (!menuMusic.isPlaying) menuMusic.Play();
+            float targetVolume = CroustyMenuVideoBackground.IsStartupPlaying &&
+                !CroustyMenuVideoBackground.IsFadingToMenu ? 0f :
+                (menuCue != null ? menuCue.volume : 0) * musicVolume;
+            menuMusic.volume = Mathf.MoveTowards(menuMusic.volume, targetVolume, Time.unscaledDeltaTime * 1.5f);
+            if (targetVolume > 0 && !menuMusic.isPlaying) menuMusic.Play();
+            if (targetVolume == 0 && menuMusic.volume == 0) menuMusic.Stop();
         }
+        else if (menuMusic.isPlaying) menuMusic.Stop();
         bool stopped = Time.timeScale <= 0;
         foreach (var voice in voices)
         {

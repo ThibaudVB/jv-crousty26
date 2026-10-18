@@ -40,7 +40,7 @@ public class BusAirTricks : MonoBehaviour
     [Tooltip("Écart maximal (degrés) avec un tour complet pour que l'atterrissage compte comme réussi")]
     [Range(0f, 180f)] public float landingTolerance = 35f;
     [Tooltip("Durée du boost de points après une figure réussie (s)")]
-    [Min(0f)] public float boostDuration = 10f;
+    [Min(0f)] public float boostDuration = 20f;
     [Tooltip("Bonus par tour : 0.5 = x1.5 pour 1 tour, x2 pour 2 tours, x2.5 pour 3 tours...")]
     [Min(0f)] public float boostPerTurn = 0.5f;
     [Tooltip("Multiplicateur de points maximum")]

@@ -40,7 +40,7 @@ public sealed class CroustyLeaderboard : MonoBehaviour
     {
         bool filled = index < board.entries.Count;
         var entry = filled ? board.entries[index] : null;
-        slot.player.text = filled ? entry.player : "YOUR TURN TO PLAY";
+        slot.player.text = filled ? entry.player : "";
         slot.score.text = filled ? entry.score.ToString() : "—";
         if (slot.ribbon != null)
             slot.ribbon.sprite = filled && entry.id == board.latestId ? latestRibbon : normalRibbon;

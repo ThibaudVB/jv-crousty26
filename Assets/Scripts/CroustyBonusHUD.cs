@@ -86,6 +86,12 @@ public sealed class CroustyBonusHUD : MonoBehaviour
         gps.englishName = "Express GPS"; pet.englishName = "Toxic Gas";
         rice.englishName = "Asian Rice"; flight.englishName = "Crousty Flight";
         SetLanguage(language);
+        if (rice.nameText != null)
+        {
+            rice.nameText.horizontalAlignment = HorizontalAlignmentOptions.Center;
+            rice.nameText.verticalAlignment = VerticalAlignmentOptions.Geometry;
+            rice.nameText.margin = Vector4.zero;
+        }
         Refresh();
     }
 

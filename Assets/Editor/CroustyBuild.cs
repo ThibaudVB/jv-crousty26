@@ -9,6 +9,26 @@ using UnityEngine.SceneManagement;
 // Run for every build, including the normal Build Profiles window.
 public sealed class CroustyBuild : IPreprocessBuildWithReport, IProcessSceneWithReport
 {
+    [InitializeOnLoadMethod]
+    private static void ConfigureBrandingOnLoad() => EditorApplication.delayCall += ApplyBranding;
+
+    public static void ApplyBranding()
+    {
+        PlayerSettings.productName = "Crousty Express";
+        PlayerSettings.SplashScreen.show = false;
+        PlayerSettings.SplashScreen.showUnityLogo = false;
+        var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Menu/CroustyExpressIcon.png");
+        if (icon == null) return;
+        foreach (var target in new[] { BuildTargetGroup.Unknown, BuildTargetGroup.Standalone })
+        {
+            int count = PlayerSettings.GetIconSizesForTargetGroup(target).Length;
+            if (count == 0) continue;
+            var icons = Enumerable.Repeat(icon, count).ToArray();
+            if (!PlayerSettings.GetIconsForTargetGroup(target).SequenceEqual(icons))
+                PlayerSettings.SetIconsForTargetGroup(target, icons);
+        }
+    }
+
     public int callbackOrder => 100;
 
     public void OnPreprocessBuild(BuildReport report) => Validate();
@@ -16,6 +36,7 @@ public sealed class CroustyBuild : IPreprocessBuildWithReport, IProcessSceneWith
     [MenuItem("Tools/Crousty/Build/Verifier les ressources du build")]
     public static void Validate()
     {
+        ApplyBranding();
         var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
         Require(scenes.Length > 0 && scenes[0] == "Assets/Scenes/CroustyMainMenu.unity",
             "Le menu principal doit etre la premiere scene du build.");
@@ -56,7 +77,7 @@ public sealed class CroustyBuild : IPreprocessBuildWithReport, IProcessSceneWith
     public static void BuildWindows()
     {
         Validate();
-        var output = Path.GetFullPath("Build/Crousty.exe");
+        var output = Path.GetFullPath("Build/Crousty Express.exe");
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
             scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),

@@ -74,6 +74,7 @@ public sealed class CroustyMenu : MonoBehaviour
             if (sensitivityLabel != null) sensitivityLabel.text = sensitivity.ToString("0.00");
         }
         float volume = Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, 1f));
+        ApplyOptionsBackground();
         volumeSlider.SetValueWithoutNotify(volume);
         AudioListener.volume = volume;
         volumeLabel.text = Mathf.RoundToInt(volume * 100f) + "%";
@@ -105,6 +106,7 @@ public sealed class CroustyMenu : MonoBehaviour
     private void Update()
     {
         CroustyInput.UpdateMenuDevice();
+        if (CroustyMenuVideoBackground.IsStartupPlaying) return;
         if (pauseMenu == null || IsOptionsOpen)
             EnsureControllerSelection(IsOptionsOpen ? optionsPanel : IsLeaderboardOpen ? leaderboardPanel :
                 IsNameEntryOpen ? nameEntry.gameObject : mainPanel);
@@ -158,6 +160,20 @@ public sealed class CroustyMenu : MonoBehaviour
             rect.anchoredPosition = homePages.ControllerPromptPosition;
         }
         rect.sizeDelta = new Vector2(28, 28);
+        if (IsOptionsOpen)
+        {
+            var hover = button.GetComponent<CroustyMenuHover>();
+            var label = hover != null && hover.textTarget != null
+                ? hover.textTarget : button.GetComponentInChildren<TMP_Text>();
+            if (label != null)
+            {
+                // Options labels start at the left edge: place A after the actual text.
+                label.ForceMeshUpdate();
+                var bounds = label.textBounds;
+                rect.position = label.transform.TransformPoint(
+                    new Vector3(bounds.max.x + 24f, bounds.center.y, 0f));
+            }
+        }
         rect.SetAsLastSibling();
         var promptCanvas = controllerConfirmPrompt.GetComponent<Canvas>();
         var menuCanvas = button.GetComponentInParent<Canvas>();
@@ -194,6 +210,7 @@ public sealed class CroustyMenu : MonoBehaviour
 
     public void OpenOptions()
     {
+        ApplyOptionsBackground();
         if (IsOptionsOpen) return;
         SetCreditsPageMode(false);
         SetSettingsNavigationVisible(true);
@@ -202,6 +219,27 @@ public sealed class CroustyMenu : MonoBehaviour
         CroustyPanelMotion.Hide(mainPanel);
         CroustyPanelMotion.Show(optionsPanel);
         CroustySoundDesignManager.PlayUI(CroustySound.Paper);
+    }
+
+    private void ApplyOptionsBackground()
+    {
+        if (optionsPanel == null) return;
+        if (categoryPanels != null && categoryPanels.Length > 1 && categoryPanels[1] != null)
+            foreach (var slider in categoryPanels[1].GetComponentsInChildren<Slider>(true))
+            {
+                var handle = slider.handleRect;
+                if (handle == null) continue;
+                handle.anchorMin = new Vector2(handle.anchorMin.x, .5f);
+                handle.anchorMax = new Vector2(handle.anchorMax.x, .5f);
+                handle.anchoredPosition = new Vector2(handle.anchoredPosition.x, 0);
+                handle.sizeDelta = new Vector2(10, 16);
+            }
+        foreach (var graphic in optionsPanel.GetComponentsInChildren<Graphic>(true))
+        {
+            // Also updates scenes already loaded before the serialized colour changed.
+            if (graphic.name == "Fond blanc" || graphic.name == "Voile réglages")
+                graphic.color = new Color32(7, 153, 243, 255);
+        }
     }
 
     public void ToggleMore() => homePages?.Toggle();

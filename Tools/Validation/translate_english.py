@@ -35,7 +35,7 @@ TRANSLATIONS = {
     "C'EST CHAUD, ON Y VA !": "HOT AND READY. LET'S GO!",
     "Niveau indisponible": "Level unavailable", "La ville n'a pas pu être préparée": "The city could not be loaded",
     "TERMINE UNE PARTIE POUR INSCRIRE TON SCORE !": "FINISH A GAME TO RECORD YOUR SCORE!",
-    "À TOI DE JOUER": "YOUR TURN TO PLAY", "MEILLEUR SCORE PAR JOUEUR · LOCAL": "PERSONAL BESTS · LOCAL",
+    "À TOI DE JOUER": "", "MEILLEUR SCORE PAR JOUEUR · LOCAL": "PERSONAL BESTS · LOCAL",
     "BUS FIGHTER - CHUTE": "BUS FIGHTER - FREE FALL", "Passagers : ": "Passengers: ",
     "GPS : carte indisponible": "GPS: map unavailable", "GPS : meshes non lisibles": "GPS: map data unavailable",
     "GPS : navigation indisponible": "GPS: navigation unavailable", "GPS : prends des commandes": "GPS: pick up some orders",

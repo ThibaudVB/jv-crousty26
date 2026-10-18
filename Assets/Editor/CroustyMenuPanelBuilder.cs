@@ -275,7 +275,7 @@ public sealed class CroustyMenuPanelBuilder
 
     private void BuildOptions()
     {
-        Solid(optionsRoot, "Fond blanc", Color.white);
+        Solid(optionsRoot, "Fond blanc", Blue);
         Art(optionsRoot, "Trait bleu", Blue, 0, 0, 848, 0, 848, 3, 0, 3);
         if (optionsPanel != null)
             ImageAt(optionsRoot, "Panneau", optionsPanel, 325, 60, 523, 365);

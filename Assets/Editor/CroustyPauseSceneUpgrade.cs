@@ -149,7 +149,7 @@ public static class CroustyPauseSceneUpgrade
                 child.name = "Voile réglages";
                 var image = child.GetComponent<Image>();
                 Undo.RecordObject(image, "Assombrir le fond des options pause");
-                image.color = new Color32(20, 22, 30, 210);
+                image.color = new Color32(7, 153, 243, 255);
                 image.raycastTarget = true;
             }
             else
